@@ -49,7 +49,7 @@ const navItems: Record<string, NavItem[]> = {
 
 export default function Sidebar() {
   const { profile, signOut } = useAuth();
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
 
   if (!profile) {
