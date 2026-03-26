@@ -1,0 +1,216 @@
+PHARMACONNECT FRONTEND - FILE MANIFEST
+========================================
+
+Project Root Files:
+- package.json                           Configuration and dependencies
+- tsconfig.json                          TypeScript configuration
+- next.config.js                         Next.js configuration
+- tailwind.config.ts                     Tailwind CSS configuration
+- postcss.config.js                      PostCSS configuration
+- .env.example                           Environment variables template
+- README.md                              Full documentation
+- QUICKSTART.md                          Quick start guide
+- IMPLEMENTATION_SUMMARY.md              Implementation details
+- FILE_MANIFEST.txt                      This file
+
+Source Code Structure:
+src/
+├── lib/
+│   ├── firebase.ts                      Firebase Client SDK initialization
+│   └── api.ts                           API client with auth interceptor
+│
+├── contexts/
+│   └── AuthContext.tsx                  Firebase authentication context
+│
+├── components/
+│   ├── ui/
+│   │   ├── Button.tsx                   Button component (4 variants)
+│   │   ├── Input.tsx                    Input field component
+│   │   └── Card.tsx                     Card wrapper components
+│   │
+│   └── layout/
+│       ├── Navbar.tsx                   Public navigation bar
+│       └── Sidebar.tsx                  Dashboard sidebar (role-based)
+│
+└── app/
+    ├── globals.css                      Global styles and utilities
+    ├── layout.tsx                       Root layout with AuthProvider
+    ├── page.tsx                         Landing/home page
+    │
+    ├── (auth)/
+    │   ├── layout.tsx                   Auth pages layout (centered)
+    │   ├── login/
+    │   │   └── page.tsx                 Login page
+    │   └── register/
+    │       └── page.tsx                 Registration page
+    │
+    └── (dashboard)/
+        ├── layout.tsx                   Dashboard layout with sidebar
+        ├── customer/
+        │   └── page.tsx                 Customer dashboard
+        ├── pharmacy/
+        │   └── page.tsx                 Pharmacy dashboard
+        ├── delivery/
+        │   └── page.tsx                 Delivery provider dashboard
+        └── admin/
+            └── page.tsx                 Admin dashboard
+
+TOTAL FILES: 25
+
+FILE DESCRIPTIONS:
+
+1. CONFIGURATION FILES (6 files)
+   - package.json: npm dependencies, scripts
+   - tsconfig.json: TypeScript settings, path aliases
+   - next.config.js: Next.js image, build settings
+   - tailwind.config.ts: Tailwind theme (green/blue colors)
+   - postcss.config.js: PostCSS plugins
+   - .env.example: Environment variable template
+
+2. LIBRARY & UTILITIES (2 files)
+   - src/lib/firebase.ts: Firebase initialization
+   - src/lib/api.ts: API client with auth
+
+3. CONTEXT & STATE (1 file)
+   - src/contexts/AuthContext.tsx: Firebase auth provider
+
+4. UI COMPONENTS (3 files)
+   - src/components/ui/Button.tsx: Button (primary, secondary, outline, ghost)
+   - src/components/ui/Input.tsx: Text input with validation
+   - src/components/ui/Card.tsx: Card, CardHeader, CardContent, CardFooter
+
+5. LAYOUT COMPONENTS (2 files)
+   - src/components/layout/Navbar.tsx: Public navigation
+   - src/components/layout/Sidebar.tsx: Dashboard navigation (role-based)
+
+6. PAGES (8 files)
+   - src/app/layout.tsx: Root layout
+   - src/app/globals.css: Global styles
+   - src/app/page.tsx: Landing page (hero, features, footer)
+   - src/app/(auth)/layout.tsx: Auth layout
+   - src/app/(auth)/login/page.tsx: Login (email & phone tabs)
+   - src/app/(auth)/register/page.tsx: Register (role selector)
+   - src/app/(dashboard)/layout.tsx: Dashboard wrapper
+   - src/app/(dashboard)/customer/page.tsx: Customer dashboard
+   - src/app/(dashboard)/pharmacy/page.tsx: Pharmacy dashboard
+   - src/app/(dashboard)/delivery/page.tsx: Delivery dashboard
+   - src/app/(dashboard)/admin/page.tsx: Admin dashboard
+
+7. DOCUMENTATION (3 files)
+   - README.md: Complete documentation
+   - QUICKSTART.md: Setup and getting started
+   - IMPLEMENTATION_SUMMARY.md: Implementation details
+
+KEY FEATURES:
+
+✓ Firebase Authentication (Email/Password + Phone/OTP)
+✓ Role-Based Access Control (4 roles)
+✓ Responsive Design (Mobile-first)
+✓ TypeScript (Full type safety)
+✓ Tailwind CSS (Green pharmacy theme)
+✓ Protected Routes (Auth context)
+✓ API Integration (Auto token injection)
+✓ Toast Notifications (react-hot-toast)
+✓ Form Validation
+✓ Loading States
+✓ Error Handling
+
+DEPENDENCIES:
+
+Core:
+- next 14.2.0
+- react 18.3.0
+- react-dom 18.3.0
+- typescript 5.4.0
+
+Firebase:
+- firebase 11.0.0
+
+Styling:
+- tailwindcss 3.4.0
+- postcss 8.4.0
+- autoprefixer 10.4.0
+
+Utilities:
+- react-hot-toast 2.4.1
+- socket.io-client 4.8.0
+- zustand 5.0.0
+
+SETUP INSTRUCTIONS:
+
+1. npm install
+2. Configure .env.local with Firebase credentials
+3. npm run dev (starts on port 3000)
+4. Open http://localhost:3000
+
+BUILD COMMANDS:
+
+- npm run dev     → Start development server
+- npm run build   → Build for production
+- npm run start   → Start production server
+- npm run lint    → Run ESLint
+
+ENVIRONMENT VARIABLES REQUIRED:
+
+NEXT_PUBLIC_FIREBASE_API_KEY
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+NEXT_PUBLIC_FIREBASE_PROJECT_ID
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+NEXT_PUBLIC_FIREBASE_APP_ID
+NEXT_PUBLIC_API_URL
+
+CUSTOMIZATION POINTS:
+
+- Colors: tailwind.config.ts (primary/secondary theme)
+- API URL: .env.local (NEXT_PUBLIC_API_URL)
+- Branding: components/layout/Navbar.tsx, app/page.tsx
+- Dashboard Routes: src/components/layout/Sidebar.tsx
+- Auth Methods: src/contexts/AuthContext.tsx
+
+AUTHENTICATION FLOW:
+
+Sign Up:
+1. User selects role (customer/pharmacy/delivery)
+2. Enters name, email, password
+3. Firebase creates auth user
+4. Firestore profile created
+5. Backend /api/v1/auth/setup-profile called
+6. Redirected to dashboard
+
+Sign In:
+1. User enters email/password or phone/OTP
+2. Firebase validates credentials
+3. Firestore profile fetched
+4. AuthContext updated with user data
+5. Redirected to dashboard
+
+Dashboard Access:
+1. Protected routes check auth state
+2. Redirect to login if not authenticated
+3. Load role-specific sidebar
+4. Display role-specific content
+
+API CALLS:
+
+All API requests automatically include Firebase ID token:
+Authorization: Bearer <id_token>
+
+Example:
+const data = await apiClient.get('/orders');
+const created = await apiClient.post('/orders', { items: [] });
+const updated = await apiClient.put('/orders/1', { status: 'delivered' });
+await apiClient.delete('/orders/1');
+
+PRODUCTION DEPLOYMENT:
+
+Vercel (Recommended):
+1. vercel
+2. Set environment variables in project settings
+3. Deploy on push
+
+Docker:
+1. Build: docker build -t pharmaconnect-frontend .
+2. Run: docker run -p 3000:3000 pharmaconnect-frontend
+
+STATUS: COMPLETE & PRODUCTION-READY

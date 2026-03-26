@@ -1,0 +1,55 @@
+PHARMACONNECT FRONTEND - ABSOLUTE FILE PATHS
+==============================================
+
+BASE PATH:
+/sessions/happy-adoring-gates/mnt/Online Pharmacy Marketplace with delivery option/pharmaconnect/frontend/
+
+CONFIGURATION FILES:
+/sessions/happy-adoring-gates/mnt/Online Pharmacy Marketplace with delivery option/pharmaconnect/frontend/package.json
+/sessions/happy-adoring-gates/mnt/Online Pharmacy Marketplace with delivery option/pharmaconnect/frontend/tsconfig.json
+/sessions/happy-adoring-gates/mnt/Online Pharmacy Marketplace with delivery option/pharmaconnect/frontend/next.config.js
+/sessions/happy-adoring-gates/mnt/Online Pharmacy Marketplace with delivery option/pharmaconnect/frontend/tailwind.config.ts
+/sessions/happy-adoring-gates/mnt/Online Pharmacy Marketplace with delivery option/pharmaconnect/frontend/postcss.config.js
+/sessions/happy-adoring-gates/mnt/Online Pharmacy Marketplace with delivery option/pharmaconnect/frontend/.env.example
+
+CORE LIBRARY:
+/sessions/happy-adoring-gates/mnt/Online Pharmacy Marketplace with delivery option/pharmaconnect/frontend/src/lib/firebase.ts
+/sessions/happy-adoring-gates/mnt/Online Pharmacy Marketplace with delivery option/pharmaconnect/frontend/src/lib/api.ts
+
+CONTEXT & STATE:
+/sessions/happy-adoring-gates/mnt/Online Pharmacy Marketplace with delivery option/pharmaconnect/frontend/src/contexts/AuthContext.tsx
+
+UI COMPONENTS:
+/sessions/happy-adoring-gates/mnt/Online Pharmacy Marketplace with delivery option/pharmaconnect/frontend/src/components/ui/Button.tsx
+/sessions/happy-adoring-gates/mnt/Online Pharmacy Marketplace with delivery option/pharmaconnect/frontend/src/components/ui/Input.tsx
+/sessions/happy-adoring-gates/mnt/Online Pharmacy Marketplace with delivery option/pharmaconnect/frontend/src/components/ui/Card.tsx
+
+LAYOUT COMPONENTS:
+/sessions/happy-adoring-gates/mnt/Online Pharmacy Marketplace with delivery option/pharmaconnect/frontend/src/components/layout/Navbar.tsx
+/sessions/happy-adoring-gates/mnt/Online Pharmacy Marketplace with delivery option/pharmaconnect/frontend/src/components/layout/Sidebar.tsx
+
+APP PAGES:
+/sessions/happy-adoring-gates/mnt/Online Pharmacy Marketplace with delivery option/pharmaconnect/frontend/src/app/layout.tsx
+/sessions/happy-adoring-gates/mnt/Online Pharmacy Marketplace with delivery option/pharmaconnect/frontend/src/app/globals.css
+/sessions/happy-adoring-gates/mnt/Online Pharmacy Marketplace with delivery option/pharmaconnect/frontend/src/app/page.tsx
+
+AUTH PAGES:
+/sessions/happy-adoring-gates/mnt/Online Pharmacy Marketplace with delivery option/pharmaconnect/frontend/src/app/(auth)/layout.tsx
+/sessions/happy-adoring-gates/mnt/Online Pharmacy Marketplace with delivery option/pharmaconnect/frontend/src/app/(auth)/login/page.tsx
+/sessions/happy-adoring-gates/mnt/Online Pharmacy Marketplace with delivery option/pharmaconnect/frontend/src/app/(auth)/register/page.tsx
+
+DASHBOARD PAGES:
+/sessions/happy-adoring-gates/mnt/Online Pharmacy Marketplace with delivery option/pharmaconnect/frontend/src/app/(dashboard)/layout.tsx
+/sessions/happy-adoring-gates/mnt/Online Pharmacy Marketplace with delivery option/pharmaconnect/frontend/src/app/(dashboard)/customer/page.tsx
+/sessions/happy-adoring-gates/mnt/Online Pharmacy Marketplace with delivery option/pharmaconnect/frontend/src/app/(dashboard)/pharmacy/page.tsx
+/sessions/happy-adoring-gates/mnt/Online Pharmacy Marketplace with delivery option/pharmaconnect/frontend/src/app/(dashboard)/delivery/page.tsx
+/sessions/happy-adoring-gates/mnt/Online Pharmacy Marketplace with delivery option/pharmaconnect/frontend/src/app/(dashboard)/admin/page.tsx
+
+DOCUMENTATION:
+/sessions/happy-adoring-gates/mnt/Online Pharmacy Marketplace with delivery option/pharmaconnect/frontend/README.md
+/sessions/happy-adoring-gates/mnt/Online Pharmacy Marketplace with delivery option/pharmaconnect/frontend/QUICKSTART.md
+/sessions/happy-adoring-gates/mnt/Online Pharmacy Marketplace with delivery option/pharmaconnect/frontend/IMPLEMENTATION_SUMMARY.md
+/sessions/happy-adoring-gates/mnt/Online Pharmacy Marketplace with delivery option/pharmaconnect/frontend/FILE_MANIFEST.txt
+/sessions/happy-adoring-gates/mnt/Online Pharmacy Marketplace with delivery option/pharmaconnect/frontend/ABSOLUTE_FILE_PATHS.txt
+
+TOTAL: 28 FILES
