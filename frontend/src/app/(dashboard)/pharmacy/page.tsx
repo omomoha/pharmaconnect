@@ -1,13 +1,25 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOrders } from '@/hooks';
+import { useNotifications } from '@/hooks';
+import toast from 'react-hot-toast';
 
 export default function PharmacyDashboard() {
   const { profile } = useAuth();
+  const { orders, loading: ordersLoading, error: ordersError } = useOrders();
+  useNotifications();
+
+  // Show error toast if orders fail to load
+  useEffect(() => {
+    if (ordersError) {
+      toast.error('Failed to load orders');
+    }
+  }, [ordersError]);
 
   // Sample data
   const stats = [
@@ -17,7 +29,7 @@ export default function PharmacyDashboard() {
     { label: 'Avg. Rating', value: '4.7', change: 'From 234 reviews' },
   ];
 
-  const recentOrders = [
+  const sampleRecentOrders = [
     {
       id: '1',
       customer: 'John Doe',
@@ -43,6 +55,11 @@ export default function PharmacyDashboard() {
       status: 'Pending',
     },
   ];
+
+  // Use API orders if available, otherwise fallback to sample
+  const displayRecentOrders = (
+    orders && orders.length > 0 ? orders.slice(0, 3) : sampleRecentOrders
+  ) as any[];
 
   const lowStockAlerts = [
     { id: '1', product: 'Paracetamol 500mg', current: 12, reorderLevel: 50 },
@@ -96,29 +113,36 @@ export default function PharmacyDashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="border-b border-gray-200">
-                  <tr>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">
-                      Customer
-                    </th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">
-                      Items
-                    </th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">
-                      Date
-                    </th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">
-                      Status
-                    </th>
-                    <th className="text-right py-3 px-4 font-semibold text-gray-700">
-                      Total
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentOrders.map((order) => (
+            {ordersLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-12 bg-gray-200 rounded animate-pulse" />
+                ))}
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="border-b border-gray-200">
+                    <tr>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-700">
+                        Customer
+                      </th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-700">
+                        Items
+                      </th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-700">
+                        Date
+                      </th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-700">
+                        Status
+                      </th>
+                      <th className="text-right py-3 px-4 font-semibold text-gray-700">
+                        Total
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {displayRecentOrders.map((order) => (
                     <tr
                       key={order.id}
                       className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
@@ -143,10 +167,11 @@ export default function PharmacyDashboard() {
                         {order.total}
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </CardContent>
         </Card>
 

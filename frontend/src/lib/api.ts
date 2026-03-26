@@ -100,6 +100,23 @@ export async function put(url: string, data?: any, options?: FetchOptions) {
 }
 
 /**
+ * PATCH request with auth
+ */
+export async function patch(url: string, data?: any, options?: FetchOptions) {
+  const response = await fetchWithAuth(url, {
+    ...options,
+    method: 'PATCH',
+    body: data ? JSON.stringify(data) : undefined,
+  });
+
+  if (!response.ok) {
+    throw new Error(`API Error: ${response.status} ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+/**
  * DELETE request with auth
  */
 export async function deleteRequest(url: string, options?: FetchOptions) {
@@ -119,6 +136,7 @@ export const apiClient = {
   get,
   post,
   put,
+  patch,
   delete: deleteRequest,
   fetchWithAuth,
 };

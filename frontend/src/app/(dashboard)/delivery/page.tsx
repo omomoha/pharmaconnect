@@ -1,16 +1,26 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDelivery } from '@/hooks';
+import toast from 'react-hot-toast';
 
 export default function DeliveryDashboard() {
   const { profile } = useAuth();
+  const { assignments, loading: deliveryLoading, error: deliveryError } = useDelivery();
+
+  // Show error toast if deliveries fail to load
+  useEffect(() => {
+    if (deliveryError) {
+      toast.error('Failed to load deliveries');
+    }
+  }, [deliveryError]);
 
   // Sample data
-  const activeDeliveries = [
+  const sampleActiveDeliveries = [
     {
       id: '1',
       customer: 'John Doe',
@@ -30,6 +40,11 @@ export default function DeliveryDashboard() {
       eta: '22 min',
     },
   ];
+
+  // Use API assignments if available, otherwise fallback to sample
+  const displayActiveDeliveries = (
+    assignments && assignments.length > 0 ? assignments.slice(0, 2) : sampleActiveDeliveries
+  ) as any[];
 
   const earningsSummary = {
     today: '₦8,500',
@@ -107,8 +122,14 @@ export default function DeliveryDashboard() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            {activeDeliveries.length > 0 ? (
-              activeDeliveries.map((delivery) => (
+            {deliveryLoading ? (
+              <div className="space-y-3">
+                {[1, 2].map((i) => (
+                  <div key={i} className="h-20 bg-gray-200 rounded animate-pulse" />
+                ))}
+              </div>
+            ) : displayActiveDeliveries.length > 0 ? (
+              displayActiveDeliveries.map((delivery) => (
                 <div
                   key={delivery.id}
                   className="p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow"

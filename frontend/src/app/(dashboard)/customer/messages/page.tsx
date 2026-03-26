@@ -5,6 +5,9 @@ import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import PageHeader from '@/components/ui/PageHeader';
+import { useConversations, useConversation } from '@/hooks';
+import { joinChatRoom, sendChatMessage, onChatMessageReceive } from '@/lib/socket';
+import toast from 'react-hot-toast';
 
 interface Message {
   id: string;
@@ -132,30 +135,91 @@ export default function MessagesPage() {
   const [showMobileList, setShowMobileList] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Hook for conversations
+  const {
+    conversations: _apiConversations,
+    loading: _conversationsLoading,
+    refetch: _refetchConversations,
+  } = useConversations();
+
+  // Hook for active conversation
+  const {
+    conversation: _activeConversationData,
+    messages: _apiMessages,
+    sendMessage: sendApiMessage,
+    markAsRead,
+  } = useConversation(activeConversationId);
+
+  // Always use local conversations state (populated from sample data)
+  // API conversations would update this state when backend is connected
   const activeConversation = conversations.find(
     (c) => c.id === activeConversationId
   );
+
+  // Join socket room when conversation changes
+  useEffect(() => {
+    if (activeConversationId) {
+      joinChatRoom(activeConversationId);
+
+      // Listen for incoming messages
+      const handleIncomingMessage = (message: any) => {
+        if (message.conversationId === activeConversationId) {
+          setConversations((prevConversations) =>
+            prevConversations.map((conv) =>
+              conv.id === activeConversationId
+                ? {
+                    ...conv,
+                    messages: [
+                      ...conv.messages,
+                      {
+                        id: message.id,
+                        sender: 'other' as const,
+                        text: message.text,
+                        timestamp: new Date(message.timestamp).toLocaleTimeString(
+                          'en-US',
+                          {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true,
+                          }
+                        ),
+                      },
+                    ],
+                  }
+                : conv
+            )
+          );
+        }
+      };
+
+      onChatMessageReceive(handleIncomingMessage);
+    }
+  }, [activeConversationId, markAsRead]);
 
   // Auto-scroll to latest message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [activeConversation?.messages]);
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!messageInput.trim() || !activeConversation) return;
 
+    const text = messageInput;
+    setMessageInput('');
+
+    // Optimistic update (local state)
     const updatedConversations = conversations.map((conv) => {
       if (conv.id === activeConversationId) {
         return {
           ...conv,
-          lastMessage: messageInput,
+          lastMessage: text,
           lastMessageTime: 'Just now',
           messages: [
             ...conv.messages,
             {
               id: String(Date.now()),
               sender: 'user' as const,
-              text: messageInput,
+              text,
               timestamp: new Date().toLocaleTimeString('en-US', {
                 hour: 'numeric',
                 minute: '2-digit',
@@ -169,7 +233,14 @@ export default function MessagesPage() {
     });
 
     setConversations(updatedConversations);
-    setMessageInput('');
+
+    // Send via socket (real-time) and API (persistence)
+    try {
+      sendChatMessage(activeConversationId, text);
+      await sendApiMessage(text);
+    } catch (error) {
+      toast.error('Failed to send message');
+    }
   };
 
   const handleSelectConversation = (id: string) => {

@@ -1,20 +1,34 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
+import { useAdminDashboard } from '@/hooks';
+import toast from 'react-hot-toast';
 
 export default function AdminDashboard() {
+  const { stats, loading: dashboardLoading, error: dashboardError } = useAdminDashboard();
+
+  // Show error toast if dashboard fails to load
+  useEffect(() => {
+    if (dashboardError) {
+      toast.error('Failed to load admin dashboard');
+    }
+  }, [dashboardError]);
+
   // Sample data
-  const platformStats = [
+  const samplePlatformStats = [
     { label: 'Total Users', value: '2,834', change: '+125 this week' },
     { label: 'Total Orders', value: '12,456', change: '+8% from last week' },
     { label: 'Total Revenue', value: '₦5.2M', change: '+12% from last week' },
     { label: 'Flagged Chats', value: '23', change: '8 pending review' },
   ];
 
-  const recentFlags = [
+  // Use API stats if available, otherwise fallback to sample
+  const displayStats = stats && Object.keys(stats).length > 0 ? stats : samplePlatformStats;
+
+  const sampleRecentFlags = [
     {
       id: '1',
       type: 'Prescription Drug Detection',
@@ -41,10 +55,13 @@ export default function AdminDashboard() {
     },
   ];
 
-  const pendingApprovals = [
+  const samplePendingApprovals = [
     { id: '1', type: 'Pharmacy', name: 'HealthCare Plus', date: '2026-03-23' },
     { id: '2', type: 'Delivery Provider', name: 'Swift Logistics', date: '2026-03-22' },
   ];
+
+  const displayRecentFlags = sampleRecentFlags;
+  const displayPendingApprovals = samplePendingApprovals;
 
   return (
     <div className="space-y-6">
@@ -58,15 +75,23 @@ export default function AdminDashboard() {
 
       {/* Platform Stats */}
       <div className="grid md:grid-cols-4 gap-6">
-        {platformStats.map((stat, index) => (
-          <Card key={index}>
-            <CardContent className="pt-6">
-              <p className="text-gray-600 text-sm font-medium mb-2">{stat.label}</p>
-              <p className="text-3xl font-bold text-gray-900 mb-2">{stat.value}</p>
-              <p className="text-xs text-green-600">{stat.change}</p>
-            </CardContent>
-          </Card>
-        ))}
+        {dashboardLoading ? (
+          <>
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-28 bg-gray-200 rounded animate-pulse" />
+            ))}
+          </>
+        ) : (
+          displayStats.map((stat: { label: string; value: string; change: string }, index: number) => (
+            <Card key={index}>
+              <CardContent className="pt-6">
+                <p className="text-gray-600 text-sm font-medium mb-2">{stat.label}</p>
+                <p className="text-3xl font-bold text-gray-900 mb-2">{stat.value}</p>
+                <p className="text-xs text-green-600">{stat.change}</p>
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
@@ -78,7 +103,7 @@ export default function AdminDashboard() {
           <CardContent className="space-y-3">
             <Link href="/dashboard/admin/approvals">
               <Button variant="primary" className="w-full justify-start">
-                View Pending Approvals ({pendingApprovals.length})
+                View Pending Approvals ({displayPendingApprovals.length})
               </Button>
             </Link>
             <Link href="/dashboard/admin/flags">
@@ -105,8 +130,8 @@ export default function AdminDashboard() {
             <h2 className="text-lg font-bold text-gray-900">Pending Approvals</h2>
           </CardHeader>
           <CardContent className="space-y-3">
-            {pendingApprovals.length > 0 ? (
-              pendingApprovals.map((approval) => (
+            {displayPendingApprovals.length > 0 ? (
+              displayPendingApprovals.map((approval) => (
                 <div
                   key={approval.id}
                   className="p-3 border border-yellow-200 bg-yellow-50 rounded-lg"
@@ -211,7 +236,7 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {recentFlags.map((flag) => (
+                {displayRecentFlags.map((flag) => (
                   <tr
                     key={flag.id}
                     className="border-b border-gray-100 hover:bg-gray-50 transition-colors"

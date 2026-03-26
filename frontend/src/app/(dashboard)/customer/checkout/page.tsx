@@ -1,12 +1,15 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import PageHeader from '@/components/ui/PageHeader';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import toast from 'react-hot-toast';
+import { usePaystack } from '@/hooks';
+import { useAvailableProviders } from '@/hooks';
+import type { AvailableDeliveryProvider } from '@/shared/types';
 
 interface CartItem {
   pharmacyId: string;
@@ -23,35 +26,39 @@ interface DeliveryAddress {
   notes: string;
 }
 
-interface DeliveryProvider {
-  id: string;
-  name: string;
-  rating: number;
-  deliveryTime: string;
-  price: number;
-}
-
-const dummyDeliveryProviders: DeliveryProvider[] = [
+const dummyDeliveryProviders: AvailableDeliveryProvider[] = [
   {
     id: 'dp1',
-    name: 'SpeedDelivery Express',
+    businessName: 'SpeedDelivery Express',
     rating: 4.9,
-    deliveryTime: '30-45 mins',
-    price: 1500,
+    totalReviews: 120,
+    estimatedDuration: 35,
+    estimatedFee: 1500,
+    baseFee: 500,
+    perKmFee: 200,
+    distance: 5.0,
   },
   {
     id: 'dp2',
-    name: 'SafeHand Logistics',
+    businessName: 'SafeHand Logistics',
     rating: 4.7,
-    deliveryTime: '45-60 mins',
-    price: 1200,
+    totalReviews: 89,
+    estimatedDuration: 50,
+    estimatedFee: 1200,
+    baseFee: 400,
+    perKmFee: 180,
+    distance: 4.4,
   },
   {
     id: 'dp3',
-    name: 'FreshMeds Delivery',
+    businessName: 'FreshMeds Delivery',
     rating: 4.8,
-    deliveryTime: '1-2 hours',
-    price: 800,
+    totalReviews: 65,
+    estimatedDuration: 90,
+    estimatedFee: 800,
+    baseFee: 300,
+    perKmFee: 150,
+    distance: 3.3,
   },
 ];
 
@@ -87,6 +94,8 @@ export default function CheckoutPage() {
 
   // Step 2: Delivery Provider
   const [selectedProvider, setSelectedProvider] = useState('dp1');
+  const [pharmacyId] = useState(''); // Would come from cart context
+  const [location] = useState({ lat: 0, lng: 0 }); // Would come from user profile/location
 
   // Step 3: Payment
   const [paymentMethod, setPaymentMethod] = useState('paystack');
@@ -94,12 +103,30 @@ export default function CheckoutPage() {
   // Step 4: Review
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Hooks
+  const { providers, loading: providersLoading, error: providersError } = useAvailableProviders(
+    pharmacyId,
+    location
+  );
+  const { initializePayment, loading: _paystackLoading } = usePaystack();
+
+  // Use API providers if available, otherwise fallback to sample
+  const displayProviders =
+    providers && providers.length > 0 ? providers : dummyDeliveryProviders;
+
+  // Show error toast if providers fail to load
+  useEffect(() => {
+    if (providersError) {
+      toast.error('Failed to load delivery providers');
+    }
+  }, [providersError]);
+
   const getTotalPrice = () => {
     return cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   };
 
   const getSelectedProvider = () => {
-    return dummyDeliveryProviders.find((p) => p.id === selectedProvider);
+    return displayProviders.find((p) => p.id === selectedProvider);
   };
 
   const handleContinue = () => {
@@ -131,16 +158,20 @@ export default function CheckoutPage() {
   const handlePlaceOrder = async () => {
     setIsProcessing(true);
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const totalAmount = getTotalWithDelivery();
 
-      // Clear cart
-      localStorage.setItem('cart', JSON.stringify([]));
+      // Initialize Paystack payment
+      const orderId = `ORD-${Date.now()}`;
+      const email = 'customer@example.com'; // Would come from auth context
+      const authUrl = await initializePayment(orderId, email, totalAmount);
 
-      // Redirect to confirmation page
-      router.push(
-        `/customer/orders/confirmation?orderId=ORD-${Date.now()}`
-      );
+      if (authUrl) {
+        // Redirect to Paystack authorization
+        window.location.href = authUrl;
+      } else {
+        toast.error('Failed to initialize payment');
+        setIsProcessing(false);
+      }
     } catch (error) {
       toast.error('Failed to place order. Please try again.');
       setIsProcessing(false);
@@ -159,7 +190,7 @@ export default function CheckoutPage() {
 
   const getTotalWithDelivery = () => {
     const provider = getSelectedProvider();
-    const deliveryFee = provider?.price || 0;
+    const deliveryFee = provider?.estimatedFee || 0;
     return getTotalPrice() + deliveryFee;
   };
 
@@ -346,7 +377,14 @@ export default function CheckoutPage() {
                 </p>
               </CardHeader>
               <CardContent className="space-y-4">
-                {dummyDeliveryProviders.map((provider) => (
+                {providersLoading ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="h-20 bg-gray-200 rounded animate-pulse" />
+                    ))}
+                  </div>
+                ) : (
+                  displayProviders.map((provider) => (
                   <label
                     key={provider.id}
                     className="flex items-center gap-4 p-4 border-2 rounded-lg cursor-pointer transition-colors"
@@ -370,23 +408,24 @@ export default function CheckoutPage() {
 
                     <div className="flex-1 min-w-0">
                       <div className="font-bold text-gray-900">
-                        {provider.name}
+                        {provider.businessName}
                       </div>
                       <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
                         <span>★ {provider.rating}</span>
                         <span>•</span>
-                        <span>{provider.deliveryTime}</span>
+                        <span>{provider.estimatedDuration} mins</span>
                       </div>
                     </div>
 
                     <div className="text-right flex-shrink-0">
                       <div className="font-bold text-primary-600">
-                        ₦{provider.price.toLocaleString()}
+                        ₦{provider.estimatedFee.toLocaleString()}
                       </div>
                       <div className="text-xs text-gray-600">delivery</div>
                     </div>
                   </label>
-                ))}
+                  ))
+                )}
               </CardContent>
             </Card>
           )}
@@ -465,7 +504,7 @@ export default function CheckoutPage() {
                     <div className="flex justify-between text-gray-600">
                       <span>Delivery Fee</span>
                       <span>
-                        ₦{getSelectedProvider()?.price?.toLocaleString()}
+                        ₦{getSelectedProvider()?.estimatedFee?.toLocaleString()}
                       </span>
                     </div>
                   </div>
@@ -498,10 +537,10 @@ export default function CheckoutPage() {
                   <div>
                     <p className="text-sm text-gray-600">Delivery Provider</p>
                     <p className="font-medium text-gray-900 mt-1">
-                      {getSelectedProvider()?.name}
+                      {getSelectedProvider()?.businessName}
                     </p>
                     <p className="text-sm text-gray-600 mt-1">
-                      Expected delivery: {getSelectedProvider()?.deliveryTime}
+                      Expected delivery: {getSelectedProvider()?.estimatedDuration ? `${getSelectedProvider()?.estimatedDuration} mins` : 'TBD'}
                     </p>
                   </div>
 
@@ -557,7 +596,7 @@ export default function CheckoutPage() {
                 <div className="flex justify-between text-sm text-gray-600">
                   <span>Delivery</span>
                   <span>
-                    ₦{getSelectedProvider()?.price?.toLocaleString() || 'TBD'}
+                    ₦{getSelectedProvider()?.estimatedFee?.toLocaleString() || 'TBD'}
                   </span>
                 </div>
 

@@ -5,13 +5,25 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOrders } from '@/hooks';
+import { useNotifications } from '@/hooks';
+import toast from 'react-hot-toast';
 
 export default function CustomerDashboard() {
   const { profile } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
+  const { orders, loading: ordersLoading, error: ordersError } = useOrders({ limit: 2 });
+  const { unreadCount } = useNotifications();
+
+  // Show error toast if orders fail to load
+  React.useEffect(() => {
+    if (ordersError) {
+      toast.error('Failed to load recent orders');
+    }
+  }, [ordersError]);
 
   // Sample data
-  const recentOrders = [
+  const sampleRecentOrders = [
     {
       id: '1',
       medication: 'Paracetamol 500mg',
@@ -30,7 +42,7 @@ export default function CustomerDashboard() {
     },
   ];
 
-  const nearbyPharmacies = [
+  const sampleNearbyPharmacies = [
     {
       id: '1',
       name: 'HealthPlus Pharmacy',
@@ -46,6 +58,10 @@ export default function CustomerDashboard() {
       deliveryTime: '45-60 min',
     },
   ];
+
+  // Format orders for display (use API data if available, fallback to sample)
+  const displayOrders = (orders && orders.length > 0 ? orders.slice(0, 2) : sampleRecentOrders) as any[];
+  const nearbyPharmacies = sampleNearbyPharmacies;
 
   return (
     <div className="space-y-6">
@@ -80,7 +96,7 @@ export default function CustomerDashboard() {
         <Card>
           <CardContent className="pt-6">
             <div className="text-center space-y-2">
-              <p className="text-4xl font-bold text-primary-600">12</p>
+              <p className="text-4xl font-bold text-primary-600">{orders?.length || 12}</p>
               <p className="text-gray-600">Total Orders</p>
             </div>
           </CardContent>
@@ -98,8 +114,8 @@ export default function CustomerDashboard() {
         <Card>
           <CardContent className="pt-6">
             <div className="text-center space-y-2">
-              <p className="text-4xl font-bold text-primary-600">3</p>
-              <p className="text-gray-600">Saved Pharmacies</p>
+              <p className="text-4xl font-bold text-primary-600">{unreadCount > 0 ? unreadCount : 3}</p>
+              <p className="text-gray-600">{unreadCount > 0 ? 'Unread Notifications' : 'Saved Pharmacies'}</p>
             </div>
           </CardContent>
         </Card>
@@ -118,7 +134,13 @@ export default function CustomerDashboard() {
           </div>
         </CardHeader>
         <CardContent>
-          {recentOrders.length > 0 ? (
+          {ordersLoading ? (
+            <div className="space-y-3">
+              {[1, 2].map((i) => (
+                <div key={i} className="h-12 bg-gray-200 rounded animate-pulse" />
+              ))}
+            </div>
+          ) : displayOrders.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="border-b border-gray-200">
@@ -141,12 +163,12 @@ export default function CustomerDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {recentOrders.map((order) => (
+                  {displayOrders.map((order) => (
                     <tr
                       key={order.id}
                       className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
                     >
-                      <td className="py-4 px-4">{order.medication}</td>
+                      <td className="py-4 px-4">{order.medication || order.items}</td>
                       <td className="py-4 px-4">{order.pharmacy}</td>
                       <td className="py-4 px-4 text-gray-600">{order.date}</td>
                       <td className="py-4 px-4">

@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import PageHeader from '@/components/ui/PageHeader';
 import Tabs from '@/components/ui/Tabs';
 import { Card, CardContent } from '@/components/ui/Card';
 import StatusBadge from '@/components/ui/StatusBadge';
+import { useOrders } from '@/hooks';
+import toast from 'react-hot-toast';
 
 // Sample order data
 const SAMPLE_ORDERS = [
@@ -95,9 +97,20 @@ type OrderStatus = 'All' | 'Active' | 'Completed' | 'Cancelled';
 
 export default function OrdersPage() {
   const [activeTab, setActiveTab] = useState<OrderStatus>('All');
+  const { orders, loading, error } = useOrders();
+
+  // Show error toast if orders fail to load
+  useEffect(() => {
+    if (error) {
+      toast.error('Failed to load orders');
+    }
+  }, [error]);
+
+  // Use API orders if available, otherwise fallback to sample data
+  const displayOrders = (orders && orders.length > 0 ? orders : SAMPLE_ORDERS) as any[];
 
   // Filter orders by tab
-  const filteredOrders = SAMPLE_ORDERS.filter((order) => {
+  const filteredOrders = displayOrders.filter((order) => {
     if (activeTab === 'All') return true;
     if (activeTab === 'Active')
       return ['Pending', 'Confirmed', 'In Transit'].includes(order.status);
@@ -108,14 +121,14 @@ export default function OrdersPage() {
   });
 
   // Count orders by status
-  const allCount = SAMPLE_ORDERS.length;
-  const activeCount = SAMPLE_ORDERS.filter((o) =>
+  const allCount = displayOrders.length;
+  const activeCount = displayOrders.filter((o) =>
     ['Pending', 'Confirmed', 'In Transit'].includes(o.status)
   ).length;
-  const completedCount = SAMPLE_ORDERS.filter((o) =>
+  const completedCount = displayOrders.filter((o) =>
     ['Delivered', 'Completed'].includes(o.status)
   ).length;
-  const cancelledCount = SAMPLE_ORDERS.filter(
+  const cancelledCount = displayOrders.filter(
     (o) => o.status === 'Cancelled'
   ).length;
 
@@ -148,7 +161,13 @@ export default function OrdersPage() {
       {/* Orders Table */}
       <Card>
         <CardContent className="pt-6">
-          {filteredOrders.length > 0 ? (
+          {loading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-12 bg-gray-200 rounded animate-pulse" />
+              ))}
+            </div>
+          ) : filteredOrders.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
