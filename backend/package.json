@@ -2,7 +2,7 @@
   "name": "@pharmaconnect/backend",
   "version": "1.0.0",
   "description": "PharmaConnect Backend - Firebase Admin SDK + Express.js",
-  "main": "dist/index.js",
+  "main": "dist/functions.js",
   "type": "module",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
@@ -14,6 +14,9 @@
     "test": "jest --no-cache --forceExit",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage --no-cache --forceExit"
+  },
+  "engines": {
+    "node": "20"
   },
   "dependencies": {
     "@pharmaconnect/shared": "file:../shared",
