@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { adminService } from '@/lib/services';
 import type { DeliveryProvider, FlaggedAlert, Pharmacy } from '@/shared/types';
 
@@ -31,6 +31,10 @@ export function useAdminDashboard() {
       setLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    fetchDashboard();
+  }, [fetchDashboard]);
 
   return {
     stats,
@@ -79,6 +83,10 @@ export function usePendingApprovals() {
       setLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    fetchApprovals();
+  }, [fetchApprovals]);
 
   /**
    * Approve a pharmacy registration
@@ -246,6 +254,10 @@ export function useFlaggedAlerts() {
       setLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    fetchAlerts();
+  }, [fetchAlerts]);
 
   /**
    * Review a flagged alert and take action

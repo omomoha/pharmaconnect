@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { AdminController } from "./admin.controller.js";
-import { authenticate, authorize } from "../../middleware/authenticate.js";
+import { authenticate } from "../../middleware/authenticate.js";
 import { authorize as authorizeRole } from "../../middleware/authorize.js";
 import { asyncHandler } from "../../middleware/errorHandler.js";
 import { adminRateLimiter } from "../../middleware/rateLimiter.js";

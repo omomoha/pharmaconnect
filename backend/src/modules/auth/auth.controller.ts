@@ -4,6 +4,7 @@ import { AuthService } from "./auth.service.js";
 import { apiResponse } from "../../utils/helpers.js";
 import logger from "../../utils/logger.js";
 import { z } from "zod";
+import { UserRole } from "@pharmaconnect/shared/dist/types/index.js";
 
 /**
  * Auth Controller
@@ -33,7 +34,7 @@ export class AuthController {
         firstName: z.string().min(1),
         lastName: z.string().min(1),
         phoneNumber: z.string().min(10),
-        role: z.enum(["customer", "pharmacy_admin", "delivery_admin"]),
+        role: z.nativeEnum(UserRole),
       });
 
       const validated = setupSchema.parse(req.body);
@@ -56,7 +57,7 @@ export class AuthController {
         phoneNumber: validated.phoneNumber,
         firstName: validated.firstName,
         lastName: validated.lastName,
-        role: validated.role,
+        role: validated.role as UserRole,
       });
 
       logger.info(`Profile setup completed for user ${req.user.uid}`);

@@ -1,11 +1,12 @@
 import { getFirestore } from "../../config/firebase.js";
 import logger from "../../utils/logger.js";
-import { generateOrderNumber, generateSecurityCode, formatCurrency } from "../../utils/helpers.js";
+import { formatCurrency } from "../../utils/helpers.js";
 import {
   Order,
   OrderItem,
   OrderStatus,
   PaymentStatus,
+  DrugCategory,
 } from "@pharmaconnect/shared/dist/types/index.js";
 import { FIRESTORE_COLLECTIONS, COMMISSION } from "@pharmaconnect/shared/dist/constants/index.js";
 import { v4 as uuid } from "uuid";
@@ -79,7 +80,7 @@ export class OrderService {
           orderId,
           pharmacyProductId: item.pharmacyProductId,
           drugName: item.drugName,
-          category: item.category,
+          category: item.category as DrugCategory,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
           subtotal: item.unitPrice * item.quantity,

@@ -69,7 +69,7 @@ export const createApp = (): {
   app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
   // Store raw body for Paystack webhook verification
-  app.use((req: Request, res: Response, next: NextFunction) => {
+  app.use((req: Request, _res: Response, next: NextFunction) => {
     let data = "";
     req.on("data", (chunk) => {
       data += chunk;
@@ -102,7 +102,7 @@ export const createApp = (): {
   // Health check
   app.get(
     "/health",
-    asyncHandler((req, res) => {
+    asyncHandler(async (_req, res) => {
       res.json({
         success: true,
         message: "PharmaConnect Backend is healthy",
@@ -155,7 +155,7 @@ export const startServer = async (): Promise<{
     logger.info("Redis initialized");
 
     // Create app
-    const { app, io, httpServer } = createApp();
+    const { io, httpServer } = createApp();
 
     // Start server
     const port = config.PORT;

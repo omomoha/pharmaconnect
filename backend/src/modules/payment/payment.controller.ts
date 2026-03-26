@@ -5,6 +5,14 @@ import { apiResponse } from "../../utils/helpers.js";
 import logger from "../../utils/logger.js";
 import { z } from "zod";
 
+declare global {
+  namespace Express {
+    interface Request {
+      rawBody?: string;
+    }
+  }
+}
+
 /**
  * Payment Controller
  */

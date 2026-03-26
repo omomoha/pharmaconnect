@@ -9,7 +9,7 @@ import {
   AvailableDeliveryProvider,
   ApprovalStatus,
 } from "@pharmaconnect/shared/dist/types/index.js";
-import { FIRESTORE_COLLECTIONS, DELIVERY, COMMISSION } from "@pharmaconnect/shared/dist/constants/index.js";
+import { FIRESTORE_COLLECTIONS, DELIVERY } from "@pharmaconnect/shared/dist/constants/index.js";
 import { v4 as uuid } from "uuid";
 
 /**

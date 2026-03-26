@@ -15,7 +15,7 @@ export const errorHandler = (
   error: AppError | Error,
   req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ): void => {
   const statusCode = (error as AppError).statusCode || 500;
   const code = (error as AppError).code || "INTERNAL_SERVER_ERROR";
@@ -40,14 +40,19 @@ export const errorHandler = (
     });
   }
 
-  res.status(statusCode).json({
+  const errorResponse: any = {
     success: false,
     error: {
       code,
       message,
-      ...(details && { details }),
     },
-  });
+  };
+
+  if (details) {
+    errorResponse.error.details = details;
+  }
+
+  res.status(statusCode).json(errorResponse);
 };
 
 /**
@@ -56,7 +61,7 @@ export const errorHandler = (
 export const notFoundHandler = (
   req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ): void => {
   res.status(404).json({
     success: false,
@@ -88,6 +93,6 @@ export const createAppError = (
  */
 export const asyncHandler =
   (fn: (req: Request, res: Response, next: NextFunction) => Promise<void>) =>
-  (req: Request, res: Response, next: NextFunction): void => {
-    Promise.resolve(fn(req, res, next)).catch(next);
+  (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    return Promise.resolve(fn(req, res, next)).catch(next);
   };

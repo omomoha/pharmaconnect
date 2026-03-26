@@ -4,7 +4,7 @@ import logger from "../utils/logger.js";
 
 let db: admin.firestore.Firestore;
 let auth: admin.auth.Auth;
-let storage: admin.storage.Bucket;
+let storage: any;
 
 /**
  * Initialize Firebase Admin SDK
@@ -63,7 +63,7 @@ export const getAuth = (): admin.auth.Auth => {
 /**
  * Get Firebase Storage bucket
  */
-export const getStorage = (): admin.storage.Bucket => {
+export const getStorageBucket = (): any => {
   if (!storage) {
     throw new Error("Firebase not initialized. Call initializeFirebase() first.");
   }

@@ -86,9 +86,9 @@ export async function searchPharmacies(
 
     if (params.lat !== undefined) queryParams.lat = params.lat.toString();
     if (params.lng !== undefined) queryParams.lng = params.lng.toString();
-    if (params.radius) queryParams.radius = params.radius.toString();
-    if (params.limit) queryParams.limit = params.limit.toString();
-    if (params.offset) queryParams.offset = params.offset.toString();
+    if (params.radius !== undefined) queryParams.radius = params.radius.toString();
+    if (params.limit !== undefined) queryParams.limit = params.limit.toString();
+    if (params.offset !== undefined) queryParams.offset = params.offset.toString();
 
     const response = await apiClient.get('/pharmacies/search', {
       params: queryParams,

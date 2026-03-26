@@ -9,8 +9,9 @@ import {
   ConversationStatus,
   MessageType,
   UserRole,
+  FlagAction,
 } from "@pharmaconnect/shared/dist/types/index.js";
-import { FIRESTORE_COLLECTIONS, PRESCRIPTION_KEYWORDS } from "@pharmaconnect/shared/dist/constants/index.js";
+import { FIRESTORE_COLLECTIONS } from "@pharmaconnect/shared/dist/constants/index.js";
 import { v4 as uuid } from "uuid";
 import { moderateMessage } from "../../services/moderation/keyword-matcher.js";
 
@@ -291,7 +292,7 @@ export class ChatService {
         suspiciousKeywords: moderation.keywords || [],
         nlpClassification: "prescription_request",
         confidenceScore: moderation.confidenceScore || 0.5,
-        action: "dismissed",
+        action: FlagAction.DISMISSED,
         createdAt: now,
         updatedAt: now,
       };

@@ -54,10 +54,7 @@ export class PharmacyController {
 
       const validated = schema.parse(req.body);
 
-      const pharmacy = await PharmacyService.registerPharmacy(req.user.uid, {
-        ...validated,
-        expiryDate: new Date(validated.operatingHours as any),
-      });
+      const pharmacy = await PharmacyService.registerPharmacy(req.user.uid, validated);
 
       logger.info(`Pharmacy registered by user ${req.user.uid}`);
 

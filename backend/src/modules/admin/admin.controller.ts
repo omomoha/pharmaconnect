@@ -15,7 +15,7 @@ export class AdminController {
    * Get pending pharmacies
    */
   static async getPendingPharmacies(
-    req: AuthenticatedRequest,
+    _req: AuthenticatedRequest,
     res: Response
   ): Promise<void> {
     try {
@@ -110,7 +110,7 @@ export class AdminController {
    * Get pending delivery providers
    */
   static async getPendingProviders(
-    req: AuthenticatedRequest,
+    _req: AuthenticatedRequest,
     res: Response
   ): Promise<void> {
     try {
@@ -291,7 +291,7 @@ export class AdminController {
    * Get dashboard statistics
    */
   static async getDashboardStats(
-    req: AuthenticatedRequest,
+    _req: AuthenticatedRequest,
     res: Response
   ): Promise<void> {
     try {

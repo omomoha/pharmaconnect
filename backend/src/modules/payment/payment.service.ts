@@ -1,4 +1,3 @@
-import { getFirestore } from "../../config/firebase.js";
 import logger from "../../utils/logger.js";
 import config from "../../config/index.js";
 import { PaymentStatus } from "@pharmaconnect/shared/dist/types/index.js";
@@ -47,13 +46,13 @@ export class PaymentService {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = (await response.json()) as any;
         throw new Error(
           `Paystack API error: ${errorData.message || "Unknown error"}`
         );
       }
 
-      const result = await response.json();
+      const result = (await response.json()) as any;
 
       logger.info(`Payment initialized for order ${data.orderId}`, {
         reference,
@@ -94,7 +93,7 @@ export class PaymentService {
         throw new Error("Failed to verify payment with Paystack");
       }
 
-      const result = await response.json();
+      const result = (await response.json()) as any;
       const data = result.data;
 
       logger.info(`Payment verified`, {
@@ -147,7 +146,7 @@ export class PaymentService {
         };
       }
 
-      const { reference, status, amount, metadata } = event.data;
+      const { reference, status, metadata } = event.data;
 
       if (status !== "success") {
         logger.warn("Payment not successful", { reference, status });
@@ -239,11 +238,11 @@ export class PaymentService {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = (await response.json()) as any;
         throw new Error(`Refund failed: ${errorData.message}`);
       }
 
-      const result = await response.json();
+      const result = (await response.json()) as any;
 
       logger.info(`Refund created for transaction ${reference}`, {
         refundReference: result.data.reference,
