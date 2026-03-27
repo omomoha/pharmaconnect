@@ -46,8 +46,11 @@ try {
   config = envSchema.parse(process.env);
 } catch (error) {
   if (error instanceof z.ZodError) {
-    console.error("Environment validation error:");
-    console.error(error.errors);
+    console.error("Environment validation error:", error.errors);
+    // In Cloud Functions, throwing is safer than process.exit (allows error reporting)
+    if (process.env.K_SERVICE || process.env.FUNCTION_TARGET) {
+      throw new Error(`Environment validation failed: ${JSON.stringify(error.errors)}`);
+    }
     process.exit(1);
   }
   throw error;

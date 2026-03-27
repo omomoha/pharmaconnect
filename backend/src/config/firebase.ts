@@ -36,7 +36,13 @@ export const initializeFirebase = (): void => {
     // Get references to services
     db = admin.firestore();
     auth = admin.auth();
-    storage = admin.storage().bucket();
+
+    // Storage bucket — optional, may not be configured in all environments
+    try {
+      storage = admin.storage().bucket();
+    } catch (_storageError) {
+      logger.warn("Firebase Storage bucket not configured — file uploads disabled");
+    }
 
     logger.info("Firebase Admin SDK initialized successfully");
   } catch (error) {
