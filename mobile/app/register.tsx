@@ -1,9 +1,21 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
+import { router } from 'expo-router';
+import { useAuth } from '../src/contexts/AuthContext';
 
 type Role = 'customer' | 'pharmacy_admin' | 'delivery_admin';
 
 export default function RegisterScreen() {
+  const { signUp, setupProfile } = useAuth();
   const [role, setRole] = useState<Role>('customer');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -13,10 +25,45 @@ export default function RegisterScreen() {
   const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || !password.trim()) {
+      Alert.alert('Error', 'Please fill in all required fields.');
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters.');
+      return;
+    }
+
     setLoading(true);
-    // TODO: Firebase Auth createUserWithEmailAndPassword + backend profile setup
-    console.log('Register:', { role, firstName, lastName, email, phone });
-    setLoading(false);
+    try {
+      // Create Firebase account
+      await signUp(email.trim(), password);
+
+      // Set up profile on backend
+      await setupProfile({
+        role,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        phone: phone.trim(),
+      });
+
+      Alert.alert('Success', 'Account created successfully!', [
+        { text: 'OK', onPress: () => router.replace('/(tabs)') },
+      ]);
+    } catch (error: any) {
+      let message = 'Registration failed. Please try again.';
+      if (error.code === 'auth/email-already-in-use') {
+        message = 'An account with this email already exists.';
+      } else if (error.code === 'auth/weak-password') {
+        message = 'Password is too weak. Use at least 6 characters.';
+      } else if (error.code === 'auth/invalid-email') {
+        message = 'Invalid email address.';
+      }
+      Alert.alert('Registration Failed', message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const roles: { value: Role; label: string; icon: string }[] = [
@@ -39,7 +86,12 @@ export default function RegisterScreen() {
             onPress={() => setRole(r.value)}
           >
             <Text style={styles.roleIcon}>{r.icon}</Text>
-            <Text style={[styles.roleLabel, role === r.value && styles.roleLabelActive]}>
+            <Text
+              style={[
+                styles.roleLabel,
+                role === r.value && styles.roleLabelActive,
+              ]}
+            >
               {r.label}
             </Text>
           </TouchableOpacity>
@@ -48,15 +100,62 @@ export default function RegisterScreen() {
 
       <View style={styles.form}>
         <View style={styles.nameRow}>
-          <TextInput style={[styles.input, styles.halfInput]} placeholder="First name" value={firstName} onChangeText={setFirstName} />
-          <TextInput style={[styles.input, styles.halfInput]} placeholder="Last name" value={lastName} onChangeText={setLastName} />
+          <TextInput
+            style={[styles.input, styles.halfInput]}
+            placeholder="First name"
+            value={firstName}
+            onChangeText={setFirstName}
+          />
+          <TextInput
+            style={[styles.input, styles.halfInput]}
+            placeholder="Last name"
+            value={lastName}
+            onChangeText={setLastName}
+          />
         </View>
-        <TextInput style={styles.input} placeholder="Email address" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
-        <TextInput style={styles.input} placeholder="Phone number" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
-        <TextInput style={styles.input} placeholder="Password" value={password} onChangeText={setPassword} secureTextEntry />
+        <TextInput
+          style={styles.input}
+          placeholder="Email address"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Phone number"
+          value={phone}
+          onChangeText={setPhone}
+          keyboardType="phone-pad"
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Password (min 6 characters)"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+        />
 
-        <TouchableOpacity style={styles.button} onPress={handleRegister} disabled={loading}>
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Create Account</Text>}
+        <TouchableOpacity
+          style={[styles.button, loading && styles.buttonDisabled]}
+          onPress={handleRegister}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>Create Account</Text>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.linkButton}
+          onPress={() => router.push('/login')}
+        >
+          <Text style={styles.linkText}>
+            Already have an account? <Text style={styles.linkBold}>Sign In</Text>
+          </Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -70,7 +169,14 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 14, color: '#6B7280', marginBottom: 24 },
   label: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 8 },
   roleRow: { flexDirection: 'row', gap: 12, marginBottom: 24 },
-  roleCard: { flex: 1, borderWidth: 2, borderColor: '#E5E7EB', borderRadius: 12, padding: 16, alignItems: 'center' },
+  roleCard: {
+    flex: 1,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+  },
   roleCardActive: { borderColor: '#059669', backgroundColor: '#ECFDF5' },
   roleIcon: { fontSize: 24, marginBottom: 4 },
   roleLabel: { fontSize: 12, fontWeight: '600', color: '#6B7280' },
@@ -78,7 +184,25 @@ const styles = StyleSheet.create({
   form: { gap: 16 },
   nameRow: { flexDirection: 'row', gap: 12 },
   halfInput: { flex: 1 },
-  input: { borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, fontSize: 16 },
-  button: { backgroundColor: '#059669', paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginTop: 8 },
+  input: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    backgroundColor: '#F9FAFB',
+  },
+  button: {
+    backgroundColor: '#059669',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  buttonDisabled: { opacity: 0.6 },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  linkButton: { alignItems: 'center', marginTop: 12 },
+  linkText: { color: '#6B7280', fontSize: 14 },
+  linkBold: { color: '#059669', fontWeight: '600' },
 });

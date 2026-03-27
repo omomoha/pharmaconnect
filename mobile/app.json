@@ -25,7 +25,13 @@
     "plugins": [
       "expo-router",
       "@react-native-firebase/app",
-      "@react-native-firebase/auth"
+      "@react-native-firebase/auth",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow PharmaConnect to use your location to find nearby pharmacies."
+        }
+      ]
     ],
     "scheme": "pharmaconnect"
   }
