@@ -14,6 +14,7 @@ import {
 import { FIRESTORE_COLLECTIONS } from "@pharmaconnect/shared/dist/constants/index.js";
 import { v4 as uuid } from "uuid";
 import { moderateMessage } from "../../services/moderation/keyword-matcher.js";
+import { classifyMessage } from "../../services/moderation/nlp-classifier.js";
 
 /**
  * Chat Service
@@ -224,6 +225,9 @@ export class ChatService {
 
   /**
    * Moderate message - 3 layers
+   * Layer 1: Keyword matching (keyword-matcher)
+   * Layer 2: NLP classification (nlp-classifier)
+   * Layer 3: Context analysis (stub for future implementation)
    */
   static async moderateMessage(data: {
     content: string;
@@ -242,17 +246,28 @@ export class ChatService {
       if (keywordResult.flagged) {
         return {
           flagged: true,
-          reason: "Prescription drug detection",
+          reason: "Prescription drug detection (keyword match)",
           keywords: keywordResult.keywords,
           confidenceScore: 0.9,
         };
       }
 
-      // Layer 2 & 3: Stubs for NLP and context analysis
-      // In production, integrate with OpenAI API or custom NLP model
-      // return {
-      //   flagged: false,
-      // };
+      // Layer 2: NLP Classification
+      // Only run if Layer 1 didn't flag (to avoid unnecessary API calls)
+      const nlpResult = await classifyMessage(data.content);
+
+      if (nlpResult.flagged) {
+        return {
+          flagged: true,
+          reason: nlpResult.reason || "Prescription drug detection (NLP classification)",
+          confidenceScore: nlpResult.confidence,
+        };
+      }
+
+      // Layer 3: Context analysis
+      // Stub for future implementation - could analyze conversation history,
+      // user behavior, timing patterns, etc.
+      // For now, if Layers 1 and 2 pass, message is allowed
 
       return {
         flagged: false,
@@ -339,6 +354,41 @@ export class ChatService {
       logger.info(`Conversation closed: ${id}`);
     } catch (error) {
       logger.error(`Failed to close conversation ${id}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get unread message count for a user
+   */
+  static async getUnreadCount(userId: string): Promise<number> {
+    try {
+      const db = getFirestore();
+
+      // Get all conversations for the user
+      const conversationsSnapshot = await db
+        .collection(FIRESTORE_COLLECTIONS.CONVERSATIONS)
+        .where("customerId", "==", userId)
+        .get();
+
+      let totalUnread = 0;
+
+      // For each conversation, count unread messages not sent by the user
+      for (const conversationDoc of conversationsSnapshot.docs) {
+        const conversationId = conversationDoc.id;
+        const unreadSnapshot = await db
+          .collection(FIRESTORE_COLLECTIONS.MESSAGES)
+          .where("conversationId", "==", conversationId)
+          .where("senderId", "!=", userId)
+          .where("readAt", "==", null)
+          .get();
+
+        totalUnread += unreadSnapshot.size;
+      }
+
+      return totalUnread;
+    } catch (error) {
+      logger.error(`Failed to get unread count for user ${userId}:`, error);
       throw error;
     }
   }

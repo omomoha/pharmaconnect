@@ -5,12 +5,15 @@ import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import PageHeader from '@/components/ui/PageHeader';
+import TypingIndicator from '@/components/chat/TypingIndicator';
+import { joinChatRoom, sendChatMessage, onChatMessageReceive, emitTyping, emitStoppedTyping, onTyping } from '@/lib/socket';
 
 interface Message {
   id: string;
   sender: 'pharmacy' | 'customer';
   text: string;
   timestamp: string;
+  readAt?: Date;
 }
 
 interface Conversation {
@@ -53,6 +56,7 @@ const SAMPLE_CONVERSATIONS: Conversation[] = [
         sender: 'customer',
         text: 'Thank you! The medication worked great.',
         timestamp: '02:15 PM',
+        readAt: new Date(),
       },
     ],
   },
@@ -153,7 +157,9 @@ export default function PharmacyMessagesPage() {
   const [activeConversationId, setActiveConversationId] = useState(SAMPLE_CONVERSATIONS[0].id);
   const [messageInput, setMessageInput] = useState('');
   const [showMobileList, setShowMobileList] = useState(true);
+  const [typingUsers, setTypingUsers] = useState<{ [key: string]: string }>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const activeConversation = conversations.find(
     (c) => c.id === activeConversationId
@@ -163,8 +169,76 @@ export default function PharmacyMessagesPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [activeConversation?.messages]);
 
+  // Socket setup
+  useEffect(() => {
+    if (activeConversationId) {
+      joinChatRoom(activeConversationId);
+
+      const handleIncomingMessage = (message: any) => {
+        if (message.conversationId === activeConversationId) {
+          setConversations((prevConversations) =>
+            prevConversations.map((conv) =>
+              conv.id === activeConversationId
+                ? {
+                    ...conv,
+                    messages: [
+                      ...conv.messages,
+                      {
+                        id: message.id,
+                        sender: 'customer' as const,
+                        text: message.text,
+                        timestamp: new Date(message.timestamp).toLocaleTimeString(
+                          'en-US',
+                          {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true,
+                          }
+                        ),
+                      },
+                    ],
+                  }
+                : conv
+            )
+          );
+        }
+      };
+
+      const handleTyping = (data: any) => {
+        if (data.conversationId === activeConversationId && data.userId) {
+          setTypingUsers((prev) => ({
+            ...prev,
+            [data.userId]: data.userName || 'User',
+          }));
+        }
+      };
+
+      onChatMessageReceive(handleIncomingMessage);
+      const unsubscribeTyping = onTyping(handleTyping);
+
+      return () => {
+        unsubscribeTyping();
+      };
+    }
+  }, [activeConversationId]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setMessageInput(e.target.value);
+    emitTyping(activeConversationId);
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    typingTimeoutRef.current = setTimeout(() => {
+      emitStoppedTyping(activeConversationId);
+    }, 2000);
+  };
+
   const handleSendMessage = () => {
     if (!messageInput.trim() || !activeConversation) return;
+
+    emitStoppedTyping(activeConversationId);
 
     const updatedConversations = conversations.map((conv) => {
       if (conv.id === activeConversationId) {
@@ -183,6 +257,7 @@ export default function PharmacyMessagesPage() {
                 minute: '2-digit',
                 hour12: true,
               }),
+              readAt: new Date(),
             },
           ],
         };
@@ -192,6 +267,13 @@ export default function PharmacyMessagesPage() {
 
     setConversations(updatedConversations);
     setMessageInput('');
+
+    // Send via socket
+    try {
+      sendChatMessage(activeConversationId, messageInput);
+    } catch (error) {
+      console.error('Failed to send message:', error);
+    }
   };
 
   const handleSelectConversation = (id: string) => {
@@ -345,18 +427,32 @@ export default function PharmacyMessagesPage() {
                     }`}
                   >
                     <p className="text-sm">{message.text}</p>
-                    <p
-                      className={`text-xs mt-1 ${
+                    <div
+                      className={`text-xs mt-1 flex items-center justify-end gap-2 ${
                         message.sender === 'pharmacy'
                           ? 'text-primary-100'
                           : 'text-gray-600'
                       }`}
                     >
-                      {message.timestamp}
-                    </p>
+                      <span>{message.timestamp}</span>
+                      {message.sender === 'pharmacy' && message.readAt && (
+                        <span className="font-bold">✓✓</span>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
+
+              {/* Typing Indicators */}
+              {Object.values(typingUsers).length > 0 && (
+                <div className="flex justify-start">
+                  <TypingIndicator
+                    isTyping={true}
+                    userName={Object.values(typingUsers).join(', ')}
+                  />
+                </div>
+              )}
+
               <div ref={messagesEndRef} />
             </CardContent>
 
@@ -366,7 +462,7 @@ export default function PharmacyMessagesPage() {
                   type="text"
                   placeholder="Type your message..."
                   value={messageInput}
-                  onChange={(e) => setMessageInput(e.target.value)}
+                  onChange={handleInputChange}
                   onKeyPress={(e) => {
                     if (e.key === 'Enter') {
                       handleSendMessage();

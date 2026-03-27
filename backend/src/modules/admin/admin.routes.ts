@@ -75,6 +75,13 @@ router.post(
   asyncHandler((req, res) => AdminController.reviewAlert(req, res))
 );
 
+// PATCH /api/v1/admin/flagged-alerts/:alertId/resolve - Resolve alert
+router.patch(
+  "/flagged-alerts/:alertId/resolve",
+  ...adminAuth,
+  asyncHandler((req, res) => AdminController.resolveAlert(req, res))
+);
+
 // GET /api/v1/admin/dashboard - Get dashboard stats
 router.get(
   "/dashboard",

@@ -5,8 +5,9 @@ import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import PageHeader from '@/components/ui/PageHeader';
+import TypingIndicator from '@/components/chat/TypingIndicator';
 import { useConversations, useConversation } from '@/hooks';
-import { joinChatRoom, sendChatMessage, onChatMessageReceive } from '@/lib/socket';
+import { joinChatRoom, sendChatMessage, onChatMessageReceive, emitTyping, emitStoppedTyping, onTyping } from '@/lib/socket';
 import toast from 'react-hot-toast';
 
 interface Message {
@@ -14,6 +15,8 @@ interface Message {
   sender: 'user' | 'other';
   text: string;
   timestamp: string;
+  imageUrl?: string;
+  readAt?: Date;
 }
 
 interface Conversation {
@@ -63,6 +66,7 @@ const SAMPLE_CONVERSATIONS: Conversation[] = [
         sender: 'other',
         text: 'Your order is being prepared. Will be ready in 15 minutes.',
         timestamp: '10:40 AM',
+        readAt: new Date(),
       },
     ],
   },
@@ -133,7 +137,11 @@ export default function MessagesPage() {
   const [activeConversationId, setActiveConversationId] = useState(SAMPLE_CONVERSATIONS[0].id);
   const [messageInput, setMessageInput] = useState('');
   const [showMobileList, setShowMobileList] = useState(true);
+  const [typingUsers, setTypingUsers] = useState<{ [key: string]: string }>({});
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Hook for conversations
   const {
@@ -175,6 +183,7 @@ export default function MessagesPage() {
                         id: message.id,
                         sender: 'other' as const,
                         text: message.text,
+                        imageUrl: message.imageUrl,
                         timestamp: new Date(message.timestamp).toLocaleTimeString(
                           'en-US',
                           {
@@ -192,7 +201,22 @@ export default function MessagesPage() {
         }
       };
 
+      // Listen for typing indicators
+      const handleTyping = (data: any) => {
+        if (data.conversationId === activeConversationId && data.userId) {
+          setTypingUsers((prev) => ({
+            ...prev,
+            [data.userId]: data.userName || 'User',
+          }));
+        }
+      };
+
       onChatMessageReceive(handleIncomingMessage);
+      const unsubscribeTyping = onTyping(handleTyping);
+
+      return () => {
+        unsubscribeTyping();
+      };
     }
   }, [activeConversationId, markAsRead]);
 
@@ -201,18 +225,49 @@ export default function MessagesPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [activeConversation?.messages]);
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setMessageInput(e.target.value);
+
+    // Emit typing indicator with debounce
+    emitTyping(activeConversationId);
+
+    // Clear previous timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    // Set new timeout to stop typing after 2 seconds of inactivity
+    typingTimeoutRef.current = setTimeout(() => {
+      emitStoppedTyping(activeConversationId);
+    }, 2000);
+  };
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setImagePreview(event.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSendMessage = async () => {
-    if (!messageInput.trim() || !activeConversation) return;
+    if (!messageInput.trim() && !imagePreview || !activeConversation) return;
 
     const text = messageInput;
     setMessageInput('');
+
+    // Stop typing indicator
+    emitStoppedTyping(activeConversationId);
 
     // Optimistic update (local state)
     const updatedConversations = conversations.map((conv) => {
       if (conv.id === activeConversationId) {
         return {
           ...conv,
-          lastMessage: text,
+          lastMessage: text || '[Image]',
           lastMessageTime: 'Just now',
           messages: [
             ...conv.messages,
@@ -220,6 +275,7 @@ export default function MessagesPage() {
               id: String(Date.now()),
               sender: 'user' as const,
               text,
+              imageUrl: imagePreview || undefined,
               timestamp: new Date().toLocaleTimeString('en-US', {
                 hour: 'numeric',
                 minute: '2-digit',
@@ -233,11 +289,12 @@ export default function MessagesPage() {
     });
 
     setConversations(updatedConversations);
+    setImagePreview(null);
 
     // Send via socket (real-time) and API (persistence)
     try {
-      sendChatMessage(activeConversationId, text);
-      await sendApiMessage(text);
+      sendChatMessage(activeConversationId, text, imagePreview || undefined);
+      await sendApiMessage(text, imagePreview || undefined);
     } catch (error) {
       toast.error('Failed to send message');
     }
@@ -389,36 +446,105 @@ export default function MessagesPage() {
                   }`}
                 >
                   <div
-                    className={`max-w-xs lg:max-w-md px-4 py-3 rounded-lg ${
+                    className={`max-w-xs lg:max-w-md rounded-lg ${
                       message.sender === 'user'
                         ? 'bg-primary-600 text-white rounded-br-none'
                         : 'bg-gray-100 text-gray-900 rounded-bl-none'
                     }`}
                   >
-                    <p className="text-sm">{message.text}</p>
-                    <p
-                      className={`text-xs mt-1 ${
+                    {message.imageUrl && (
+                      <div className="mb-2">
+                        <img
+                          src={message.imageUrl}
+                          alt="Message attachment"
+                          className="max-w-xs max-h-64 rounded object-cover"
+                        />
+                      </div>
+                    )}
+                    {message.text && <p className="px-4 py-3 text-sm">{message.text}</p>}
+                    <div
+                      className={`px-4 py-2 flex items-center justify-end gap-2 ${
                         message.sender === 'user'
                           ? 'text-primary-100'
                           : 'text-gray-600'
                       }`}
                     >
-                      {message.timestamp}
-                    </p>
+                      <p className="text-xs">{message.timestamp}</p>
+                      {message.sender === 'user' && message.readAt && (
+                        <span className="text-xs font-bold">✓✓</span>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
+
+              {/* Typing Indicators */}
+              {Object.values(typingUsers).length > 0 && (
+                <div className="flex justify-start">
+                  <TypingIndicator
+                    isTyping={true}
+                    userName={Object.values(typingUsers).join(', ')}
+                  />
+                </div>
+              )}
+
               <div ref={messagesEndRef} />
             </CardContent>
 
             {/* Input */}
-            <div className="px-4 py-4 border-t border-gray-200 bg-white">
+            <div className="px-4 py-4 border-t border-gray-200 bg-white space-y-3">
+              {/* Image Preview */}
+              {imagePreview && (
+                <div className="relative w-24 h-24">
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    className="w-full h-full object-cover rounded"
+                  />
+                  <button
+                    onClick={() => setImagePreview(null)}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold hover:bg-red-600"
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
+
               <div className="flex gap-3">
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                  title="Attach image"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8m0 8l-6-2m6 2l6-2"
+                    />
+                  </svg>
+                </button>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageSelect}
+                  className="hidden"
+                  aria-label="Upload image"
+                />
+
                 <Input
                   type="text"
                   placeholder="Type your message..."
                   value={messageInput}
-                  onChange={(e) => setMessageInput(e.target.value)}
+                  onChange={handleInputChange}
                   onKeyPress={(e) => {
                     if (e.key === 'Enter') {
                       handleSendMessage();
@@ -430,7 +556,7 @@ export default function MessagesPage() {
                   variant="primary"
                   size="md"
                   onClick={handleSendMessage}
-                  disabled={!messageInput.trim()}
+                  disabled={!messageInput.trim() && !imagePreview}
                 >
                   <svg
                     className="w-5 h-5"

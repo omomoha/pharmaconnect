@@ -174,19 +174,43 @@ export class AdminService {
   }
 
   /**
-   * Get flagged alerts
+   * Get flagged alerts with pagination
    */
-  static async getFlaggedAlerts(limit: number = 50): Promise<FlaggedAlert[]> {
+  static async getFlaggedAlerts(
+    limit: number = 50,
+    offset: number = 0
+  ): Promise<{
+    alerts: FlaggedAlert[];
+    total: number;
+  }> {
     try {
       const db = getFirestore();
+
+      // Get total count of flagged alerts
+      const countSnapshot = await db
+        .collection(FIRESTORE_COLLECTIONS.FLAGGED_ALERTS)
+        .where("action", "==", FlagAction.DISMISSED)
+        .get();
+
+      const total = countSnapshot.size;
+
+      // Get paginated results
       const snapshot = await db
         .collection(FIRESTORE_COLLECTIONS.FLAGGED_ALERTS)
         .where("action", "==", FlagAction.DISMISSED)
         .orderBy("createdAt", "desc")
-        .limit(limit)
+        .limit(limit + offset)
         .get();
 
-      return snapshot.docs.map((doc) => doc.data() as FlaggedAlert);
+      const alerts = snapshot.docs
+        .slice(offset)
+        .slice(0, limit)
+        .map((doc) => doc.data() as FlaggedAlert);
+
+      return {
+        alerts,
+        total,
+      };
     } catch (error) {
       logger.error("Failed to get flagged alerts:", error);
       throw error;

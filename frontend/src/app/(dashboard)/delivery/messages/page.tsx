@@ -1,16 +1,19 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import PageHeader from '@/components/ui/PageHeader';
 import { Card, CardContent } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import TypingIndicator from '@/components/chat/TypingIndicator';
+import { joinChatRoom, sendChatMessage, onChatMessageReceive, emitTyping, emitStoppedTyping, onTyping } from '@/lib/socket';
 
 interface Message {
   id: string;
   sender: 'customer' | 'rider';
   text: string;
   timestamp: string;
+  readAt?: Date;
 }
 
 interface Conversation {
@@ -57,6 +60,7 @@ const CONVERSATIONS: Conversation[] = [
         sender: 'customer',
         text: 'Thank you so much! 😊',
         timestamp: '2 mins ago',
+        readAt: new Date(),
       },
     ],
   },
@@ -131,11 +135,81 @@ export default function DeliveryMessagesPage() {
   const [selectedId, setSelectedId] = useState<string>('1');
   const [newMessage, setNewMessage] = useState('');
   const [showMobileList, setShowMobileList] = useState(true);
+  const [typingUsers, setTypingUsers] = useState<{ [key: string]: string }>({});
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const selectedConv = conversations.find((c) => c.id === selectedId);
 
+  // Socket setup
+  useEffect(() => {
+    if (selectedId) {
+      joinChatRoom(selectedId);
+
+      const handleIncomingMessage = (message: any) => {
+        if (message.conversationId === selectedId) {
+          setConversations((prev) =>
+            prev.map((conv) =>
+              conv.id === selectedId
+                ? {
+                    ...conv,
+                    messages: [
+                      ...conv.messages,
+                      {
+                        id: message.id,
+                        sender: 'customer' as const,
+                        text: message.text,
+                        timestamp: new Date(message.timestamp).toLocaleTimeString(
+                          'en-US',
+                          {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true,
+                          }
+                        ),
+                      },
+                    ],
+                  }
+                : conv
+            )
+          );
+        }
+      };
+
+      const handleTyping = (data: any) => {
+        if (data.conversationId === selectedId && data.userId) {
+          setTypingUsers((prev) => ({
+            ...prev,
+            [data.userId]: data.userName || 'User',
+          }));
+        }
+      };
+
+      onChatMessageReceive(handleIncomingMessage);
+      const unsubscribeTyping = onTyping(handleTyping);
+
+      return () => {
+        unsubscribeTyping();
+      };
+    }
+  }, [selectedId]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewMessage(e.target.value);
+    emitTyping(selectedId);
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    typingTimeoutRef.current = setTimeout(() => {
+      emitStoppedTyping(selectedId);
+    }, 2000);
+  };
+
   const handleSendMessage = () => {
     if (!newMessage.trim() || !selectedConv) return;
+
+    emitStoppedTyping(selectedId);
 
     setConversations((prev) =>
       prev.map((conv) => {
@@ -148,7 +222,12 @@ export default function DeliveryMessagesPage() {
                 id: Date.now().toString(),
                 sender: 'rider',
                 text: newMessage,
-                timestamp: 'now',
+                timestamp: new Date().toLocaleTimeString('en-US', {
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  hour12: true,
+                }),
+                readAt: new Date(),
               },
             ],
             lastMessage: newMessage,
@@ -158,6 +237,13 @@ export default function DeliveryMessagesPage() {
         return conv;
       })
     );
+
+    // Send via socket
+    try {
+      sendChatMessage(selectedId, newMessage);
+    } catch (error) {
+      console.error('Failed to send message:', error);
+    }
 
     setNewMessage('');
   };
@@ -265,18 +351,31 @@ export default function DeliveryMessagesPage() {
                       }`}
                     >
                       <p className="text-sm">{msg.text}</p>
-                      <p
-                        className={`text-xs mt-1 ${
+                      <div
+                        className={`text-xs mt-1 flex items-center justify-end gap-2 ${
                           msg.sender === 'rider'
                             ? 'text-primary-100'
                             : 'text-gray-500'
                         }`}
                       >
-                        {msg.timestamp}
-                      </p>
+                        <span>{msg.timestamp}</span>
+                        {msg.sender === 'rider' && msg.readAt && (
+                          <span className="font-bold">✓✓</span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
+
+                {/* Typing Indicators */}
+                {Object.values(typingUsers).length > 0 && (
+                  <div className="flex justify-start">
+                    <TypingIndicator
+                      isTyping={true}
+                      userName={Object.values(typingUsers).join(', ')}
+                    />
+                  </div>
+                )}
               </CardContent>
 
               {/* Message Input */}
@@ -285,7 +384,7 @@ export default function DeliveryMessagesPage() {
                   <Input
                     placeholder="Type a message..."
                     value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
+                    onChange={handleInputChange}
                     onKeyPress={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();

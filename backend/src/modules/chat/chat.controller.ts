@@ -255,4 +255,43 @@ export class ChatController {
       );
     }
   }
+
+  /**
+   * GET /unread-count
+   * Get unread message count for user
+   */
+  static async getUnreadCount(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json(
+          apiResponse(false, undefined, {
+            code: "UNAUTHORIZED",
+            message: "User not authenticated",
+          })
+        );
+        return;
+      }
+
+      const count = await ChatService.getUnreadCount(req.user.uid);
+
+      logger.info(`Unread count retrieved for user ${req.user.uid}: ${count}`);
+
+      res.json(
+        apiResponse(true, {
+          count,
+        })
+      );
+    } catch (error) {
+      logger.error("Get unread count error:", error);
+      res.status(500).json(
+        apiResponse(false, undefined, {
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to retrieve unread count",
+        })
+      );
+    }
+  }
 }

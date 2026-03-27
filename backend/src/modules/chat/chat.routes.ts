@@ -55,4 +55,11 @@ router.post(
   asyncHandler((req, res) => ChatController.closeConversation(req, res))
 );
 
+// GET /api/v1/chat/unread-count - Get unread message count
+router.get(
+  "/unread-count",
+  authenticate,
+  asyncHandler((req, res) => ChatController.getUnreadCount(req, res))
+);
+
 export default router;

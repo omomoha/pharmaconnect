@@ -202,7 +202,7 @@ export class AdminController {
 
   /**
    * GET /flagged-alerts
-   * Get flagged alerts
+   * Get flagged alerts with pagination
    */
   static async getFlaggedAlerts(
     req: AuthenticatedRequest,
@@ -211,16 +211,20 @@ export class AdminController {
     try {
       const schema = z.object({
         limit: z.coerce.number().optional().default(50),
+        offset: z.coerce.number().optional().default(0),
       });
 
       const validated = schema.parse(req.query);
 
-      const alerts = await AdminService.getFlaggedAlerts(validated.limit);
+      const result = await AdminService.getFlaggedAlerts(validated.limit, validated.offset);
 
       res.json(
         apiResponse(true, {
-          alerts,
-          count: alerts.length,
+          alerts: result.alerts,
+          count: result.alerts.length,
+          total: result.total,
+          limit: validated.limit,
+          offset: validated.offset,
         })
       );
     } catch (error) {
@@ -281,6 +285,58 @@ export class AdminController {
         apiResponse(false, undefined, {
           code: "INTERNAL_SERVER_ERROR",
           message: "Failed to review alert",
+        })
+      );
+    }
+  }
+
+  /**
+   * PATCH /flagged-alerts/:alertId/resolve
+   * Resolve flagged alert (alias for reviewAlert with action specified)
+   */
+  static async resolveAlert(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json(
+          apiResponse(false, undefined, {
+            code: "UNAUTHORIZED",
+            message: "User not authenticated",
+          })
+        );
+        return;
+      }
+
+      const { alertId } = req.params;
+      const schema = z.object({
+        action: z.nativeEnum(FlagAction),
+        notes: z.string().optional(),
+      });
+
+      const validated = schema.parse(req.body);
+
+      const alert = await AdminService.reviewAlert(
+        alertId,
+        validated.action,
+        req.user.uid,
+        validated.notes
+      );
+
+      logger.info(`Alert resolved by admin ${req.user.uid}: ${alertId}`);
+
+      res.json(
+        apiResponse(true, {
+          alert,
+        })
+      );
+    } catch (error) {
+      logger.error("Resolve alert error:", error);
+      res.status(500).json(
+        apiResponse(false, undefined, {
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to resolve alert",
         })
       );
     }
