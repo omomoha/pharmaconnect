@@ -11,6 +11,8 @@
         ".env.test"
       ],
       "predeploy": [
+        "cd shared && npm run build && cd ..",
+        "rm -rf backend/_shared && mkdir -p backend/_shared && cp -r shared/dist shared/package.json backend/_shared/",
         "npm --prefix \"$RESOURCE_DIR\" run build"
       ]
     }

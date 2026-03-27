@@ -4,6 +4,9 @@
   "description": "PharmaConnect Backend - Firebase Admin SDK + Express.js",
   "main": "dist/functions.js",
   "scripts": {
+    "presync-shared": "cd .. && cd shared && npm run build && cd ..",
+    "sync-shared": "rm -rf _shared && mkdir -p _shared && cp -r ../shared/dist ../shared/package.json _shared/",
+    "preinstall": "npm run sync-shared 2>/dev/null || true",
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
@@ -18,7 +21,7 @@
     "node": "20"
   },
   "dependencies": {
-    "@pharmaconnect/shared": "file:../shared",
+    "@pharmaconnect/shared": "file:./_shared",
     "compression": "^1.7.4",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
