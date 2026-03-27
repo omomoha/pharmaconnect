@@ -6,14 +6,15 @@ import PageHeader from '@/components/ui/PageHeader';
 import Button from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import Input from '@/components/ui/Input';
+import { useNearbyPharmacies, useGeolocation } from '@/hooks';
 
-// Sample pharmacies data
+// Sample pharmacies data (fallback when API returns empty)
 const SAMPLE_PHARMACIES = [
   {
     id: '1',
     name: 'HealthPlus Pharmacy',
     location: 'Lekki, Lagos',
-    distance: '0.5 km',
+    distance: 0.5,
     rating: 4.8,
     reviewCount: 324,
     deliveryTime: '30-45 min',
@@ -25,7 +26,7 @@ const SAMPLE_PHARMACIES = [
     id: '2',
     name: 'MediCare Pharmacy',
     location: 'Ikoyi, Lagos',
-    distance: '1.2 km',
+    distance: 1.2,
     rating: 4.6,
     reviewCount: 287,
     deliveryTime: '45-60 min',
@@ -37,7 +38,7 @@ const SAMPLE_PHARMACIES = [
     id: '3',
     name: 'QuickHealth Pharmacy',
     location: 'VI, Lagos',
-    distance: '2.1 km',
+    distance: 2.1,
     rating: 4.7,
     reviewCount: 198,
     deliveryTime: '40-55 min',
@@ -49,7 +50,7 @@ const SAMPLE_PHARMACIES = [
     id: '4',
     name: 'PharmaCare Plus',
     location: 'Ajah, Lagos',
-    distance: '3.8 km',
+    distance: 3.8,
     rating: 4.5,
     reviewCount: 156,
     deliveryTime: '50-70 min',
@@ -61,7 +62,7 @@ const SAMPLE_PHARMACIES = [
     id: '5',
     name: 'WellnessHub Pharmacy',
     location: 'Ikeja, Lagos',
-    distance: '4.2 km',
+    distance: 4.2,
     rating: 4.9,
     reviewCount: 412,
     deliveryTime: '55-75 min',
@@ -73,7 +74,7 @@ const SAMPLE_PHARMACIES = [
     id: '6',
     name: 'Express Pharmacy',
     location: 'Surulere, Lagos',
-    distance: '5.1 km',
+    distance: 5.1,
     rating: 4.3,
     reviewCount: 89,
     deliveryTime: '60-90 min',
@@ -85,7 +86,7 @@ const SAMPLE_PHARMACIES = [
     id: '7',
     name: 'Elite Pharmacy',
     location: 'Banana Island, Lagos',
-    distance: '6.0 km',
+    distance: 6.0,
     rating: 4.8,
     reviewCount: 267,
     deliveryTime: '45-60 min',
@@ -97,7 +98,7 @@ const SAMPLE_PHARMACIES = [
     id: '8',
     name: 'Community Pharmacy',
     location: 'Yaba, Lagos',
-    distance: '2.8 km',
+    distance: 2.8,
     rating: 4.4,
     reviewCount: 145,
     deliveryTime: '35-50 min',
@@ -118,9 +119,40 @@ export default function PharmaciesPage() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState<'distance' | 'rating' | 'delivery'>('distance');
 
+  // Get user's geolocation
+  const { latitude, longitude, loading: geoLoading, isUsingDefaults } = useGeolocation();
+
+  // Fetch pharmacies from API sorted by proximity
+  const {
+    pharmacies: apiPharmacies,
+    loading: apiLoading,
+    error: _apiError,
+  } = useNearbyPharmacies(latitude ?? 6.4541, longitude ?? 3.4218, 50);
+
+  const isLoading = geoLoading || apiLoading;
+
+  // Map API pharmacies to display format
+  const pharmacies = useMemo(() => {
+    if (apiPharmacies.length > 0) {
+      return apiPharmacies.map((p: any) => ({
+        id: p.id,
+        name: p.businessName || p.name || 'Pharmacy',
+        location: p.address || p.location || '',
+        distance: p.distance ?? 0,
+        rating: p.rating ?? 4.5,
+        reviewCount: p.reviewCount ?? 0,
+        deliveryTime: p.deliveryTime || '30-60 min',
+        deliveryFee: p.deliveryFee ? `₦${p.deliveryFee}` : '₦300',
+        category: p.category || 'General',
+        description: p.description || 'Quality pharmacy products and services',
+      }));
+    }
+    return SAMPLE_PHARMACIES;
+  }, [apiPharmacies]);
+
   // Filter and sort pharmacies
   const filteredPharmacies = useMemo(() => {
-    let result = SAMPLE_PHARMACIES;
+    let result = [...pharmacies];
 
     // Filter by search query
     if (searchQuery.trim()) {
@@ -141,7 +173,7 @@ export default function PharmaciesPage() {
     // Sort
     result.sort((a, b) => {
       if (sortBy === 'distance') {
-        return parseFloat(a.distance) - parseFloat(b.distance);
+        return a.distance - b.distance;
       }
       if (sortBy === 'rating') {
         return b.rating - a.rating;
@@ -153,7 +185,7 @@ export default function PharmaciesPage() {
     });
 
     return result;
-  }, [searchQuery, selectedCategory, sortBy]);
+  }, [pharmacies, searchQuery, selectedCategory, sortBy]);
 
   return (
     <div className="space-y-6">
@@ -162,6 +194,13 @@ export default function PharmaciesPage() {
         title="Browse Pharmacies"
         description="Find and order medications from nearby pharmacies"
       />
+
+      {/* Location notice */}
+      {isUsingDefaults && !isLoading && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
+          Showing pharmacies near Lagos (default location). Enable browser location for personalized results sorted by your proximity.
+        </div>
+      )}
 
       {/* Search and Filters */}
       <Card>
@@ -223,13 +262,29 @@ export default function PharmaciesPage() {
       {/* Results Count */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-600">
-          Showing {filteredPharmacies.length} pharmacies
-          {searchQuery && ` for "${searchQuery}"`}
+          {isLoading
+            ? 'Loading pharmacies...'
+            : `Showing ${filteredPharmacies.length} pharmacies${searchQuery ? ` for "${searchQuery}"` : ''}`}
         </p>
       </div>
 
-      {/* Pharmacy Grid */}
-      {filteredPharmacies.length > 0 ? (
+      {/* Loading State */}
+      {isLoading ? (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Card key={i}>
+              <CardContent className="pt-6">
+                <div className="animate-pulse space-y-3">
+                  <div className="h-5 bg-gray-200 rounded w-2/3" />
+                  <div className="h-4 bg-gray-200 rounded w-1/3" />
+                  <div className="h-4 bg-gray-200 rounded w-full" />
+                  <div className="h-8 bg-gray-200 rounded w-full mt-4" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : filteredPharmacies.length > 0 ? (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredPharmacies.map((pharmacy) => (
             <Card key={pharmacy.id} className="flex flex-col">
@@ -246,7 +301,7 @@ export default function PharmaciesPage() {
                       </p>
                     </div>
                     <span className="bg-primary-100 text-primary-700 text-xs font-bold px-2 py-1 rounded">
-                      {pharmacy.distance}
+                      {pharmacy.distance.toFixed(1)} km
                     </span>
                   </div>
                 </div>

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
-import { useOrders } from '@/hooks';
+import { useOrders, useNearbyPharmacies, useGeolocation } from '@/hooks';
 import { useNotifications } from '@/hooks';
 import toast from 'react-hot-toast';
 
@@ -15,6 +15,16 @@ export default function CustomerDashboard() {
   const { orders, loading: ordersLoading, error: ordersError } = useOrders({ limit: 2 });
   const { unreadCount } = useNotifications();
 
+  // Get user's geolocation (falls back to Lagos defaults)
+  const { latitude, longitude, loading: geoLoading, isUsingDefaults } = useGeolocation();
+
+  // Fetch nearby pharmacies based on user location
+  const {
+    pharmacies: nearbyPharmacies,
+    loading: pharmaciesLoading,
+    error: pharmaciesError,
+  } = useNearbyPharmacies(latitude ?? 6.4541, longitude ?? 3.4218, 10);
+
   // Show error toast if orders fail to load
   React.useEffect(() => {
     if (ordersError) {
@@ -22,7 +32,7 @@ export default function CustomerDashboard() {
     }
   }, [ordersError]);
 
-  // Sample data
+  // Sample data fallback for orders
   const sampleRecentOrders = [
     {
       id: '1',
@@ -42,6 +52,7 @@ export default function CustomerDashboard() {
     },
   ];
 
+  // Fallback sample pharmacies (used only when API returns empty)
   const sampleNearbyPharmacies = [
     {
       id: '1',
@@ -61,7 +72,19 @@ export default function CustomerDashboard() {
 
   // Format orders for display (use API data if available, fallback to sample)
   const displayOrders = (orders && orders.length > 0 ? orders.slice(0, 2) : sampleRecentOrders) as any[];
-  const nearbyPharmacies = sampleNearbyPharmacies;
+
+  // Map API pharmacies to display format, fall back to sample data
+  const displayPharmacies = nearbyPharmacies.length > 0
+    ? nearbyPharmacies.map((p: any) => ({
+        id: p.id,
+        name: p.businessName || p.name || 'Pharmacy',
+        distance: p.distance ? `${p.distance.toFixed(1)} km away` : 'Nearby',
+        rating: p.rating ?? 4.5,
+        deliveryTime: p.deliveryTime || '30-60 min',
+      }))
+    : sampleNearbyPharmacies;
+
+  const isLoadingPharmacies = geoLoading || pharmaciesLoading;
 
   return (
     <div className="space-y-6">
@@ -207,7 +230,14 @@ export default function CustomerDashboard() {
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
-            <h2 className="text-lg font-bold text-gray-900">Nearby Pharmacies</h2>
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">Nearby Pharmacies</h2>
+              {isUsingDefaults && (
+                <p className="text-xs text-amber-600 mt-1">
+                  Showing pharmacies near Lagos (default). Enable location for personalized results.
+                </p>
+              )}
+            </div>
             <Link href="/dashboard/customer/pharmacies">
               <Button variant="ghost" size="sm">
                 View All
@@ -216,36 +246,56 @@ export default function CustomerDashboard() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid md:grid-cols-2 gap-6">
-            {nearbyPharmacies.map((pharmacy) => (
-              <div
-                key={pharmacy.id}
-                className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-              >
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <h3 className="font-bold text-gray-900">{pharmacy.name}</h3>
-                    <p className="text-sm text-gray-600">{pharmacy.distance}</p>
-                  </div>
-                  <div className="text-right">
-                    <div className="flex items-center gap-1">
-                      <span className="text-yellow-400">★</span>
-                      <span className="font-semibold">{pharmacy.rating}</span>
+          {isLoadingPharmacies ? (
+            <div className="grid md:grid-cols-2 gap-6">
+              {[1, 2].map((i) => (
+                <div key={i} className="border border-gray-200 rounded-lg p-4">
+                  <div className="h-5 bg-gray-200 rounded animate-pulse mb-2 w-2/3" />
+                  <div className="h-4 bg-gray-200 rounded animate-pulse mb-3 w-1/3" />
+                  <div className="h-4 bg-gray-200 rounded animate-pulse w-1/2" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 gap-6">
+              {displayPharmacies.slice(0, 4).map((pharmacy) => (
+                <div
+                  key={pharmacy.id}
+                  className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                >
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <h3 className="font-bold text-gray-900">{pharmacy.name}</h3>
+                      <p className="text-sm text-gray-600">{pharmacy.distance}</p>
+                    </div>
+                    <div className="text-right">
+                      <div className="flex items-center gap-1">
+                        <span className="text-yellow-400">★</span>
+                        <span className="font-semibold">{pharmacy.rating}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-gray-600">
-                    Delivery: {pharmacy.deliveryTime}
-                  </p>
-                  <Button variant="primary" size="sm">
-                    View
-                  </Button>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-gray-600">
+                      Delivery: {pharmacy.deliveryTime}
+                    </p>
+                    <Link href={`/dashboard/customer/pharmacies/${pharmacy.id}`}>
+                      <Button variant="primary" size="sm">
+                        View
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
+
+          {pharmaciesError && !isLoadingPharmacies && displayPharmacies === sampleNearbyPharmacies && (
+            <p className="text-xs text-gray-500 mt-3 text-center">
+              Could not load pharmacies from server. Showing sample data.
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>
