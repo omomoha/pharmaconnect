@@ -7,18 +7,18 @@ const envSchema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   PORT: z.coerce.number().default(4000),
 
-  // Firebase
-  FIREBASE_PROJECT_ID: z.string(),
-  FIREBASE_CLIENT_EMAIL: z.string(),
-  FIREBASE_PRIVATE_KEY: z.string(),
-  FIREBASE_STORAGE_BUCKET: z.string(),
+  // Firebase (optional in Cloud Functions — ADC handles auth automatically)
+  FIREBASE_PROJECT_ID: z.string().optional(),
+  FIREBASE_CLIENT_EMAIL: z.string().optional(),
+  FIREBASE_PRIVATE_KEY: z.string().optional(),
+  FIREBASE_STORAGE_BUCKET: z.string().optional(),
 
   // Redis
   REDIS_URL: z.string().url().default("redis://localhost:6379"),
 
-  // Paystack
-  PAYSTACK_SECRET_KEY: z.string(),
-  PAYSTACK_PUBLIC_KEY: z.string(),
+  // Paystack (optional for initial deployment — set via Cloud Functions secrets)
+  PAYSTACK_SECRET_KEY: z.string().optional(),
+  PAYSTACK_PUBLIC_KEY: z.string().optional(),
 
   // OpenAI
   OPENAI_API_KEY: z.string().optional(),

@@ -8,25 +8,30 @@ let storage: any;
 
 /**
  * Initialize Firebase Admin SDK
- * Uses explicit service account credentials from environment variables
+ * Uses Application Default Credentials in Cloud Functions,
+ * or explicit service account credentials from env vars locally
  */
 export const initializeFirebase = (): void => {
   try {
-    // Parse the private key from environment
-    const privateKey = config.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n");
+    const hasExplicitCreds = config.FIREBASE_PROJECT_ID && config.FIREBASE_CLIENT_EMAIL && config.FIREBASE_PRIVATE_KEY;
 
-    const serviceAccount = {
-      projectId: config.FIREBASE_PROJECT_ID,
-      clientEmail: config.FIREBASE_CLIENT_EMAIL,
-      privateKey,
-    };
+    if (hasExplicitCreds) {
+      // Local development: use explicit service account credentials
+      const privateKey = config.FIREBASE_PRIVATE_KEY!.replace(/\\n/g, "\n");
 
-    // Initialize Firebase Admin SDK
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-      storageBucket: config.FIREBASE_STORAGE_BUCKET,
-      projectId: config.FIREBASE_PROJECT_ID,
-    });
+      admin.initializeApp({
+        credential: admin.credential.cert({
+          projectId: config.FIREBASE_PROJECT_ID!,
+          clientEmail: config.FIREBASE_CLIENT_EMAIL!,
+          privateKey,
+        }),
+        storageBucket: config.FIREBASE_STORAGE_BUCKET,
+        projectId: config.FIREBASE_PROJECT_ID,
+      });
+    } else {
+      // Cloud Functions: use Application Default Credentials
+      admin.initializeApp();
+    }
 
     // Get references to services
     db = admin.firestore();

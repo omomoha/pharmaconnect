@@ -10,7 +10,7 @@ import crypto from "crypto";
  */
 export class PaymentService {
   private static readonly PAYSTACK_API_BASE = "https://api.paystack.co";
-  private static readonly PAYSTACK_SECRET = config.PAYSTACK_SECRET_KEY;
+  private static readonly PAYSTACK_SECRET = config.PAYSTACK_SECRET_KEY || "";
 
   /**
    * Initialize payment with Paystack
