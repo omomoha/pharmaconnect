@@ -84,6 +84,7 @@ export const api = onRequest(
     region: 'us-central1',
     timeoutSeconds: 60,
     memory: '256MiB',
+    invoker: 'public',
   },
   app
 );
