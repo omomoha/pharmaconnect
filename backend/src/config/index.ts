@@ -35,7 +35,7 @@ const envSchema = z.object({
   LOG_FILE_PATH: z.string().default("./logs"),
 
   // CORS
-  ALLOWED_ORIGINS: z.string().default("http://localhost:3000,http://localhost:3001"),
+  ALLOWED_ORIGINS: z.string().default("http://localhost:3000,http://localhost:3001,https://pharmaconnect-frontend-pi.vercel.app,https://pharmaconnect-frontend-git-main-omomohas-projects.vercel.app"),
 });
 
 type EnvConfig = z.infer<typeof envSchema>;
