@@ -3,6 +3,7 @@
 import React, { ReactNode, useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/layout/Sidebar';
+import AIChatWidget from '@/components/ai/AIChatWidget';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/hooks';
 
@@ -59,6 +60,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
       <Sidebar />
+
+      {/* AI Chat Widget */}
+      <AIChatWidget />
 
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto">

@@ -9,6 +9,7 @@ export * as deliveryService from './delivery.service';
 export * as paymentService from './payment.service';
 export * as chatService from './chat.service';
 export * as adminService from './admin.service';
+export * as aiService from './ai.service';
 
 // Re-export commonly used functions for convenience
 export {

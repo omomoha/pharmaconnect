@@ -12,3 +12,4 @@ export { useNotifications } from './useNotifications';
 export { usePaystack } from './usePaystack';
 export { useSocket } from './useSocket';
 export { useGeolocation } from './useGeolocation';
+export { useSmartSearch } from './useSmartSearch';

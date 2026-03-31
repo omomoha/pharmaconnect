@@ -26,6 +26,7 @@ import deliveryRoutes from "./modules/delivery/delivery.routes.js";
 import paymentRoutes from "./modules/payment/payment.routes.js";
 import chatRoutes from "./modules/chat/chat.routes.js";
 import adminRoutes from "./modules/admin/admin.routes.js";
+import aiRoutes from "./modules/ai/ai.routes.js";
 
 /**
  * Create and configure Express app
@@ -121,6 +122,7 @@ export const createApp = (): {
   apiV1.use("/payments", paymentRoutes);
   apiV1.use("/chat", chatRoutes);
   apiV1.use("/admin", adminRoutes);
+  apiV1.use("/ai", aiRoutes);
 
   app.use("/api/v1", apiV1);
 
