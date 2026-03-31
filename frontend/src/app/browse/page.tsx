@@ -343,7 +343,7 @@ export default function BrowsePharmaciesPage() {
 
           <div className="flex flex-col sm:flex-row justify-center gap-4 mt-8">
             <Link href="/register?role=customer">
-              <Button size="lg" variant="primary" className="bg-white text-primary-600 hover:bg-gray-100 w-full sm:w-auto">
+              <Button size="lg" variant="ghost" className="bg-white !text-primary-600 hover:bg-gray-100 shadow-md w-full sm:w-auto">
                 Create Account
               </Button>
             </Link>
