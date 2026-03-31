@@ -82,6 +82,13 @@ router.patch(
   asyncHandler((req, res) => AdminController.resolveAlert(req, res))
 );
 
+// GET /api/v1/admin/users - Get all users
+router.get(
+  "/users",
+  ...adminAuth,
+  asyncHandler((req, res) => AdminController.getUsers(req, res))
+);
+
 // GET /api/v1/admin/dashboard - Get dashboard stats
 router.get(
   "/dashboard",

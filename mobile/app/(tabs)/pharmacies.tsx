@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import { router } from 'expo-router';
 import { pharmacyService } from '../../src/services';
 import { useLocation } from '../../src/hooks';
 
@@ -104,7 +105,7 @@ export default function PharmaciesTab() {
   }, [pharmacies, searchQuery, sortBy]);
 
   const renderPharmacy = ({ item }: { item: Pharmacy }) => (
-    <TouchableOpacity style={styles.card}>
+    <TouchableOpacity style={styles.card} onPress={() => router.push({ pathname: '/pharmacy-detail', params: { id: item.id } })}>
       <View style={styles.cardHeader}>
         <View style={{ flex: 1 }}>
           <Text style={styles.cardName}>{item.name}</Text>
@@ -140,7 +141,7 @@ export default function PharmaciesTab() {
         </View>
       </View>
 
-      <TouchableOpacity style={styles.viewButton}>
+      <TouchableOpacity style={styles.viewButton} onPress={() => router.push({ pathname: '/pharmacy-detail', params: { id: item.id } })}>
         <Text style={styles.viewButtonText}>View Pharmacy</Text>
       </TouchableOpacity>
     </TouchableOpacity>

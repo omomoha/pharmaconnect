@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PageHeader from '@/components/ui/PageHeader';
 import Button from '@/components/ui/Button';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import StatsCard from '@/components/ui/StatsCard';
+import { getDashboard, getTransactions } from '@/lib/services/admin.service';
 
 interface TopEntity {
   id: string;
@@ -14,80 +15,172 @@ interface TopEntity {
   metric3?: string;
 }
 
-const topPharmacies: TopEntity[] = [
-  { id: '1', name: 'Amara Pharmacy', value: '245 orders', metric2: '₦2.4M revenue', metric3: '4.8 rating' },
-  { id: '2', name: 'HealthCare Plus', value: '189 orders', metric2: '₦1.8M revenue', metric3: '4.9 rating' },
-  { id: '3', name: 'MedPlus Pharmacy', value: '156 orders', metric2: '₦1.5M revenue', metric3: '4.7 rating' },
-  { id: '4', name: 'ProHealth Stores', value: '142 orders', metric2: '₦1.3M revenue', metric3: '4.6 rating' },
-  { id: '5', name: 'Premium Pharmacy Network', value: '128 orders', metric2: '₦1.2M revenue', metric3: '4.8 rating' },
-];
+interface DashboardData {
+  revenue: string;
+  commission: string;
+  users: string;
+  registrations: string;
+  revenueChartData: number[];
+  userChartData: number[];
+}
 
-const topDeliveryProviders: TopEntity[] = [
-  { id: '1', name: 'Swift Logistics', value: '198 deliveries', metric2: '4.9 rating', metric3: '₦1.2M earnings' },
-  { id: '2', name: 'Lagos Express Riders', value: '176 deliveries', metric2: '4.8 rating', metric3: '₦1.0M earnings' },
-  { id: '3', name: 'Express Delivery', value: '154 deliveries', metric2: '4.7 rating', metric3: '₦920K earnings' },
-  { id: '4', name: 'Quick Delivery Services', value: '143 deliveries', metric2: '4.6 rating', metric3: '₦850K earnings' },
-  { id: '5', name: 'Speedy Riders Co', value: '128 deliveries', metric2: '4.8 rating', metric3: '₦760K earnings' },
-];
-
-const recentActivity = [
-  { id: '1', activity: 'User "John Okafor" placed order ORD-2026-001', time: '2 minutes ago' },
-  { id: '2', activity: 'Pharmacy "HealthCare Plus" completed order delivery', time: '5 minutes ago' },
-  { id: '3', activity: 'New delivery provider "Express Logistics" registered', time: '12 minutes ago' },
-  { id: '4', activity: 'Payment of ₦45,600 processed from order ORD-2026-002', time: '18 minutes ago' },
-  { id: '5', activity: 'User "Chioma Adeyemi" submitted support ticket', time: '32 minutes ago' },
-  { id: '6', activity: 'Pharmacy "MedPlus" inventory updated - 150 new items', time: '45 minutes ago' },
-  { id: '7', activity: 'Chat flag submitted - "Suspicious Activity" detected', time: '1 hour ago' },
-  { id: '8', activity: 'Delivery rider "Samuel Adekunle" completed 5 orders today', time: '2 hours ago' },
-  { id: '9', activity: 'Platform commission earned: ₦8,250 from today orders', time: '2 hours ago' },
-  { id: '10', activity: 'New customer "Blessing Nwosu" registered on platform', time: '3 hours ago' },
-];
+interface ActivityData {
+  id: string;
+  activity: string;
+  time: string;
+}
 
 export default function AnalyticsPage() {
   const [timePeriod, setTimePeriod] = useState('This Month');
+  const [analyticsData, setAnalyticsData] = useState<DashboardData | null>(null);
+  const [topPharmacies, setTopPharmacies] = useState<TopEntity[]>([]);
+  const [topDeliveryProviders, setTopDeliveryProviders] = useState<TopEntity[]>([]);
+  const [recentActivity, setRecentActivity] = useState<ActivityData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const periods = ['Today', 'This Week', 'This Month', 'This Year'];
 
-  // Sample data that changes based on period selection
-  const getAnalyticsData = () => {
-    const data: Record<string, any> = {
-      Today: {
-        revenue: '₦428,500',
-        commission: '₦42,850',
-        users: '342',
-        registrations: '24',
-        revenueChartData: [12, 19, 8, 15, 22, 11, 18],
-        userChartData: [45, 52, 38, 41, 55, 48, 52],
-      },
-      'This Week': {
-        revenue: '₦2,856,400',
-        commission: '₦285,640',
-        users: '1,240',
-        registrations: '142',
-        revenueChartData: [428, 615, 523, 687, 856, 742, 605],
-        userChartData: [340, 385, 412, 456, 523, 478, 495],
-      },
-      'This Month': {
-        revenue: '₦11,425,800',
-        commission: '₦1,142,580',
-        users: '4,856',
-        registrations: '528',
-        revenueChartData: [2850, 3120, 2890, 3450, 3780, 3210, 3920, 2750, 3115, 3625, 4025, 3400],
-        userChartData: [1240, 1385, 1512, 1698, 1923, 2145, 2289, 2456, 2645, 2856, 3021, 3256],
-      },
-      'This Year': {
-        revenue: '₦145,625,300',
-        commission: '₦14,562,530',
-        users: '24,560',
-        registrations: '6,420',
-        revenueChartData: [9250, 10125, 9850, 11200, 12450, 10850, 11920, 13250, 12150, 14325, 15210, 13540],
-        userChartData: [8450, 9120, 9856, 10450, 11230, 12100, 13045, 13890, 14560, 15240, 16120, 17340],
-      },
+  // Fetch dashboard data
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        // Fetch dashboard stats
+        const dashboardRes = await getDashboard();
+        if (dashboardRes.success && dashboardRes.data) {
+          // Map period to data - assuming backend returns period-specific stats
+          const dashData: DashboardData = {
+            revenue: dashboardRes.data.revenue || '₦0',
+            commission: dashboardRes.data.commission || '₦0',
+            users: dashboardRes.data.activeUsers?.toString() || '0',
+            registrations: dashboardRes.data.newRegistrations?.toString() || '0',
+            revenueChartData: dashboardRes.data.revenueChartData || [],
+            userChartData: dashboardRes.data.userChartData || [],
+          };
+          setAnalyticsData(dashData);
+
+          // Map top pharmacies
+          const pharmacies = (dashboardRes.data.topPharmacies || []).map((p: any, idx: number) => ({
+            id: p.id || idx.toString(),
+            name: p.name || 'Unknown Pharmacy',
+            value: `${p.totalOrders || 0} orders`,
+            metric2: `₦${(p.revenue || 0).toLocaleString()} revenue`,
+            metric3: `${p.rating || 0} rating`,
+          }));
+          setTopPharmacies(pharmacies);
+
+          // Map top delivery providers
+          const providers = (dashboardRes.data.topDeliveryProviders || []).map((p: any, idx: number) => ({
+            id: p.id || idx.toString(),
+            name: p.name || 'Unknown Provider',
+            value: `${p.totalDeliveries || 0} deliveries`,
+            metric2: `${p.rating || 0} rating`,
+            metric3: `₦${(p.earnings || 0).toLocaleString()} earnings`,
+          }));
+          setTopDeliveryProviders(providers);
+        } else {
+          setError(dashboardRes.error?.message || 'Failed to fetch dashboard data');
+        }
+
+        // Fetch transaction history for activity feed
+        const transactionsRes = await getTransactions({ limit: 10 });
+        if (transactionsRes.success && transactionsRes.data) {
+          const activities = transactionsRes.data.map((t: any, idx: number) => ({
+            id: t.id || idx.toString(),
+            activity: t.description || 'Transaction processed',
+            time: formatRelativeTime(t.createdAt || new Date().toISOString()),
+          }));
+          setRecentActivity(activities);
+        }
+      } catch (err) {
+        console.error('Failed to fetch analytics data:', err);
+        setError('Failed to load analytics data. Please try again.');
+      } finally {
+        setLoading(false);
+      }
     };
-    return data[timePeriod];
+
+    fetchData();
+  }, [timePeriod]);
+
+  // Helper to format relative time
+  const formatRelativeTime = (dateString: string): string => {
+    try {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+
+      if (diffMins < 1) return 'just now';
+      if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+      if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+      if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+      return date.toLocaleDateString();
+    } catch {
+      return 'Unknown time';
+    }
   };
 
-  const analyticsData = getAnalyticsData();
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Platform Analytics"
+          description="Monitor platform performance and user growth"
+        />
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4" />
+            <p className="text-gray-600">Loading analytics data...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Platform Analytics"
+          description="Monitor platform performance and user growth"
+        />
+        <Card>
+          <CardContent className="py-12">
+            <div className="text-center">
+              <p className="text-red-600 mb-4">{error}</p>
+              <Button
+                variant="primary"
+                onClick={() => window.location.reload()}
+              >
+                Retry
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!analyticsData) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Platform Analytics"
+          description="Monitor platform performance and user growth"
+        />
+        <Card>
+          <CardContent className="py-12">
+            <p className="text-center text-gray-600">No data available</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const maxRevenue = Math.max(...analyticsData.revenueChartData);
   const maxUsers = Math.max(...analyticsData.userChartData);

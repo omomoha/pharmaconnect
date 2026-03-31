@@ -193,6 +193,25 @@ export async function reviewFlaggedAlert(
 }
 
 /**
+ * Get all platform users
+ */
+export async function getUsers(limit: number = 200): Promise<ApiResponse<any>> {
+  try {
+    const response = await apiClient.get(`/admin/users?limit=${limit}`);
+    return response;
+  } catch (error) {
+    console.error('Failed to fetch users:', error);
+    return {
+      success: false,
+      error: {
+        code: 'FETCH_USERS_ERROR',
+        message: 'Failed to fetch users',
+      },
+    };
+  }
+}
+
+/**
  * Get admin dashboard statistics
  */
 export async function getDashboard(): Promise<ApiResponse<any>> {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PageHeader from '@/components/ui/PageHeader';
 import Button from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -8,6 +8,7 @@ import StatsCard from '@/components/ui/StatsCard';
 import Tabs from '@/components/ui/Tabs';
 import Modal from '@/components/ui/Modal';
 import StatusBadge from '@/components/ui/StatusBadge';
+import { getTransactions } from '@/lib/services/admin.service';
 
 interface Order {
   id: string;
@@ -21,6 +22,7 @@ interface Order {
   items: number;
 }
 
+/* COMMENTED OUT - Now using real API data from getTransactions()
 const sampleOrders: Order[] = [
   {
     id: '1',
@@ -155,8 +157,15 @@ const sampleOrders: Order[] = [
     items: 8,
   },
 ];
+*/
 
 export default function OrdersManagementPage() {
+  // API state
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // UI state
   const [activeTab, setActiveTab] = useState('All');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -166,10 +175,46 @@ export default function OrdersManagementPage() {
   const [sortField, setSortField] = useState<'date' | 'total' | 'status'>('date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
+  // Fetch transactions on mount
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const apiOrders = await getTransactions({ limit: 200 });
+
+        // Map API response to Order interface
+        const mapped: Order[] = (apiOrders || []).map((o: any) => ({
+          id: o.id,
+          orderNumber: `ORD-${o.id?.slice(0, 8) || 'UNKNOWN'}`,
+          customer: o.customerName || `User ${o.customerId?.slice(0, 6) || 'N/A'}`,
+          pharmacy: o.pharmacyName || `Pharmacy ${o.pharmacyId?.slice(0, 6) || 'N/A'}`,
+          rider: o.riderName || 'Unassigned',
+          status: (o.status || 'pending').charAt(0).toUpperCase() + (o.status || 'pending').slice(1) as 'Active' | 'Completed' | 'Disputed' | 'Cancelled',
+          total: `₦${(o.total || 0).toLocaleString()}`,
+          date: o.createdAt?._seconds
+            ? new Date(o.createdAt._seconds * 1000).toISOString().split('T')[0]
+            : 'N/A',
+          items: o.itemCount || 0,
+        }));
+
+        setOrders(mapped);
+      } catch (err) {
+        console.error('Failed to fetch orders:', err);
+        setError('Failed to load orders. Please try again later.');
+        setOrders([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrders();
+  }, []);
+
   const tabs = ['All', 'Active', 'Completed', 'Disputed', 'Cancelled'];
 
   const filterOrders = () => {
-    let filtered = sampleOrders;
+    let filtered = orders;
 
     // Filter by tab status
     if (activeTab === 'Active') {
@@ -257,12 +302,12 @@ export default function OrdersManagementPage() {
   };
 
   // Calculate stats
-  const totalOrders = sampleOrders.length;
-  const activeOrders = sampleOrders.filter((o) => o.status === 'Active').length;
-  const completedOrders = sampleOrders.filter(
+  const totalOrders = orders.length;
+  const activeOrders = orders.filter((o) => o.status === 'Active').length;
+  const completedOrders = orders.filter(
     (o) => o.status === 'Completed'
   ).length;
-  const disputedOrders = sampleOrders.filter(
+  const disputedOrders = orders.filter(
     (o) => o.status === 'Disputed'
   ).length;
 
@@ -277,6 +322,20 @@ export default function OrdersManagementPage() {
         title="Orders Overview"
         description="View and manage all platform orders"
       />
+
+      {/* Error State */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-800">{error}</p>
+        </div>
+      )}
+
+      {/* Loading State */}
+      {loading && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <p className="text-blue-800">Loading orders...</p>
+        </div>
+      )}
 
       {/* Stats Row */}
       <div className="grid md:grid-cols-4 gap-6">

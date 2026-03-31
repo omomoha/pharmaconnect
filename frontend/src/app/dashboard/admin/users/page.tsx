@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PageHeader from '@/components/ui/PageHeader';
 import Button from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -8,6 +8,7 @@ import Input from '@/components/ui/Input';
 import Tabs from '@/components/ui/Tabs';
 import Modal from '@/components/ui/Modal';
 import StatusBadge from '@/components/ui/StatusBadge';
+import { getUsers } from '@/lib/services/admin.service';
 
 interface User {
   id: string;
@@ -16,132 +17,13 @@ interface User {
   role: 'Customer' | 'Pharmacy' | 'Delivery' | 'Admin';
   status: 'Active' | 'Suspended' | 'Pending';
   joinedDate: string;
+  phone?: string;
 }
 
-const sampleUsers: User[] = [
-  {
-    id: '1',
-    name: 'John Okafor',
-    email: 'john.okafor@email.com',
-    role: 'Customer',
-    status: 'Active',
-    joinedDate: '2026-01-15',
-  },
-  {
-    id: '2',
-    name: 'Amara Pharmacy',
-    email: 'info@amarapharmacy.com',
-    role: 'Pharmacy',
-    status: 'Active',
-    joinedDate: '2026-01-10',
-  },
-  {
-    id: '3',
-    name: 'Swift Logistics',
-    email: 'hello@swiftlogistics.com',
-    role: 'Delivery',
-    status: 'Active',
-    joinedDate: '2026-01-20',
-  },
-  {
-    id: '4',
-    name: 'Admin User',
-    email: 'admin@pharmaconnect.com',
-    role: 'Admin',
-    status: 'Active',
-    joinedDate: '2025-12-01',
-  },
-  {
-    id: '5',
-    name: 'Chioma Adeyemi',
-    email: 'chioma.a@email.com',
-    role: 'Customer',
-    status: 'Suspended',
-    joinedDate: '2026-02-05',
-  },
-  {
-    id: '6',
-    name: 'HealthCare Plus',
-    email: 'contact@healthcareplus.com',
-    role: 'Pharmacy',
-    status: 'Active',
-    joinedDate: '2026-01-25',
-  },
-  {
-    id: '7',
-    name: 'Express Delivery',
-    email: 'ops@expressdelivery.com',
-    role: 'Delivery',
-    status: 'Pending',
-    joinedDate: '2026-03-20',
-  },
-  {
-    id: '8',
-    name: 'Tunde Ibrahim',
-    email: 'tunde.ibrahim@email.com',
-    role: 'Customer',
-    status: 'Active',
-    joinedDate: '2026-02-12',
-  },
-  {
-    id: '9',
-    name: 'MedPlus Pharmacy',
-    email: 'support@medplus.com',
-    role: 'Pharmacy',
-    status: 'Active',
-    joinedDate: '2026-01-30',
-  },
-  {
-    id: '10',
-    name: 'Lagos Riders',
-    email: 'hello@lagosriders.com',
-    role: 'Delivery',
-    status: 'Active',
-    joinedDate: '2026-02-08',
-  },
-  {
-    id: '11',
-    name: 'Ngozi Obi',
-    email: 'ngozi.obi@email.com',
-    role: 'Customer',
-    status: 'Active',
-    joinedDate: '2026-03-01',
-  },
-  {
-    id: '12',
-    name: 'Senior Admin',
-    email: 'senioradmin@pharmaconnect.com',
-    role: 'Admin',
-    status: 'Active',
-    joinedDate: '2025-11-15',
-  },
-  {
-    id: '13',
-    name: 'Blessing Nwosu',
-    email: 'blessing.n@email.com',
-    role: 'Customer',
-    status: 'Active',
-    joinedDate: '2026-03-10',
-  },
-  {
-    id: '14',
-    name: 'ProHealth Stores',
-    email: 'admin@prohealthstores.com',
-    role: 'Pharmacy',
-    status: 'Suspended',
-    joinedDate: '2026-02-01',
-  },
-  {
-    id: '15',
-    name: 'Quick Delivery Co',
-    email: 'support@quickdelivery.com',
-    role: 'Delivery',
-    status: 'Active',
-    joinedDate: '2026-02-20',
-  },
-];
-
 export default function UserManagementPage() {
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('All');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -151,6 +33,39 @@ export default function UserManagementPage() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+
+  // Fetch users on component mount
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await getUsers();
+
+        // Map API response to User interface
+        const mappedUsers = response.users.map((u: any) => ({
+          id: u.id,
+          name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email,
+          email: u.email,
+          role: u.role,
+          status: u.isActive ? 'Active' : 'Suspended',
+          joinedDate: u.createdAt?._seconds
+            ? new Date(u.createdAt._seconds * 1000).toISOString().split('T')[0]
+            : 'N/A',
+          phone: u.phoneNumber || '',
+        }));
+
+        setUsers(mappedUsers);
+      } catch (err) {
+        console.error('Failed to fetch users:', err);
+        setError('Failed to load users. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUsers();
+  }, []);
 
   const tabs = ['All', 'Customers', 'Pharmacies', 'Delivery Providers', 'Admins'];
 
@@ -204,10 +119,42 @@ export default function UserManagementPage() {
     return processed;
   };
 
-  const allProcessedUsers = processUsers(sampleUsers);
+  const allProcessedUsers = processUsers(users);
   const totalPages = Math.ceil(allProcessedUsers.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const filteredUsers = allProcessedUsers.slice(startIndex, startIndex + itemsPerPage);
+
+  const handleRetry = () => {
+    setCurrentPage(1);
+    setSearchTerm('');
+    setActiveTab('All');
+    // Trigger refetch by clearing and re-fetching
+    setLoading(true);
+    setError(null);
+    const fetchUsers = async () => {
+      try {
+        const response = await getUsers();
+        const mappedUsers = response.users.map((u: any) => ({
+          id: u.id,
+          name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email,
+          email: u.email,
+          role: u.role,
+          status: u.isActive ? 'Active' : 'Suspended',
+          joinedDate: u.createdAt?._seconds
+            ? new Date(u.createdAt._seconds * 1000).toISOString().split('T')[0]
+            : 'N/A',
+          phone: u.phoneNumber || '',
+        }));
+        setUsers(mappedUsers);
+      } catch (err) {
+        console.error('Failed to fetch users:', err);
+        setError('Failed to load users. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUsers();
+  };
 
   const openActionModal = (user: User, action: 'suspend' | 'activate') => {
     setSelectedUser(user);
@@ -267,7 +214,41 @@ export default function UserManagementPage() {
         onChange={setActiveTab}
       />
 
+      {/* Loading State */}
+      {loading && (
+        <Card>
+          <CardContent className="p-12">
+            <div className="flex flex-col items-center justify-center gap-4">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+              <p className="text-gray-600">Loading users...</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Error State */}
+      {error && !loading && (
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between gap-4 bg-red-50 border border-red-200 rounded-lg p-4">
+              <div>
+                <p className="text-red-800 font-medium">Error loading users</p>
+                <p className="text-red-600 text-sm">{error}</p>
+              </div>
+              <Button
+                variant="primary"
+                onClick={handleRetry}
+                className="whitespace-nowrap"
+              >
+                Retry
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Users Table */}
+      {!loading && !error && (
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -417,6 +398,7 @@ export default function UserManagementPage() {
           )}
         </CardContent>
       </Card>
+      )}
 
       {/* User Details Modal */}
       <Modal

@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import { router } from 'expo-router';
 import { orderService } from '../../src/services';
 
 interface Order {
@@ -77,7 +78,7 @@ export default function OrdersTab() {
   const renderOrder = ({ item }: { item: Order }) => {
     const statusStyle = getStatusStyle(item.status);
     return (
-      <TouchableOpacity style={styles.card}>
+      <TouchableOpacity style={styles.card} onPress={() => router.push({ pathname: '/order-detail', params: { id: item.id } })}>
         <View style={styles.cardTop}>
           <View style={{ flex: 1 }}>
             <Text style={styles.orderId}>Order #{item.id.slice(0, 8)}</Text>
@@ -100,7 +101,7 @@ export default function OrdersTab() {
         <View style={styles.cardBottom}>
           <Text style={styles.total}>₦{item.total?.toLocaleString() || '0'}</Text>
           {(item.status === 'pending' || item.status === 'confirmed') && (
-            <TouchableOpacity style={styles.trackButton}>
+            <TouchableOpacity style={styles.trackButton} onPress={() => router.push({ pathname: '/order-detail', params: { id: item.id } })}>
               <Text style={styles.trackButtonText}>Track</Text>
             </TouchableOpacity>
           )}

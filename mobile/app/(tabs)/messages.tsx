@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import { router } from 'expo-router';
 import { chatService } from '../../src/services';
 import { useAuth } from '../../src/contexts/AuthContext';
 
@@ -79,7 +80,7 @@ export default function MessagesTab() {
   };
 
   const renderConversation = ({ item }: { item: Conversation }) => (
-    <TouchableOpacity style={styles.card}>
+    <TouchableOpacity style={styles.card} onPress={() => router.push({ pathname: '/chat', params: { conversationId: item.id } })}>
       <View style={styles.avatar}>
         <Text style={styles.avatarText}>
           {item.participantName?.charAt(0)?.toUpperCase() || '?'}

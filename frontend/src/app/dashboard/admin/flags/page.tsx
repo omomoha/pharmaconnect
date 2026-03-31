@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PageHeader from '@/components/ui/PageHeader';
 import Button from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import StatsCard from '@/components/ui/StatsCard';
 import Tabs from '@/components/ui/Tabs';
 import Modal from '@/components/ui/Modal';
+import { getFlaggedAlerts, reviewFlaggedAlert } from '@/lib/services/admin.service';
 
 interface ChatMessage {
   sender: string;
@@ -31,250 +32,11 @@ interface Flag {
   messages: ChatMessage[];
 }
 
-const sampleFlags: Flag[] = [
-  {
-    id: '1',
-    type: 'Prescription Drug Detection',
-    severity: 'High',
-    description: 'AI detected prescription drug mention in customer-pharmacy chat',
-    sender: 'John Okafor',
-    recipient: 'Amara Pharmacy',
-    flaggedAt: '2026-03-26 14:30',
-    status: 'Pending',
-    messages: [
-      {
-        sender: 'John Okafor',
-        role: 'Sender',
-        message: 'Do you have any antibiotics in stock?',
-        timestamp: '2026-03-26 14:20',
-      },
-      {
-        sender: 'Amara Pharmacy',
-        role: 'Recipient',
-        message: 'We have Amoxicillin available. Do you have a prescription?',
-        timestamp: '2026-03-26 14:22',
-      },
-      {
-        sender: 'John Okafor',
-        role: 'Sender',
-        message: 'Can you sell it without prescription?',
-        timestamp: '2026-03-26 14:25',
-      },
-    ],
-  },
-  {
-    id: '2',
-    type: 'Harassment',
-    severity: 'High',
-    description: 'Customer reported abusive language from pharmacy staff',
-    sender: 'Chioma Adeyemi',
-    recipient: 'HealthCare Plus',
-    flaggedAt: '2026-03-25 12:15',
-    status: 'Reviewing',
-    messages: [
-      {
-        sender: 'Chioma Adeyemi',
-        role: 'Sender',
-        message: 'Hi, is this product in stock?',
-        timestamp: '2026-03-25 11:50',
-      },
-      {
-        sender: 'HealthCare Plus',
-        role: 'Recipient',
-        message: 'Why are you asking so many questions?',
-        timestamp: '2026-03-25 11:55',
-      },
-      {
-        sender: 'Chioma Adeyemi',
-        role: 'Sender',
-        message: 'I just want to know availability',
-        timestamp: '2026-03-25 12:00',
-      },
-    ],
-  },
-  {
-    id: '3',
-    type: 'Suspicious Activity',
-    severity: 'Medium',
-    description: 'Multiple rapid orders from same customer within short time frame',
-    sender: 'Tunde Ibrahim',
-    recipient: 'MedPlus Pharmacy',
-    flaggedAt: '2026-03-25 10:00',
-    status: 'Pending',
-    messages: [
-      {
-        sender: 'Tunde Ibrahim',
-        role: 'Sender',
-        message: 'I need 5 units of Product A',
-        timestamp: '2026-03-25 09:30',
-      },
-      {
-        sender: 'MedPlus Pharmacy',
-        role: 'Recipient',
-        message: 'Confirmed. Total is ₦5,000',
-        timestamp: '2026-03-25 09:35',
-      },
-      {
-        sender: 'Tunde Ibrahim',
-        role: 'Sender',
-        message: 'Can I also order 10 units of Product B?',
-        timestamp: '2026-03-25 09:40',
-      },
-    ],
-  },
-  {
-    id: '4',
-    type: 'Policy Violation',
-    severity: 'Medium',
-    description: 'Pharmacy attempting to arrange external payment outside platform',
-    sender: 'Ngozi Obi',
-    recipient: 'ProHealth Stores',
-    flaggedAt: '2026-03-24 16:45',
-    status: 'Resolved',
-    messages: [
-      {
-        sender: 'Ngozi Obi',
-        role: 'Sender',
-        message: 'What is the total cost?',
-        timestamp: '2026-03-24 16:30',
-      },
-      {
-        sender: 'ProHealth Stores',
-        role: 'Recipient',
-        message: 'You can send money to my account directly for a discount',
-        timestamp: '2026-03-24 16:35',
-      },
-      {
-        sender: 'Ngozi Obi',
-        role: 'Sender',
-        message: 'That is against platform rules',
-        timestamp: '2026-03-24 16:40',
-      },
-    ],
-  },
-  {
-    id: '5',
-    type: 'Suspicious Activity',
-    severity: 'Low',
-    description: 'Unusually high quantity order for a new customer account',
-    sender: 'Blessing Nwosu',
-    recipient: 'HealthCare Plus',
-    flaggedAt: '2026-03-24 14:20',
-    status: 'Resolved',
-    messages: [
-      {
-        sender: 'Blessing Nwosu',
-        role: 'Sender',
-        message: 'Do you have bulk discounts?',
-        timestamp: '2026-03-24 14:05',
-      },
-      {
-        sender: 'HealthCare Plus',
-        role: 'Recipient',
-        message: 'Yes, what quantity are you interested in?',
-        timestamp: '2026-03-24 14:08',
-      },
-      {
-        sender: 'Blessing Nwosu',
-        role: 'Sender',
-        message: 'I need 50 units for my clinic',
-        timestamp: '2026-03-24 14:15',
-      },
-    ],
-  },
-  {
-    id: '6',
-    type: 'Harassment',
-    severity: 'Medium',
-    description: 'Delivery rider receiving threatening messages from customer',
-    sender: 'Ayo Adebayo',
-    recipient: 'Samuel Adekunle',
-    flaggedAt: '2026-03-23 18:00',
-    status: 'Escalated',
-    messages: [
-      {
-        sender: 'Ayo Adebayo',
-        role: 'Sender',
-        message: 'Where is my order?',
-        timestamp: '2026-03-23 17:40',
-      },
-      {
-        sender: 'Samuel Adekunle',
-        role: 'Recipient',
-        message: 'I am 10 minutes away',
-        timestamp: '2026-03-23 17:45',
-      },
-      {
-        sender: 'Ayo Adebayo',
-        role: 'Sender',
-        message: 'If you are late, you will regret it',
-        timestamp: '2026-03-23 17:55',
-      },
-    ],
-  },
-  {
-    id: '7',
-    type: 'Prescription Drug Detection',
-    severity: 'High',
-    description: 'Attempt to order controlled medication without prescription',
-    sender: 'Zainab Mohammed',
-    recipient: 'Premium Pharmacy',
-    flaggedAt: '2026-03-23 11:30',
-    status: 'Pending',
-    messages: [
-      {
-        sender: 'Zainab Mohammed',
-        role: 'Sender',
-        message: 'Do you sell codeine?',
-        timestamp: '2026-03-23 11:15',
-      },
-      {
-        sender: 'Premium Pharmacy',
-        role: 'Recipient',
-        message: 'We do, but it requires a prescription',
-        timestamp: '2026-03-23 11:18',
-      },
-      {
-        sender: 'Zainab Mohammed',
-        role: 'Sender',
-        message: 'Can you sell it anyway? I will pay more',
-        timestamp: '2026-03-23 11:25',
-      },
-    ],
-  },
-  {
-    id: '8',
-    type: 'Policy Violation',
-    severity: 'Low',
-    description: 'Pharmacy promoting external social media contact',
-    sender: 'Oluwaseun Bello',
-    recipient: 'MedPlus Pharmacy',
-    flaggedAt: '2026-03-22 09:15',
-    status: 'Resolved',
-    messages: [
-      {
-        sender: 'Oluwaseun Bello',
-        role: 'Sender',
-        message: 'Are you on WhatsApp?',
-        timestamp: '2026-03-22 09:00',
-      },
-      {
-        sender: 'MedPlus Pharmacy',
-        role: 'Recipient',
-        message: 'Yes, my number is +234-801-234-5678, easier to chat there',
-        timestamp: '2026-03-22 09:05',
-      },
-      {
-        sender: 'Oluwaseun Bello',
-        role: 'Sender',
-        message: 'Will reach out',
-        timestamp: '2026-03-22 09:10',
-      },
-    ],
-  },
-];
 
 export default function FlagsModerationPage() {
+  const [flags, setFlags] = useState<Flag[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('All');
   const [selectedFlag, setSelectedFlag] = useState<Flag | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -285,13 +47,46 @@ export default function FlagsModerationPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState('newest');
+  const [actionLoading, setActionLoading] = useState(false);
+
+  // Fetch flagged alerts on component mount
+  useEffect(() => {
+    const loadFlags = async () => {
+      setLoading(true);
+      setError(null);
+      const response = await getFlaggedAlerts();
+
+      if (response.success && response.data) {
+        // Map API response to Flag interface
+        const mappedFlags: Flag[] = response.data.map((alert) => ({
+          id: alert.id,
+          type: (alert.type as any) || 'Policy Violation',
+          severity: (alert.severity as any) || 'Medium',
+          description: alert.description || '',
+          sender: alert.senderName || 'Unknown',
+          recipient: alert.recipientName || 'Unknown',
+          flaggedAt: alert.createdAt
+            ? new Date(alert.createdAt).toLocaleString()
+            : 'Unknown',
+          status: (alert.status as any) || 'Pending',
+          messages: alert.context || [],
+        }));
+        setFlags(mappedFlags);
+      } else {
+        setError(response.error?.message || 'Failed to load flagged alerts');
+      }
+      setLoading(false);
+    };
+
+    loadFlags();
+  }, []);
 
   const tabs = ['All', 'Pending', 'Reviewing', 'Resolved', 'Escalated'];
 
   const itemsPerPage = 10;
 
   const filterFlags = () => {
-    let filtered = sampleFlags;
+    let filtered = flags;
 
     // Filter by tab status
     if (activeTab === 'Pending') {
@@ -345,10 +140,10 @@ export default function FlagsModerationPage() {
   const paginatedFlags = filteredFlags.slice(startIndex, endIndex);
 
   // Calculate stats
-  const totalFlags = sampleFlags.length;
-  const pendingFlags = sampleFlags.filter((f) => f.status === 'Pending').length;
-  const resolvedFlags = sampleFlags.filter((f) => f.status === 'Resolved').length;
-  const escalatedFlags = sampleFlags.filter((f) => f.status === 'Escalated')
+  const totalFlags = flags.length;
+  const pendingFlags = flags.filter((f) => f.status === 'Pending').length;
+  const resolvedFlags = flags.filter((f) => f.status === 'Resolved').length;
+  const escalatedFlags = flags.filter((f) => f.status === 'Escalated')
     .length;
 
   const openDetailModal = (flag: Flag) => {
@@ -365,9 +160,52 @@ export default function FlagsModerationPage() {
     setIsActionModalOpen(true);
   };
 
-  const handleConfirmAction = () => {
-    setIsActionModalOpen(false);
-    setSelectedAction(null);
+  const handleConfirmAction = async () => {
+    if (!selectedFlag || !selectedAction) return;
+
+    setActionLoading(true);
+    const actionMap: Record<
+      string,
+      'APPROVED' | 'FLAGGED_FOR_REVIEW'
+    > = {
+      dismiss: 'APPROVED',
+      escalate: 'FLAGGED_FOR_REVIEW',
+    };
+
+    const reviewAction = actionMap[selectedAction];
+    let response;
+
+    if (reviewAction) {
+      response = await reviewFlaggedAlert(selectedFlag.id, {
+        action: reviewAction,
+        notes: `User action: ${selectedAction}`,
+      });
+    }
+
+    setActionLoading(false);
+
+    if (response?.success) {
+      // Update flag in state
+      setFlags((prevFlags) =>
+        prevFlags.map((f) =>
+          f.id === selectedFlag.id
+            ? {
+                ...f,
+                status:
+                  selectedAction === 'escalate'
+                    ? 'Escalated'
+                    : selectedAction === 'dismiss'
+                      ? 'Resolved'
+                      : f.status,
+              }
+            : f
+        )
+      );
+      setIsActionModalOpen(false);
+      setSelectedAction(null);
+    } else {
+      setError(response?.error?.message || 'Failed to perform action');
+    }
   };
 
   const getSeverityColor = (severity: string) => {
@@ -405,60 +243,94 @@ export default function FlagsModerationPage() {
         description="Review and manage flagged conversations and user reports"
       />
 
-      {/* Stats Row */}
-      <div className="grid md:grid-cols-4 gap-6">
-        <StatsCard label="Total Flags" value={totalFlags.toString()} icon="🚩" />
-        <StatsCard label="Pending Review" value={pendingFlags.toString()} icon="⏳" />
-        <StatsCard label="Resolved" value={resolvedFlags.toString()} icon="✅" />
-        <StatsCard label="Escalated" value={escalatedFlags.toString()} icon="🔴" />
-      </div>
-
-      {/* Tabs */}
-      <Tabs
-        tabs={tabs.map((tab) => ({
-          id: tab,
-          label: tab,
-        }))}
-        activeTab={activeTab}
-        onChange={(newTab) => {
-          setActiveTab(newTab);
-          setCurrentPage(1);
-        }}
-      />
-
-      {/* Search and Sort Row */}
-      <div className="flex flex-col md:flex-row gap-3 mb-4">
-        <input
-          type="text"
-          placeholder="Search flags..."
-          value={searchQuery}
-          onChange={(e) => {
-            setSearchQuery(e.target.value);
-            setCurrentPage(1);
-          }}
-          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        />
-        <select
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        >
-          <option value="newest">Newest First</option>
-          <option value="oldest">Oldest First</option>
-          <option value="severity">Severity (High → Low)</option>
-        </select>
-      </div>
-
-      {/* Results Info */}
-      {totalResults > 0 && (
-        <div className="text-sm text-gray-600 mb-4">
-          Showing {startIndex + 1}-{endIndex} of {totalResults} results
-        </div>
+      {/* Error State */}
+      {error && (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-red-900 font-medium">Error Loading Flags</p>
+                <p className="text-red-700 text-sm mt-1">{error}</p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.location.reload()}
+              >
+                Retry
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
-      {/* Flags Grid */}
-      <div className="space-y-4">
-        {paginatedFlags.map((flag) => (
+      {/* Loading State */}
+      {loading ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-gray-600">Loading flagged alerts...</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* Stats Row */}
+          <div className="grid md:grid-cols-4 gap-6">
+            <StatsCard label="Total Flags" value={totalFlags.toString()} icon="🚩" />
+            <StatsCard label="Pending Review" value={pendingFlags.toString()} icon="⏳" />
+            <StatsCard label="Resolved" value={resolvedFlags.toString()} icon="✅" />
+            <StatsCard label="Escalated" value={escalatedFlags.toString()} icon="🔴" />
+          </div>
+        </>
+      )}
+
+      {!loading && (
+        <>
+          {/* Tabs */}
+          <Tabs
+            tabs={tabs.map((tab) => ({
+              id: tab,
+              label: tab,
+            }))}
+            activeTab={activeTab}
+            onChange={(newTab) => {
+              setActiveTab(newTab);
+              setCurrentPage(1);
+            }}
+          />
+
+          {/* Search and Sort Row */}
+          <div className="flex flex-col md:flex-row gap-3 mb-4">
+            <input
+              type="text"
+              placeholder="Search flags..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+              <option value="severity">Severity (High → Low)</option>
+            </select>
+          </div>
+
+          {/* Results Info */}
+          {totalResults > 0 && (
+            <div className="text-sm text-gray-600 mb-4">
+              Showing {startIndex + 1}-{endIndex} of {totalResults} results
+            </div>
+          )}
+
+          {/* Flags Grid */}
+          <div className="space-y-4">
+            {paginatedFlags.map((flag) => (
           <Card
             key={flag.id}
             className="hover:shadow-md transition-shadow duration-200"
@@ -587,43 +459,45 @@ export default function FlagsModerationPage() {
                 </div>
               </div>
             </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {filteredFlags.length === 0 && (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-gray-600">
-              {searchQuery ? 'No flags match your search' : 'No flags in this category'}
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Pagination Bar */}
-      {totalResults > 0 && totalPages > 1 && (
-        <div className="flex items-center justify-between py-4 border-t border-gray-200">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-            disabled={currentPage === 1}
-          >
-            Previous
-          </Button>
-          <div className="text-sm text-gray-600">
-            Page {currentPage} of {totalPages}
+            </Card>
+          ))}
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-            disabled={currentPage === totalPages}
-          >
-            Next
-          </Button>
-        </div>
+
+          {filteredFlags.length === 0 && (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <p className="text-gray-600">
+                  {searchQuery ? 'No flags match your search' : 'No flags in this category'}
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Pagination Bar */}
+          {totalResults > 0 && totalPages > 1 && (
+            <div className="flex items-center justify-between py-4 border-t border-gray-200">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </Button>
+              <div className="text-sm text-gray-600">
+                Page {currentPage} of {totalPages}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          )}
+        </>
       )}
 
       {/* Detail Modal */}
@@ -724,9 +598,10 @@ export default function FlagsModerationPage() {
             <Button
               variant="primary"
               onClick={handleConfirmAction}
+              disabled={actionLoading}
               className="flex-1"
             >
-              Confirm
+              {actionLoading ? 'Processing...' : 'Confirm'}
             </Button>
           </div>
         </div>

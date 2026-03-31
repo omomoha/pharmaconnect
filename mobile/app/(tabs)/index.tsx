@@ -13,6 +13,7 @@ import { router } from 'expo-router';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { pharmacyService, orderService } from '../../src/services';
 import { useLocation } from '../../src/hooks';
+import { apiClient } from '../../src/lib/api';
 
 interface PharmacyItem {
   id: string;
@@ -40,7 +41,57 @@ export default function HomeTab() {
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchData = async () => {
+  // Role-specific state
+  const [pharmacyInfo, setPharmacyInfo] = useState<any>(null);
+  const [deliveryInfo, setDeliveryInfo] = useState<any>(null);
+  const [adminDashboard, setAdminDashboard] = useState<any>(null);
+  const [loadingRoleData, setLoadingRoleData] = useState(true);
+
+  const userRole = profile?.role;
+
+  const fetchPharmacyData = async () => {
+    try {
+      const [infoRes, ordersRes] = await Promise.all([
+        apiClient.get('/pharmacies/my-pharmacy'),
+        orderService.getOrders({ limit: 5 }),
+      ]);
+      if (infoRes.success && infoRes.data) {
+        setPharmacyInfo(infoRes.data);
+      }
+      if (ordersRes.success && ordersRes.data) {
+        setOrders(ordersRes.data);
+      }
+    } catch (error) {
+      console.error('Error fetching pharmacy data:', error);
+    }
+    setLoadingRoleData(false);
+  };
+
+  const fetchDeliveryData = async () => {
+    try {
+      const res = await apiClient.get('/delivery/providers/my-provider');
+      if (res.success && res.data) {
+        setDeliveryInfo(res.data);
+      }
+    } catch (error) {
+      console.error('Error fetching delivery data:', error);
+    }
+    setLoadingRoleData(false);
+  };
+
+  const fetchAdminData = async () => {
+    try {
+      const res = await apiClient.get('/admin/dashboard');
+      if (res.success && res.data) {
+        setAdminDashboard(res.data);
+      }
+    } catch (error) {
+      console.error('Error fetching admin data:', error);
+    }
+    setLoadingRoleData(false);
+  };
+
+  const fetchCustomerData = async () => {
     // Fetch nearby pharmacies
     if (latitude && longitude) {
       try {
@@ -82,11 +133,26 @@ export default function HomeTab() {
     setLoadingOrders(false);
   };
 
+  const fetchData = async () => {
+    if (userRole === 'pharmacy' || userRole === 'pharmacy_admin') {
+      await fetchPharmacyData();
+    } else if (userRole === 'delivery_provider' || userRole === 'delivery_admin') {
+      await fetchDeliveryData();
+    } else if (userRole === 'platform_admin' || userRole === 'admin' || userRole === 'support_admin') {
+      await fetchAdminData();
+    } else {
+      // Default customer behavior
+      await fetchCustomerData();
+    }
+  };
+
   useEffect(() => {
-    if (!geoLoading) {
+    if (userRole && (userRole === 'pharmacy' || userRole === 'pharmacy_admin' || userRole === 'delivery_provider' || userRole === 'delivery_admin' || userRole === 'platform_admin' || userRole === 'admin' || userRole === 'support_admin')) {
+      fetchData();
+    } else if (!geoLoading) {
       fetchData();
     }
-  }, [geoLoading, latitude, longitude]);
+  }, [userRole, geoLoading, latitude, longitude]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -94,6 +160,204 @@ export default function HomeTab() {
     setRefreshing(false);
   };
 
+  // Pharmacy Dashboard
+  if (userRole === 'pharmacy' || userRole === 'pharmacy_admin') {
+    return (
+      <ScrollView
+        style={styles.container}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#059669" />}
+      >
+        {/* Welcome */}
+        <View style={styles.welcomeSection}>
+          <Text style={styles.greeting}>
+            Welcome, {profile?.name || 'Pharmacy'}!
+          </Text>
+          <Text style={styles.subGreeting}>{pharmacyInfo?.businessName || 'Manage your pharmacy'}</Text>
+        </View>
+
+        {/* Stats Row */}
+        <View style={styles.statsRow}>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{orders.filter((o) => o.status === 'pending').length || 0}</Text>
+            <Text style={styles.statLabel}>Pending</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{pharmacyInfo?.productCount || 0}</Text>
+            <Text style={styles.statLabel}>Products</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{orders.length || 0}</Text>
+            <Text style={styles.statLabel}>Total Orders</Text>
+          </View>
+        </View>
+
+        {/* Quick Actions */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <View style={styles.quickActionsRow}>
+            <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/manage-products')}>
+              <Text style={styles.actionButtonText}>Manage Products</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/(tabs)/orders')}>
+              <Text style={styles.actionButtonText}>View Orders</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Recent Orders */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Recent Orders</Text>
+            <TouchableOpacity onPress={() => router.push('/(tabs)/orders')}>
+              <Text style={styles.seeAll}>See All</Text>
+            </TouchableOpacity>
+          </View>
+
+          {loadingRoleData ? (
+            <ActivityIndicator size="small" color="#059669" style={{ marginVertical: 20 }} />
+          ) : orders.length > 0 ? (
+            orders.slice(0, 5).map((order) => (
+              <TouchableOpacity key={order.id} style={styles.orderCard} onPress={() => router.push({ pathname: '/order-detail', params: { id: order.id } })}>
+                <View>
+                  <Text style={styles.orderPharmacy}>{order.pharmacyName}</Text>
+                  <Text style={styles.orderDate}>{order.createdAt}</Text>
+                </View>
+                <View style={styles.orderRight}>
+                  <Text style={styles.orderStatus}>{order.status}</Text>
+                  <Text style={styles.orderTotal}>₦{order.total?.toLocaleString()}</Text>
+                </View>
+              </TouchableOpacity>
+            ))
+          ) : (
+            <Text style={styles.emptyText}>No orders yet</Text>
+          )}
+        </View>
+
+        <View style={{ height: 40 }} />
+      </ScrollView>
+    );
+  }
+
+  // Delivery Provider Dashboard
+  if (userRole === 'delivery_provider' || userRole === 'delivery_admin') {
+    return (
+      <ScrollView
+        style={styles.container}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#059669" />}
+      >
+        {/* Welcome */}
+        <View style={styles.welcomeSection}>
+          <Text style={styles.greeting}>
+            Welcome, {profile?.name || 'Driver'}!
+          </Text>
+          <Text style={styles.subGreeting}>{deliveryInfo?.businessName || 'Manage your deliveries'}</Text>
+        </View>
+
+        {/* Stats Row */}
+        <View style={styles.statsRow}>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{deliveryInfo?.activeDeliveries || 0}</Text>
+            <Text style={styles.statLabel}>Active</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{deliveryInfo?.completedToday || 0}</Text>
+            <Text style={styles.statLabel}>Completed</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>₦{deliveryInfo?.todayEarnings?.toLocaleString() || 0}</Text>
+            <Text style={styles.statLabel}>Earnings</Text>
+          </View>
+        </View>
+
+        {/* Quick Actions */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <View style={styles.quickActionsRow}>
+            <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/active-deliveries')}>
+              <Text style={styles.actionButtonText}>Active Deliveries</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/delivery-history')}>
+              <Text style={styles.actionButtonText}>History</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {loadingRoleData && (
+          <View style={styles.section}>
+            <ActivityIndicator size="small" color="#059669" style={{ marginVertical: 20 }} />
+          </View>
+        )}
+
+        <View style={{ height: 40 }} />
+      </ScrollView>
+    );
+  }
+
+  // Admin Dashboard
+  if (userRole === 'platform_admin' || userRole === 'admin' || userRole === 'support_admin') {
+    return (
+      <ScrollView
+        style={styles.container}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#059669" />}
+      >
+        {/* Welcome */}
+        <View style={styles.welcomeSection}>
+          <Text style={styles.greeting}>
+            Admin Dashboard
+          </Text>
+          <Text style={styles.subGreeting}>Manage platform operations</Text>
+        </View>
+
+        {/* Stats Row */}
+        <View style={styles.statsRow}>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{adminDashboard?.pendingApprovals || 0}</Text>
+            <Text style={styles.statLabel}>Pending</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{adminDashboard?.totalUsers || 0}</Text>
+            <Text style={styles.statLabel}>Users</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{adminDashboard?.totalOrders || 0}</Text>
+            <Text style={styles.statLabel}>Orders</Text>
+          </View>
+        </View>
+
+        {/* Alerts */}
+        {adminDashboard?.flaggedItems > 0 && (
+          <View style={[styles.section, styles.alertBox]}>
+            <Text style={styles.alertTitle}>
+              {adminDashboard.flaggedItems} flagged item(s) need review
+            </Text>
+          </View>
+        )}
+
+        {/* Quick Actions */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <View style={styles.quickActionsRow}>
+            <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/admin/approvals')}>
+              <Text style={styles.actionButtonText}>Review</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/admin/flagged')}>
+              <Text style={styles.actionButtonText}>Flagged</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {loadingRoleData && (
+          <View style={styles.section}>
+            <ActivityIndicator size="small" color="#059669" style={{ marginVertical: 20 }} />
+          </View>
+        )}
+
+        <View style={{ height: 40 }} />
+      </ScrollView>
+    );
+  }
+
+  // Default Customer Dashboard
   return (
     <ScrollView
       style={styles.container}
@@ -153,7 +417,7 @@ export default function HomeTab() {
           <ActivityIndicator size="small" color="#059669" style={{ marginVertical: 20 }} />
         ) : pharmacies.length > 0 ? (
           pharmacies.map((pharmacy) => (
-            <TouchableOpacity key={pharmacy.id} style={styles.pharmacyCard}>
+            <TouchableOpacity key={pharmacy.id} style={styles.pharmacyCard} onPress={() => router.push({ pathname: '/pharmacy-detail', params: { id: pharmacy.id } })}>
               <View style={styles.pharmacyInfo}>
                 <Text style={styles.pharmacyName}>{pharmacy.name}</Text>
                 <Text style={styles.pharmacyDistance}>{pharmacy.distance} away</Text>
@@ -182,7 +446,7 @@ export default function HomeTab() {
           <ActivityIndicator size="small" color="#059669" style={{ marginVertical: 20 }} />
         ) : orders.length > 0 ? (
           orders.map((order) => (
-            <View key={order.id} style={styles.orderCard}>
+            <TouchableOpacity key={order.id} style={styles.orderCard} onPress={() => router.push({ pathname: '/order-detail', params: { id: order.id } })}>
               <View>
                 <Text style={styles.orderPharmacy}>{order.pharmacyName}</Text>
                 <Text style={styles.orderDate}>{order.createdAt}</Text>
@@ -191,7 +455,7 @@ export default function HomeTab() {
                 <Text style={styles.orderStatus}>{order.status}</Text>
                 <Text style={styles.orderTotal}>₦{order.total?.toLocaleString()}</Text>
               </View>
-            </View>
+            </TouchableOpacity>
           ))
         ) : (
           <View style={styles.emptyState}>
@@ -306,4 +570,23 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   browseButtonText: { color: '#fff', fontWeight: '600', fontSize: 14 },
+  quickActionsRow: { flexDirection: 'row', gap: 12, marginTop: 12 },
+  actionButton: {
+    flex: 1,
+    backgroundColor: '#059669',
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  actionButtonText: { color: '#fff', fontWeight: '600', fontSize: 14 },
+  alertBox: {
+    backgroundColor: '#FEF3C7',
+    borderLeftWidth: 4,
+    borderLeftColor: '#D97706',
+  },
+  alertTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#B45309',
+  },
 });

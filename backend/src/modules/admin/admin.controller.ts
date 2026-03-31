@@ -343,6 +343,39 @@ export class AdminController {
   }
 
   /**
+   * GET /users
+   * Get all users
+   */
+  static async getUsers(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
+    try {
+      const schema = z.object({
+        limit: z.coerce.number().optional().default(200),
+      });
+
+      const validated = schema.parse(req.query);
+      const users = await AdminService.getAllUsers(validated.limit);
+
+      res.json(
+        apiResponse(true, {
+          users,
+          count: users.length,
+        })
+      );
+    } catch (error) {
+      logger.error("Get users error:", error);
+      res.status(500).json(
+        apiResponse(false, undefined, {
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to retrieve users",
+        })
+      );
+    }
+  }
+
+  /**
    * GET /dashboard
    * Get dashboard statistics
    */

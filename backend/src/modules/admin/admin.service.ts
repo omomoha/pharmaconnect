@@ -318,6 +318,25 @@ export class AdminService {
   }
 
   /**
+   * Get all users/profiles
+   */
+  static async getAllUsers(limit: number = 200): Promise<any[]> {
+    try {
+      const db = getFirestore();
+      const snapshot = await db
+        .collection(FIRESTORE_COLLECTIONS.USERS)
+        .orderBy("createdAt", "desc")
+        .limit(limit)
+        .get();
+
+      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+      logger.error("Failed to get all users:", error);
+      throw error;
+    }
+  }
+
+  /**
    * Get all transactions
    */
   static async getAllTransactions(limit: number = 100): Promise<Order[]> {
