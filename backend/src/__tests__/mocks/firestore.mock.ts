@@ -57,20 +57,25 @@ export const createFirestoreMock = () => {
 
       return {
         limit: jest.fn((limit: number) => ({
-          get: jest.fn(() =>
-            Promise.resolve({
-              empty: sorted.length === 0,
-              docs: sorted.slice(0, limit).map((doc) => ({
+          get: jest.fn(() => {
+            const sliced = sorted.slice(0, limit);
+            return Promise.resolve({
+              empty: sliced.length === 0,
+              size: sliced.length,
+              docs: sliced.map((doc) => ({
+                id: doc.id,
                 exists: true,
                 data: () => doc,
               })),
-            })
-          ),
+            });
+          }),
         })),
         get: jest.fn(() =>
           Promise.resolve({
             empty: sorted.length === 0,
+            size: sorted.length,
             docs: sorted.map((doc) => ({
+              id: doc.id,
               exists: true,
               data: () => doc,
             })),
@@ -83,31 +88,48 @@ export const createFirestoreMock = () => {
       where: jest.fn((field: string, operator: string, value: any) => {
         const refiltered = filtered.filter((item) => {
           if (operator === '==') return item[field] === value;
+          if (operator === '!=') return item[field] !== value;
           if (operator === '>') return item[field] > value;
           if (operator === '<') return item[field] < value;
+          if (operator === '>=') return item[field] >= value;
+          if (operator === '<=') return item[field] <= value;
           return false;
         });
         return createQueryChain(collectionName, refiltered);
       }),
       orderBy: jest.fn(orderByChain),
       limit: jest.fn((limit: number) => ({
-        get: jest.fn(() =>
-          Promise.resolve({
-            empty: filtered.length === 0,
-            docs: filtered.slice(0, limit).map((doc) => ({
+        get: jest.fn(() => {
+          const sliced = filtered.slice(0, limit);
+          return Promise.resolve({
+            empty: sliced.length === 0,
+            size: sliced.length,
+            docs: sliced.map((doc) => ({
+              id: doc.id,
               exists: true,
               data: () => doc,
             })),
-          })
-        ),
+          });
+        }),
       })),
       get: jest.fn(() =>
         Promise.resolve({
           empty: filtered.length === 0,
+          size: filtered.length,
           docs: filtered.map((doc) => ({
+            id: doc.id,
             exists: true,
             data: () => doc,
           })),
+          forEach: (callback: any) => {
+            filtered.forEach((doc) => {
+              callback({
+                id: doc.id,
+                exists: true,
+                data: () => doc,
+              });
+            });
+          },
         })
       ),
     };
@@ -123,8 +145,11 @@ export const createFirestoreMock = () => {
       where: jest.fn((field: string, operator: string, value: any) => {
         const filtered = mockCollectionData[collectionName].filter((item) => {
           if (operator === '==') return item[field] === value;
+          if (operator === '!=') return item[field] !== value;
           if (operator === '>') return item[field] > value;
           if (operator === '<') return item[field] < value;
+          if (operator === '>=') return item[field] >= value;
+          if (operator === '<=') return item[field] <= value;
           return false;
         });
         return createQueryChain(collectionName, filtered);
@@ -132,12 +157,23 @@ export const createFirestoreMock = () => {
       get: jest.fn(() =>
         Promise.resolve({
           empty: mockCollectionData[collectionName].length === 0,
+          size: mockCollectionData[collectionName].length,
           docs: mockCollectionData[collectionName].map((doc) => ({
+            id: doc.id,
             exists: true,
             data: () => doc,
           })),
         })
       ),
+      orderBy: jest.fn((field: string, direction: string = 'asc') => {
+        const sorted = [...mockCollectionData[collectionName]].sort((a, b) => {
+          if (direction === 'desc') {
+            return b[field] > a[field] ? 1 : -1;
+          }
+          return a[field] > b[field] ? 1 : -1;
+        });
+        return createQueryChain(collectionName, sorted);
+      }),
       add: jest.fn((data: any) => {
         const id = `doc_${Date.now()}`;
         const docWithId = { ...data, id };
@@ -188,6 +224,14 @@ export const createAuthMock = () => {
         mockUsers[uid].customClaims = claims;
       }
       return Promise.resolve();
+    }),
+    updateUser: jest.fn((uid: string, data: any) => {
+      if (mockUsers[uid]) {
+        mockUsers[uid] = { ...mockUsers[uid], ...data };
+      } else {
+        mockUsers[uid] = data;
+      }
+      return Promise.resolve({ uid });
     }),
   };
 };

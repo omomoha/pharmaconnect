@@ -19,6 +19,7 @@ export const FIRESTORE_COLLECTIONS = {
   REVIEWS: 'reviews',
   MODERATION_FLAGS: 'moderation_flags',
   ADMIN_NOTIFICATIONS: 'admin_notifications',
+  FLAGGED_ALERTS: 'flagged_alerts',
 };
 
 export const COMMISSION = {
@@ -81,6 +82,29 @@ export enum DrugCategory {
   VITAMINS = 'vitamins',
   TOPICAL = 'topical',
   OTHER = 'other',
+}
+
+export enum ConversationType {
+  CUSTOMER_PHARMACY = 'customer_pharmacy',
+  CUSTOMER_RIDER = 'customer_rider',
+}
+
+export enum ConversationStatus {
+  ACTIVE = 'active',
+  FLAGGED = 'flagged',
+  CLOSED = 'closed',
+}
+
+export enum MessageType {
+  TEXT = 'text',
+  IMAGE = 'image',
+  FILE = 'file',
+}
+
+export enum FlagAction {
+  DISMISSED = 'dismissed',
+  APPROVED = 'approved',
+  WARNED = 'warned',
 }
 
 export interface Order {
@@ -185,6 +209,113 @@ export interface DeliveryVerification {
   customerVerifiedAt?: Date;
   riderVerifiedAt?: Date;
   bothVerifiedAt?: Date;
+}
+
+export interface Conversation {
+  id: string;
+  type: ConversationType;
+  customerId: string;
+  pharmacyId?: string;
+  deliveryRiderId?: string;
+  status: ConversationStatus;
+  lastMessage?: string;
+  lastMessageAt?: Date;
+  flaggedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Message {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  senderRole: UserRole;
+  type: MessageType;
+  content: string;
+  imageUrl?: string;
+  flagged: boolean;
+  flaggedReason?: string;
+  readAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface FlaggedAlert {
+  id: string;
+  messageId: string;
+  conversationId: string;
+  senderId: string;
+  senderRole: UserRole;
+  suspiciousKeywords: string[];
+  nlpClassification: string;
+  confidenceScore: number;
+  action: FlagAction;
+  actionTakenBy?: string;
+  actionNotes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface User {
+  id: string;
+  email: string;
+  phoneNumber: string;
+  firstName: string;
+  lastName: string;
+  role: UserRole;
+  approvalStatus: ApprovalStatus;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Pharmacy {
+  id: string;
+  userId: string;
+  name: string;
+  email: string;
+  phoneNumber: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  licenseNumber: string;
+  licenseDocUrl: string;
+  cacNumber: string;
+  cacDocUrl: string;
+  ownerName: string;
+  ownerIdDocUrl: string;
+  operatingHours: OperatingHours;
+  approvalStatus: ApprovalStatus;
+  isActive: boolean;
+  rating: number;
+  totalReviews: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface PharmacyProduct {
+  id: string;
+  pharmacyId: string;
+  drugCatalogItemId: string;
+  sku: string;
+  quantity: number;
+  price: number;
+  discount?: number;
+  expiryDate: Date;
+  batchNumber: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface OperatingHours {
+  [key: string]: DayHours;
+}
+
+export interface DayHours {
+  open: string;
+  close: string;
+  closed: boolean;
 }
 
 export interface ApiResponse<T> {
