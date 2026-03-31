@@ -2,7 +2,7 @@
 
 import React, { ReactNode, useEffect } from 'react';
 
-type Size = 'sm' | 'md' | 'lg';
+type Size = 'sm' | 'md' | 'lg' | 'xl';
 
 interface ModalProps {
   isOpen: boolean;
@@ -16,6 +16,7 @@ const sizeClasses: Record<Size, string> = {
   sm: 'max-w-sm',
   md: 'max-w-md',
   lg: 'max-w-lg',
+  xl: 'max-w-3xl',
 };
 
 export default function Modal({
