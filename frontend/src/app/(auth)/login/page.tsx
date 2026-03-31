@@ -31,7 +31,7 @@ function getDashboardPath(role: string): string {
 
 export default function LoginPage() {
   const router = useRouter();
-  const { signIn, signInWithPhone, user } = useAuth();
+  const { signIn, signInWithPhone } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'email' | 'phone'>('email');
   const [isLoading, setIsLoading] = useState(false);

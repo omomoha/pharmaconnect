@@ -21,7 +21,7 @@ const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'
 
 export default function PharmacyOnboardingPage() {
   const router = useRouter();
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
 
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
