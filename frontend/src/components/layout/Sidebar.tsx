@@ -47,6 +47,18 @@ const navItems: Record<string, NavItem[]> = {
   ],
 };
 
+/**
+ * Derives the active role from the current URL path.
+ * Falls back to user profile role if URL doesn't contain a known role segment.
+ */
+function getRoleFromPath(pathname: string): string | null {
+  if (pathname.startsWith('/dashboard/admin')) return 'admin';
+  if (pathname.startsWith('/dashboard/pharmacy')) return 'pharmacy';
+  if (pathname.startsWith('/dashboard/delivery')) return 'delivery_provider';
+  if (pathname.startsWith('/dashboard/customer')) return 'customer';
+  return null;
+}
+
 export default function Sidebar() {
   const { profile, signOut } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
@@ -56,7 +68,10 @@ export default function Sidebar() {
     return null;
   }
 
-  const items = navItems[profile.role] || [];
+  // Use URL path to determine which nav items to show, falling back to profile role
+  const pathRole = getRoleFromPath(pathname);
+  const activeRole = pathRole || profile.role;
+  const items = navItems[activeRole] || navItems[profile.role] || [];
 
   return (
     <>
@@ -76,7 +91,7 @@ export default function Sidebar() {
       >
         {/* Sidebar Header */}
         <div className="px-6 py-8 border-b border-gray-700">
-          <h2 className="text-lg font-bold capitalize">{profile.role.replace('_', ' ')}</h2>
+          <h2 className="text-lg font-bold capitalize">{activeRole.replace('_', ' ')}</h2>
           <p className="text-sm text-gray-400 mt-1">{profile.name}</p>
         </div>
 
@@ -105,7 +120,7 @@ export default function Sidebar() {
         {/* Sidebar Footer */}
         <div className="border-t border-gray-700 p-6 space-y-3">
           <Link
-            href={`/dashboard/${profile.role}/settings`}
+            href={`/dashboard/${activeRole === 'delivery_provider' ? 'delivery' : activeRole}/settings`}
             className="block text-gray-300 hover:text-white py-2"
           >
             Settings

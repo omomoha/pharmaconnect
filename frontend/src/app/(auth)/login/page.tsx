@@ -3,14 +3,35 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { useAuth } from '@/contexts/AuthContext';
 
+/**
+ * Returns the correct dashboard path based on user role from Firestore
+ */
+function getDashboardPath(role: string): string {
+  switch (role) {
+    case 'pharmacy':
+      return '/dashboard/pharmacy';
+    case 'delivery_provider':
+      return '/dashboard/delivery';
+    case 'admin':
+    case 'platform_admin':
+    case 'support_admin':
+      return '/dashboard/admin';
+    case 'customer':
+    default:
+      return '/dashboard/customer';
+  }
+}
+
 export default function LoginPage() {
   const router = useRouter();
-  const { signIn, signInWithPhone } = useAuth();
+  const { signIn, signInWithPhone, user } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'email' | 'phone'>('email');
   const [isLoading, setIsLoading] = useState(false);
@@ -25,6 +46,24 @@ export default function LoginPage() {
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
 
+  /**
+   * After sign-in, fetch the user's role from Firestore and redirect accordingly
+   */
+  const redirectByRole = async (uid: string) => {
+    try {
+      const profileDoc = await getDoc(doc(db, 'profiles', uid));
+      if (profileDoc.exists()) {
+        const role = profileDoc.data().role;
+        router.push(getDashboardPath(role));
+      } else {
+        // No profile found — fallback to customer dashboard
+        router.push('/dashboard/customer');
+      }
+    } catch {
+      router.push('/dashboard/customer');
+    }
+  };
+
   // Handle email login
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,7 +72,13 @@ export default function LoginPage() {
 
     try {
       await signIn(email, password);
-      router.push('/dashboard/customer');
+      // signIn stores the profile in context; read the UID from Firebase Auth
+      const currentUser = (await import('@/lib/firebase')).auth.currentUser;
+      if (currentUser) {
+        await redirectByRole(currentUser.uid);
+      } else {
+        router.push('/dashboard/customer');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to sign in');
     } finally {
@@ -55,7 +100,12 @@ export default function LoginPage() {
       } else {
         // Verify OTP (handled in AuthContext)
         setOtpSent(false);
-        router.push('/dashboard/customer');
+        const currentUser = (await import('@/lib/firebase')).auth.currentUser;
+        if (currentUser) {
+          await redirectByRole(currentUser.uid);
+        } else {
+          router.push('/dashboard/customer');
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to process phone login');
