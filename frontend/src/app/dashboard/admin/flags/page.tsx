@@ -282,12 +282,18 @@ export default function FlagsModerationPage() {
   const [selectedAction, setSelectedAction] = useState<
     'dismiss' | 'warn' | 'suspend' | 'escalate' | null
   >(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [sortBy, setSortBy] = useState('newest');
 
   const tabs = ['All', 'Pending', 'Reviewing', 'Resolved', 'Escalated'];
+
+  const itemsPerPage = 10;
 
   const filterFlags = () => {
     let filtered = sampleFlags;
 
+    // Filter by tab status
     if (activeTab === 'Pending') {
       filtered = filtered.filter((f) => f.status === 'Pending');
     } else if (activeTab === 'Reviewing') {
@@ -298,10 +304,45 @@ export default function FlagsModerationPage() {
       filtered = filtered.filter((f) => f.status === 'Escalated');
     }
 
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter((f) =>
+        f.description.toLowerCase().includes(query) ||
+        f.sender.toLowerCase().includes(query) ||
+        f.recipient.toLowerCase().includes(query) ||
+        f.type.toLowerCase().includes(query) ||
+        f.messages.some((msg) => msg.message.toLowerCase().includes(query))
+      );
+    }
+
+    // Sort flags
+    if (sortBy === 'newest') {
+      filtered = filtered.sort(
+        (a, b) => new Date(b.flaggedAt).getTime() - new Date(a.flaggedAt).getTime()
+      );
+    } else if (sortBy === 'oldest') {
+      filtered = filtered.sort(
+        (a, b) => new Date(a.flaggedAt).getTime() - new Date(b.flaggedAt).getTime()
+      );
+    } else if (sortBy === 'severity') {
+      const severityOrder = { High: 0, Medium: 1, Low: 2 };
+      filtered = filtered.sort(
+        (a, b) =>
+          (severityOrder[a.severity as keyof typeof severityOrder] || 3) -
+          (severityOrder[b.severity as keyof typeof severityOrder] || 3)
+      );
+    }
+
     return filtered;
   };
 
   const filteredFlags = filterFlags();
+  const totalResults = filteredFlags.length;
+  const totalPages = Math.ceil(totalResults / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, totalResults);
+  const paginatedFlags = filteredFlags.slice(startIndex, endIndex);
 
   // Calculate stats
   const totalFlags = sampleFlags.length;
@@ -379,12 +420,45 @@ export default function FlagsModerationPage() {
           label: tab,
         }))}
         activeTab={activeTab}
-        onChange={setActiveTab}
+        onChange={(newTab) => {
+          setActiveTab(newTab);
+          setCurrentPage(1);
+        }}
       />
+
+      {/* Search and Sort Row */}
+      <div className="flex flex-col md:flex-row gap-3 mb-4">
+        <input
+          type="text"
+          placeholder="Search flags..."
+          value={searchQuery}
+          onChange={(e) => {
+            setSearchQuery(e.target.value);
+            setCurrentPage(1);
+          }}
+          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value)}
+          className="px-4 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        >
+          <option value="newest">Newest First</option>
+          <option value="oldest">Oldest First</option>
+          <option value="severity">Severity (High → Low)</option>
+        </select>
+      </div>
+
+      {/* Results Info */}
+      {totalResults > 0 && (
+        <div className="text-sm text-gray-600 mb-4">
+          Showing {startIndex + 1}-{endIndex} of {totalResults} results
+        </div>
+      )}
 
       {/* Flags Grid */}
       <div className="space-y-4">
-        {filteredFlags.map((flag) => (
+        {paginatedFlags.map((flag) => (
           <Card
             key={flag.id}
             className="hover:shadow-md transition-shadow duration-200"
@@ -520,9 +594,36 @@ export default function FlagsModerationPage() {
       {filteredFlags.length === 0 && (
         <Card>
           <CardContent className="py-12 text-center">
-            <p className="text-gray-600">No flags in this category</p>
+            <p className="text-gray-600">
+              {searchQuery ? 'No flags match your search' : 'No flags in this category'}
+            </p>
           </CardContent>
         </Card>
+      )}
+
+      {/* Pagination Bar */}
+      {totalResults > 0 && totalPages > 1 && (
+        <div className="flex items-center justify-between py-4 border-t border-gray-200">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+            disabled={currentPage === 1}
+          >
+            Previous
+          </Button>
+          <div className="text-sm text-gray-600">
+            Page {currentPage} of {totalPages}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+            disabled={currentPage === totalPages}
+          >
+            Next
+          </Button>
+        </div>
       )}
 
       {/* Detail Modal */}

@@ -12,7 +12,7 @@ import {
 import { router } from 'expo-router';
 import { useAuth } from '../src/contexts/AuthContext';
 
-type Role = 'customer' | 'pharmacy_admin' | 'delivery_admin';
+type Role = 'customer' | 'pharmacy' | 'delivery_provider';
 
 export default function RegisterScreen() {
   const { signUp, setupProfile } = useAuth();
@@ -48,9 +48,20 @@ export default function RegisterScreen() {
         phone: phone.trim(),
       });
 
-      Alert.alert('Success', 'Account created successfully!', [
-        { text: 'OK', onPress: () => router.replace('/(tabs)') },
-      ]);
+      // Role-based redirect
+      if (role === 'pharmacy') {
+        Alert.alert('Account Created!', 'Now let\'s set up your pharmacy profile.', [
+          { text: 'Continue', onPress: () => router.replace('/pharmacy-onboarding') },
+        ]);
+      } else if (role === 'delivery_provider') {
+        Alert.alert('Account Created!', 'Now let\'s set up your delivery business profile.', [
+          { text: 'Continue', onPress: () => router.replace('/delivery-onboarding') },
+        ]);
+      } else {
+        Alert.alert('Success', 'Account created successfully!', [
+          { text: 'OK', onPress: () => router.replace('/(tabs)') },
+        ]);
+      }
     } catch (error: any) {
       let message = 'Registration failed. Please try again.';
       if (error.code === 'auth/email-already-in-use') {
@@ -68,8 +79,8 @@ export default function RegisterScreen() {
 
   const roles: { value: Role; label: string; icon: string }[] = [
     { value: 'customer', label: 'Shopper', icon: '🛒' },
-    { value: 'pharmacy_admin', label: 'Pharmacy', icon: '💊' },
-    { value: 'delivery_admin', label: 'Delivery', icon: '🚚' },
+    { value: 'pharmacy', label: 'Pharmacy', icon: '💊' },
+    { value: 'delivery_provider', label: 'Delivery', icon: '🚚' },
   ];
 
   return (

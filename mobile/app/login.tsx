@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../src/contexts/AuthContext';
+import { apiClient } from '../src/lib/api';
 
 export default function LoginScreen() {
   const { signIn } = useAuth();
@@ -28,6 +29,47 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       await signIn(email.trim(), password);
+
+      // Fetch profile to determine role and check onboarding status
+      try {
+        const profileRes = await apiClient.get('/auth/me');
+        if (profileRes.success && profileRes.data) {
+          const role = profileRes.data.role;
+
+          // Check if pharmacy user needs onboarding
+          if (role === 'pharmacy' || role === 'pharmacy_admin') {
+            try {
+              const pharmaRes = await apiClient.get('/pharmacies/my-pharmacy');
+              if (!pharmaRes.success || !pharmaRes.data) {
+                router.replace('/pharmacy-onboarding');
+                return;
+              }
+            } catch {
+              // If fetch fails, route to onboarding
+              router.replace('/pharmacy-onboarding');
+              return;
+            }
+          }
+          // Check if delivery user needs onboarding
+          else if (role === 'delivery_provider' || role === 'delivery_admin') {
+            try {
+              const delivRes = await apiClient.get('/delivery/providers/my-provider');
+              if (!delivRes.success || !delivRes.data) {
+                router.replace('/delivery-onboarding');
+                return;
+              }
+            } catch {
+              // If fetch fails, route to onboarding
+              router.replace('/delivery-onboarding');
+              return;
+            }
+          }
+        }
+      } catch {
+        // Fallthrough to default route if profile fetch fails
+      }
+
+      // Default route for all roles (tab layout handles role-specific UI)
       router.replace('/(tabs)');
     } catch (error: any) {
       let message = 'Sign in failed. Please try again.';

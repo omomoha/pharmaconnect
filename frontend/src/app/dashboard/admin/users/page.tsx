@@ -147,36 +147,67 @@ export default function UserManagementPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isActionModalOpen, setIsActionModalOpen] = useState(false);
   const [actionType, setActionType] = useState<'suspend' | 'activate' | null>(null);
+  const [sortField, setSortField] = useState<keyof User>('name');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const tabs = ['All', 'Customers', 'Pharmacies', 'Delivery Providers', 'Admins'];
 
-  const filterUsers = (users: User[]) => {
-    let filtered = users;
+  const handleSort = (field: keyof User) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+    setCurrentPage(1);
+  };
+
+  const processUsers = (users: User[]) => {
+    let processed = users;
 
     // Filter by role
     if (activeTab === 'Customers') {
-      filtered = filtered.filter((u) => u.role === 'Customer');
+      processed = processed.filter((u) => u.role === 'Customer');
     } else if (activeTab === 'Pharmacies') {
-      filtered = filtered.filter((u) => u.role === 'Pharmacy');
+      processed = processed.filter((u) => u.role === 'Pharmacy');
     } else if (activeTab === 'Delivery Providers') {
-      filtered = filtered.filter((u) => u.role === 'Delivery');
+      processed = processed.filter((u) => u.role === 'Delivery');
     } else if (activeTab === 'Admins') {
-      filtered = filtered.filter((u) => u.role === 'Admin');
+      processed = processed.filter((u) => u.role === 'Admin');
     }
 
     // Filter by search
     if (searchTerm) {
-      filtered = filtered.filter(
+      processed = processed.filter(
         (u) =>
           u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           u.email.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
-    return filtered;
+    // Sort
+    processed = [...processed].sort((a, b) => {
+      const aValue = a[sortField];
+      const bValue = b[sortField];
+
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return sortDirection === 'asc'
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue);
+      }
+
+      return 0;
+    });
+
+    return processed;
   };
 
-  const filteredUsers = filterUsers(sampleUsers);
+  const allProcessedUsers = processUsers(sampleUsers);
+  const totalPages = Math.ceil(allProcessedUsers.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const filteredUsers = allProcessedUsers.slice(startIndex, startIndex + itemsPerPage);
 
   const openActionModal = (user: User, action: 'suspend' | 'activate') => {
     setSelectedUser(user);
@@ -243,20 +274,35 @@ export default function UserManagementPage() {
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm">
-                    Name
+                  <th
+                    className="text-left py-4 px-6 font-semibold text-gray-700 text-sm cursor-pointer hover:bg-gray-100 select-none"
+                    onClick={() => handleSort('name')}
+                  >
+                    Name {sortField === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
-                  <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm">
-                    Email
+                  <th
+                    className="text-left py-4 px-6 font-semibold text-gray-700 text-sm cursor-pointer hover:bg-gray-100 select-none"
+                    onClick={() => handleSort('email')}
+                  >
+                    Email {sortField === 'email' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
-                  <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm">
-                    Role
+                  <th
+                    className="text-left py-4 px-6 font-semibold text-gray-700 text-sm cursor-pointer hover:bg-gray-100 select-none"
+                    onClick={() => handleSort('role')}
+                  >
+                    Role {sortField === 'role' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
-                  <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm">
-                    Status
+                  <th
+                    className="text-left py-4 px-6 font-semibold text-gray-700 text-sm cursor-pointer hover:bg-gray-100 select-none"
+                    onClick={() => handleSort('status')}
+                  >
+                    Status {sortField === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
-                  <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm">
-                    Joined
+                  <th
+                    className="text-left py-4 px-6 font-semibold text-gray-700 text-sm cursor-pointer hover:bg-gray-100 select-none"
+                    onClick={() => handleSort('joinedDate')}
+                  >
+                    Joined {sortField === 'joinedDate' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm">
                     Actions
@@ -327,6 +373,46 @@ export default function UserManagementPage() {
           {filteredUsers.length === 0 && (
             <div className="text-center py-12">
               <p className="text-gray-600">No users found</p>
+            </div>
+          )}
+
+          {allProcessedUsers.length > 0 && (
+            <div className="flex items-center justify-between border-t border-gray-200 px-4 py-3 mt-4">
+              <div className="text-sm text-gray-500">
+                Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, allProcessedUsers.length)} of{' '}
+                {allProcessedUsers.length} results
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setCurrentPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 rounded border border-gray-300 text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Previous
+                </button>
+                <div className="flex gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                        currentPage === page
+                          ? 'bg-blue-500 text-white'
+                          : 'border border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => setCurrentPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1 rounded border border-gray-300 text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Next
+                </button>
+              </div>
             </div>
           )}
         </CardContent>

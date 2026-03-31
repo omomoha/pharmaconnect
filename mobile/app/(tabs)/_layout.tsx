@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
 import { Text } from 'react-native';
+import { useAuth } from '../../src/contexts/AuthContext';
 
 function TabIcon({ name, focused }: { name: string; focused: boolean }) {
   const icons: Record<string, string> = {
@@ -17,6 +18,21 @@ function TabIcon({ name, focused }: { name: string; focused: boolean }) {
 }
 
 export default function TabLayout() {
+  const { profile } = useAuth();
+  const role = profile?.role || 'customer';
+
+  // Determine which tabs to show based on role
+  const isCustomer = role === 'customer';
+  const isPharmacy = role === 'pharmacy' || role === 'pharmacy_admin';
+  const isDelivery = role === 'delivery_provider' || role === 'delivery_admin';
+  const isAdmin = role === 'platform_admin' || role === 'admin' || role === 'support_admin';
+
+  // Tab labels per role
+  const homeTitle = isPharmacy ? 'Dashboard' : isDelivery ? 'Dashboard' : isAdmin ? 'Dashboard' : 'Home';
+  const pharmaciesTitle = isAdmin ? 'Users' : 'Pharmacies';
+  const ordersTitle = isDelivery ? 'Deliveries' : 'Orders';
+  const messagesTitle = isAdmin ? 'Flags' : 'Messages';
+
   return (
     <Tabs
       screenOptions={{
@@ -31,28 +47,30 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: homeTitle,
           tabBarIcon: ({ focused }) => <TabIcon name="home" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="pharmacies"
         options={{
-          title: 'Pharmacies',
+          title: pharmaciesTitle,
           tabBarIcon: ({ focused }) => <TabIcon name="pharmacies" focused={focused} />,
+          // Hide for delivery providers
+          href: isDelivery ? null : undefined,
         }}
       />
       <Tabs.Screen
         name="orders"
         options={{
-          title: 'Orders',
+          title: ordersTitle,
           tabBarIcon: ({ focused }) => <TabIcon name="orders" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="messages"
         options={{
-          title: 'Messages',
+          title: messagesTitle,
           tabBarIcon: ({ focused }) => <TabIcon name="messages" focused={focused} />,
         }}
       />

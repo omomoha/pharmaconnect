@@ -14,6 +14,8 @@ export default function RootLayout() {
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="login" options={{ title: 'Sign In' }} />
         <Stack.Screen name="register" options={{ title: 'Create Account' }} />
+        <Stack.Screen name="pharmacy-onboarding" options={{ title: 'Pharmacy Setup' }} />
+        <Stack.Screen name="delivery-onboarding" options={{ title: 'Delivery Setup' }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       </Stack>
     </AuthProvider>
