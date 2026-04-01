@@ -58,17 +58,17 @@ export default function FlagsModerationPage() {
 
       if (response.success && response.data) {
         // Map API response to Flag interface
-        const mappedFlags: Flag[] = response.data.map((alert) => ({
+        const mappedFlags: Flag[] = response.data.map((alert: any) => ({
           id: alert.id,
-          type: (alert.type as any) || 'Policy Violation',
-          severity: (alert.severity as any) || 'Medium',
-          description: alert.description || '',
-          sender: alert.senderName || 'Unknown',
+          type: alert.type || alert.nlpClassification || 'Policy Violation',
+          severity: alert.severity || (alert.confidenceScore > 0.8 ? 'High' : 'Medium'),
+          description: alert.description || alert.suspiciousKeywords?.join(', ') || '',
+          sender: alert.senderName || alert.senderId || 'Unknown',
           recipient: alert.recipientName || 'Unknown',
           flaggedAt: alert.createdAt
             ? new Date(alert.createdAt).toLocaleString()
             : 'Unknown',
-          status: (alert.status as any) || 'Pending',
+          status: alert.status || alert.action || 'Pending',
           messages: alert.context || [],
         }));
         setFlags(mappedFlags);

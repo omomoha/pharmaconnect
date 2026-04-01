@@ -1,7 +1,7 @@
 'use client';
 
-import { PageHeader } from '@/components/ui/PageHeader';
-import { DrugInteractionChecker } from '@/components/ai/DrugInteractionChecker';
+import PageHeader from '@/components/ui/PageHeader';
+import DrugInteractionChecker from '@/components/ai/DrugInteractionChecker';
 
 export default function DrugInteractionsPage() {
   return (
