@@ -6,32 +6,40 @@ import type { ApiResponse } from '@/shared/types';
  */
 
 export interface SmartSearchResult {
-  suggestions: string[];
+  query: string;
   categories: string[];
-  recommendedPharmacies: Array<{
-    id: string;
-    name: string;
-    distance: number;
-  }>;
+  symptoms: string[];
+  drugNames: string[];
+  location?: { lat: number; lng: number };
+  confidence: number;
 }
 
 export interface DrugInteraction {
   drug1: string;
   drug2: string;
-  severity: 'info' | 'warning' | 'danger';
+  severity: 'mild' | 'moderate' | 'severe';
   description: string;
+  recommendation: string;
 }
 
 export interface DrugInteractionCheckResult {
   drugs: string[];
   interactions: DrugInteraction[];
+  warnings: string[];
+  safe: boolean;
 }
 
 export interface Recommendation {
-  type: 'medication' | 'pharmacy' | 'health_tip';
-  title: string;
-  description: string;
-  action?: string;
+  productId: string;
+  productName: string;
+  category: string;
+  reason: string;
+  confidence: number;
+}
+
+export interface RecommendationsResult {
+  recommendations: Recommendation[];
+  message: string;
 }
 
 export interface ChatMessage {
@@ -40,8 +48,9 @@ export interface ChatMessage {
 }
 
 export interface ChatResponse {
-  message: string;
-  disclaimer?: string;
+  response: string;
+  conversationContinued: boolean;
+  disclaimers: string[];
 }
 
 /**
@@ -53,14 +62,11 @@ export async function smartSearch(
   lng?: number
 ): Promise<ApiResponse<SmartSearchResult>> {
   try {
-    const params: Record<string, string | number> = {
-      q: query,
-    };
+    const payload: Record<string, string | number> = { query };
+    if (lat !== undefined) payload.lat = lat;
+    if (lng !== undefined) payload.lng = lng;
 
-    if (lat !== undefined) params.lat = lat;
-    if (lng !== undefined) params.lng = lng;
-
-    const response = await apiClient.get('/ai/search', { params });
+    const response = await apiClient.post('/ai/search', payload);
     return response;
   } catch (error) {
     console.error('Smart search failed:', error);
@@ -81,7 +87,7 @@ export async function checkDrugInteractions(
   drugs: string[]
 ): Promise<ApiResponse<DrugInteractionCheckResult>> {
   try {
-    const response = await apiClient.post('/ai/drug-interactions', { drugs });
+    const response = await apiClient.post('/ai/interactions', { drugs });
     return response;
   } catch (error) {
     console.error('Drug interaction check failed:', error);
@@ -99,7 +105,7 @@ export async function checkDrugInteractions(
  * Get personalized recommendations for the user
  */
 export async function getRecommendations(): Promise<
-  ApiResponse<Recommendation[]>
+  ApiResponse<RecommendationsResult>
 > {
   try {
     const response = await apiClient.get('/ai/recommendations');
@@ -126,7 +132,7 @@ export async function chatWithAssistant(
   try {
     const payload = {
       message,
-      history: conversationHistory || [],
+      conversationHistory: conversationHistory || [],
     };
 
     const response = await apiClient.post('/ai/chat', payload);

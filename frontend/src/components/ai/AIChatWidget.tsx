@@ -53,9 +53,18 @@ export default function AIChatWidget() {
       if (response.success && response.data) {
         const assistantMessage: ChatMessage = {
           role: 'assistant',
-          content: response.data.message,
+          content: response.data.response,
         };
         setMessages((prev) => [...prev, assistantMessage]);
+
+        // Show disclaimers if any
+        if (response.data.disclaimers && response.data.disclaimers.length > 0) {
+          const disclaimerMessage: ChatMessage = {
+            role: 'assistant',
+            content: '⚠️ ' + response.data.disclaimers.join('\n'),
+          };
+          setMessages((prev) => [...prev, disclaimerMessage]);
+        }
       } else {
         setError(
           response.error?.message || 'Failed to get response from assistant'

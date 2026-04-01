@@ -113,8 +113,9 @@ export function useSmartSearch(
     error,
     search,
     clear,
-    suggestions: results?.suggestions || [],
     categories: results?.categories || [],
-    recommendedPharmacies: results?.recommendedPharmacies || [],
+    symptoms: results?.symptoms || [],
+    drugNames: results?.drugNames || [],
+    confidence: results?.confidence ?? 0,
   };
 }

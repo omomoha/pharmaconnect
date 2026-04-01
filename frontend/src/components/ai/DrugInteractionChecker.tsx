@@ -76,11 +76,11 @@ export default function DrugInteractionChecker() {
 
   const getSeverityColor = (severity: DrugInteraction['severity']) => {
     switch (severity) {
-      case 'danger':
+      case 'severe':
         return 'bg-red-50 border-red-200 text-red-900';
-      case 'warning':
+      case 'moderate':
         return 'bg-amber-50 border-amber-200 text-amber-900';
-      case 'info':
+      case 'mild':
         return 'bg-blue-50 border-blue-200 text-blue-900';
       default:
         return 'bg-gray-50 border-gray-200 text-gray-900';
@@ -89,11 +89,11 @@ export default function DrugInteractionChecker() {
 
   const getSeverityBadgeColor = (severity: DrugInteraction['severity']) => {
     switch (severity) {
-      case 'danger':
+      case 'severe':
         return 'bg-red-100 text-red-800';
-      case 'warning':
+      case 'moderate':
         return 'bg-amber-100 text-amber-800';
-      case 'info':
+      case 'mild':
         return 'bg-blue-100 text-blue-800';
       default:
         return 'bg-gray-100 text-gray-800';
@@ -233,6 +233,50 @@ export default function DrugInteractionChecker() {
                 Interaction Results
               </h3>
 
+              {/* Overall safety status */}
+              {results.safe !== undefined && (
+                <div className={`rounded-lg p-4 mb-3 ${results.safe ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+                  <div className="flex gap-3">
+                    <svg
+                      className={`w-5 h-5 flex-shrink-0 mt-0.5 ${results.safe ? 'text-green-600' : 'text-red-600'}`}
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      {results.safe ? (
+                        <path
+                          fillRule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                          clipRule="evenodd"
+                        />
+                      ) : (
+                        <path
+                          fillRule="evenodd"
+                          d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                          clipRule="evenodd"
+                        />
+                      )}
+                    </svg>
+                    <p className={`text-sm font-medium ${results.safe ? 'text-green-800' : 'text-red-800'}`}>
+                      {results.safe
+                        ? 'This combination appears to be safe based on our analysis.'
+                        : 'Potential interactions detected. Please consult your pharmacist or doctor.'}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Warnings */}
+              {results.warnings && results.warnings.length > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-3">
+                  <p className="text-sm font-semibold text-amber-900 mb-1">Warnings:</p>
+                  <ul className="text-sm text-amber-800 space-y-1">
+                    {results.warnings.map((warning, i) => (
+                      <li key={i}>• {warning}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               {results.interactions.length === 0 ? (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                   <div className="flex gap-3">
@@ -278,8 +322,13 @@ export default function DrugInteractionChecker() {
                             </span>
                           </div>
                           <p className="text-sm">{interaction.description}</p>
+                          {interaction.recommendation && (
+                            <p className="text-sm mt-2 font-medium">
+                              Recommendation: {interaction.recommendation}
+                            </p>
+                          )}
                         </div>
-                        {interaction.severity === 'danger' && (
+                        {interaction.severity === 'severe' && (
                           <svg
                             className="w-5 h-5 flex-shrink-0 text-red-600 mt-0.5"
                             fill="currentColor"

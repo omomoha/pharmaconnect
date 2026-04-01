@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import PageHeader from '@/components/ui/PageHeader';
 import Button from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import Input from '@/components/ui/Input';
-import { useNearbyPharmacies, useGeolocation } from '@/hooks';
+import { useNearbyPharmacies, useGeolocation, useSmartSearch } from '@/hooks';
 
 // Sample pharmacies data (fallback when API returns empty)
 const SAMPLE_PHARMACIES = [
@@ -118,6 +118,10 @@ export default function PharmaciesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState<'distance' | 'rating' | 'delivery'>('distance');
+  const [showSmartResults, setShowSmartResults] = useState(false);
+
+  // AI smart search
+  const { results: smartResults, loading: aiLoading, symptoms, drugNames, categories: aiCategories, confidence } = useSmartSearch(searchQuery);
 
   // Get user's geolocation
   const { latitude, longitude, loading: geoLoading, isUsingDefaults } = useGeolocation();
@@ -205,14 +209,109 @@ export default function PharmaciesPage() {
       {/* Search and Filters */}
       <Card>
         <CardContent className="pt-6 space-y-4">
-          {/* Search Bar */}
-          <Input
-            type="text"
-            placeholder="Search pharmacies or locations..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full"
-          />
+          {/* Search Bar with Smart Results */}
+          <div className="relative">
+            <Input
+              type="text"
+              placeholder="Search pharmacies or locations..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setShowSmartResults(e.target.value.trim().length > 0);
+              }}
+              onFocus={() => setShowSmartResults(searchQuery.trim().length > 0)}
+              onBlur={() => setTimeout(() => setShowSmartResults(false), 200)}
+              className="w-full"
+            />
+
+            {/* Smart Search Results Dropdown */}
+            {showSmartResults && searchQuery.trim() && (smartResults || symptoms.length > 0 || drugNames.length > 0) && (
+              <div className="absolute top-full mt-2 left-0 right-0 bg-white border-2 border-primary-300 rounded-lg shadow-lg z-10 p-4 space-y-4">
+                {/* Confidence Indicator */}
+                <div className="flex items-center gap-2">
+                  <div className="h-2 flex-grow bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-amber-400 to-green-500 transition-all"
+                      style={{ width: `${Math.min(confidence * 100, 100)}%` }}
+                    />
+                  </div>
+                  <span className="text-xs font-medium text-gray-600">
+                    {Math.round(confidence * 100)}% match
+                  </span>
+                </div>
+
+                {/* Symptoms */}
+                {symptoms.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-gray-700 mb-2">Detected Symptoms</p>
+                    <div className="flex flex-wrap gap-2">
+                      {symptoms.map((symptom) => (
+                        <button
+                          key={symptom}
+                          onClick={() => setSearchQuery(symptom)}
+                          className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded-full hover:bg-blue-200 transition-colors"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                          </svg>
+                          {symptom}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Drug Names */}
+                {drugNames.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-gray-700 mb-2">Matching Products</p>
+                    <div className="flex flex-wrap gap-2">
+                      {drugNames.map((drug) => (
+                        <button
+                          key={drug}
+                          onClick={() => setSearchQuery(drug)}
+                          className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 text-sm rounded-full hover:bg-green-200 transition-colors"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                          </svg>
+                          {drug}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Categories */}
+                {aiCategories.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-gray-700 mb-2">Categories</p>
+                    <div className="flex flex-wrap gap-2">
+                      {aiCategories.map((category) => (
+                        <button
+                          key={category}
+                          onClick={() => setSearchQuery(category)}
+                          className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-700 text-sm rounded-full hover:bg-purple-200 transition-colors"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                          </svg>
+                          {category}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {aiLoading && (
+                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <div className="animate-spin w-3 h-3 border-2 border-gray-300 border-t-primary-600 rounded-full" />
+                    Analyzing search...
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Filters Row */}
           <div className="grid md:grid-cols-2 gap-4">
