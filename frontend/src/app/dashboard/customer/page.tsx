@@ -23,7 +23,7 @@ export default function CustomerDashboard() {
   const { unreadCount } = useNotifications();
   const { symptoms: searchSymptoms, drugNames: searchDrugNames, categories: searchCategories, loading: searchLoading } = useSmartSearch(searchQuery);
   const { latitude, longitude, loading: geoLoading, isUsingDefaults } = useGeolocation();
-  const { pharmacies: nearbyPharmacies, loading: pharmaciesLoading, error: pharmaciesError } = useNearbyPharmacies(latitude ?? 6.4541, longitude ?? 3.4218, 10);
+  const { pharmacies: nearbyPharmacies, loading: pharmaciesLoading } = useNearbyPharmacies(latitude ?? 6.4541, longitude ?? 3.4218, 10);
 
   useEffect(() => {
     if (ordersError) toast.error('Failed to load recent orders');
