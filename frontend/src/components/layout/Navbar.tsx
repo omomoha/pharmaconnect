@@ -49,17 +49,17 @@ export default function Navbar() {
           <div className="flex items-center gap-4">
             {user ? (
               <Link href="/dashboard">
-                <Button size="md" variant="primary">
+                <Button size="sm" variant="primary">
                   Dashboard
                 </Button>
               </Link>
             ) : (
               <>
                 <Link href="/login" className="hidden sm:block">
-                  <Button variant="ghost">Login</Button>
+                  <Button size="sm" variant="ghost">Login</Button>
                 </Link>
                 <Link href="/register">
-                  <Button size="md" variant="primary">
+                  <Button size="sm" variant="primary">
                     Sign Up
                   </Button>
                 </Link>

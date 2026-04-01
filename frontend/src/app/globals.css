@@ -45,7 +45,7 @@ body {
 }
 
 .button-base {
-  @apply font-medium transition-all duration-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2;
+  @apply font-medium transition-all duration-150 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-1;
 }
 
 .text-gradient {

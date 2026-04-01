@@ -19,6 +19,7 @@ const navItems: Record<string, NavItem[]> = {
     { label: 'Drug Checker', href: '/dashboard/customer/drug-interactions', icon: '💊' },
     { label: 'Messages', href: '/dashboard/customer/messages', icon: '💬' },
     { label: 'Profile', href: '/dashboard/customer/profile', icon: '👤' },
+    { label: 'Settings', href: '/dashboard/customer/settings', icon: '⚙️' },
   ],
   pharmacy: [
     { label: 'Dashboard', href: '/dashboard/pharmacy', icon: '📊' },
@@ -36,6 +37,7 @@ const navItems: Record<string, NavItem[]> = {
     { label: 'Earnings', href: '/dashboard/delivery/earnings', icon: '💰' },
     { label: 'Messages', href: '/dashboard/delivery/messages', icon: '💬' },
     { label: 'Profile', href: '/dashboard/delivery/profile', icon: '👤' },
+    { label: 'Settings', href: '/dashboard/delivery/settings', icon: '⚙️' },
   ],
   admin: [
     { label: 'Dashboard', href: '/dashboard/admin', icon: '📊' },

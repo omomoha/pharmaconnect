@@ -21,26 +21,26 @@ export default function HomePage() {
             </p>
 
             {/* Search Bar */}
-            <div className="flex flex-col sm:flex-row gap-3 max-w-2xl mx-auto mt-8">
+            <div className="flex flex-col sm:flex-row gap-2 max-w-xl mx-auto mt-8">
               <input
                 type="text"
                 placeholder="Search for medications or pharmacies..."
-                className="flex-1 px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-primary-500 focus:outline-none"
+                className="flex-1 px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none"
               />
-              <Button size="lg" variant="primary">
+              <Button size="md" variant="primary">
                 Search
               </Button>
             </div>
 
             {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row justify-center gap-4 mt-12">
+            <div className="flex flex-col sm:flex-row justify-center gap-3 mt-10">
               <Link href="/register?role=customer">
-                <Button size="lg" variant="primary">
+                <Button size="md" variant="primary">
                   Get Started as Customer
                 </Button>
               </Link>
               <Link href="/register?role=pharmacy">
-                <Button size="lg" variant="outline">
+                <Button size="md" variant="outline">
                   Join as Pharmacy
                 </Button>
               </Link>
@@ -170,14 +170,14 @@ export default function HomePage() {
             Join thousands of customers who trust PharmaConnect for their medication needs.
           </p>
 
-          <div className="flex flex-col sm:flex-row justify-center gap-4 mt-8">
+          <div className="flex flex-col sm:flex-row justify-center gap-3 mt-8">
             <Link href="/register?role=customer">
-              <Button size="lg" variant="ghost" className="bg-white !text-primary-600 hover:bg-gray-100 shadow-md w-full sm:w-auto">
+              <Button size="md" variant="ghost" className="bg-white !text-primary-600 hover:bg-gray-100 shadow-sm w-full sm:w-auto">
                 Sign Up as Customer
               </Button>
             </Link>
             <Link href="/register?role=pharmacy">
-              <Button size="lg" variant="outline" className="border-white text-white hover:bg-primary-700 w-full sm:w-auto">
+              <Button size="md" variant="outline" className="border-white text-white hover:bg-primary-700 w-full sm:w-auto">
                 Register Your Pharmacy
               </Button>
             </Link>
