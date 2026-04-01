@@ -41,9 +41,12 @@ export default function UserManagementPage() {
         setLoading(true);
         setError(null);
         const response = await getUsers();
+        const usersData = response.success && response.data
+          ? (Array.isArray(response.data) ? response.data : response.data.users || [])
+          : [];
 
         // Map API response to User interface
-        const mappedUsers = response.users.map((u: any) => ({
+        const mappedUsers = usersData.map((u: any) => ({
           id: u.id,
           name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email,
           email: u.email,
@@ -134,7 +137,10 @@ export default function UserManagementPage() {
     const fetchUsers = async () => {
       try {
         const response = await getUsers();
-        const mappedUsers = response.users.map((u: any) => ({
+        const usersData = response.success && response.data
+          ? (Array.isArray(response.data) ? response.data : response.data.users || [])
+          : [];
+        const mappedUsers = usersData.map((u: any) => ({
           id: u.id,
           name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email,
           email: u.email,
