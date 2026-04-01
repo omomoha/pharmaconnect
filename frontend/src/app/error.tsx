@@ -14,8 +14,6 @@ export default function Error({ error, reset }: ErrorProps) {
   }, [error]);
 
   return (
-    <html lang="en">
-      <body>
         <div className="min-h-screen bg-red-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
             {/* Error Icon */}
@@ -73,7 +71,5 @@ export default function Error({ error, reset }: ErrorProps) {
             </div>
           </div>
         </div>
-      </body>
-    </html>
   );
 }

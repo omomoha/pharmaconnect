@@ -2,8 +2,6 @@ import Link from 'next/link';
 
 export default function NotFound() {
   return (
-    <html lang="en">
-      <body>
         <div className="min-h-screen bg-gradient-to-br from-green-50 to-white flex items-center justify-center p-4">
           <div className="text-center max-w-md w-full">
             {/* 404 Number */}
@@ -81,7 +79,5 @@ export default function NotFound() {
             </div>
           </div>
         </div>
-      </body>
-    </html>
   );
 }

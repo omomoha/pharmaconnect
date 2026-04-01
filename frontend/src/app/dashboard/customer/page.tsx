@@ -430,11 +430,15 @@ export default function CustomerDashboard() {
                   aiService
                     .getRecommendations()
                     .then((result) => {
-                      setRecommendations(result.recommendations || []);
+                      if (result.success && result.data) {
+                        setRecommendations(result.data.recommendations || []);
+                      } else {
+                        setRecommendationsError(result.error?.message || 'Failed to load');
+                      }
                       setRecommendationsLoading(false);
                     })
-                    .catch((error: any) => {
-                      setRecommendationsError(error?.message || 'Failed to load recommendations');
+                    .catch(() => {
+                      setRecommendationsError('Failed to load recommendations');
                       setRecommendationsLoading(false);
                     });
                 }}
