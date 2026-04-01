@@ -8,6 +8,7 @@ import StatsCard from '@/components/ui/StatsCard';
 import Tabs from '@/components/ui/Tabs';
 import Modal from '@/components/ui/Modal';
 import { getFlaggedAlerts, reviewFlaggedAlert } from '@/lib/services/admin.service';
+import { FlagAction } from '@/shared/types';
 
 interface ChatMessage {
   sender: string;
@@ -164,12 +165,11 @@ export default function FlagsModerationPage() {
     if (!selectedFlag || !selectedAction) return;
 
     setActionLoading(true);
-    const actionMap: Record<
-      string,
-      'APPROVED' | 'FLAGGED_FOR_REVIEW'
-    > = {
-      dismiss: 'APPROVED',
-      escalate: 'FLAGGED_FOR_REVIEW',
+    const actionMap: Record<string, FlagAction> = {
+      dismiss: FlagAction.DISMISSED,
+      warn: FlagAction.WARNING_SENT,
+      suspend: FlagAction.USER_SUSPENDED,
+      escalate: FlagAction.CONVERSATION_CLOSED,
     };
 
     const reviewAction = actionMap[selectedAction];
@@ -194,9 +194,11 @@ export default function FlagsModerationPage() {
                 status:
                   selectedAction === 'escalate'
                     ? 'Escalated'
-                    : selectedAction === 'dismiss'
+                    : selectedAction === 'suspend'
                       ? 'Resolved'
-                      : f.status,
+                      : selectedAction === 'dismiss'
+                        ? 'Resolved'
+                        : f.status,
               }
             : f
         )
