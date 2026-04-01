@@ -181,7 +181,8 @@ export default function OrdersManagementPage() {
       try {
         setLoading(true);
         setError(null);
-        const apiOrders = await getTransactions({ limit: 200 });
+        const response = await getTransactions({ limit: 200 });
+        const apiOrders = response.success && response.data ? response.data : [];
 
         // Map API response to Order interface
         const mapped: Order[] = (apiOrders || []).map((o: any) => ({
