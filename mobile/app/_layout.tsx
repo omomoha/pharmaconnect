@@ -20,6 +20,8 @@ export default function RootLayout() {
         <Stack.Screen name="order-detail" options={{ title: 'Order Details' }} />
         <Stack.Screen name="chat" options={{ title: 'Chat' }} />
         <Stack.Screen name="checkout" options={{ title: 'Checkout' }} />
+        <Stack.Screen name="ai-chat" options={{ headerShown: false, presentation: 'modal' }} />
+        <Stack.Screen name="drug-checker" options={{ headerShown: false, presentation: 'modal' }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       </Stack>
     </AuthProvider>

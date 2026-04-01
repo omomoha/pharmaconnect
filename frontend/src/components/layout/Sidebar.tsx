@@ -16,6 +16,7 @@ const navItems: Record<string, NavItem[]> = {
     { label: 'Dashboard', href: '/dashboard/customer', icon: '📊' },
     { label: 'My Orders', href: '/dashboard/customer/orders', icon: '📦' },
     { label: 'Browse Pharmacies', href: '/dashboard/customer/pharmacies', icon: '🏥' },
+    { label: 'Drug Checker', href: '/dashboard/customer/drug-interactions', icon: '💊' },
     { label: 'Messages', href: '/dashboard/customer/messages', icon: '💬' },
     { label: 'Profile', href: '/dashboard/customer/profile', icon: '👤' },
   ],

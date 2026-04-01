@@ -398,6 +398,24 @@ export default function HomeTab() {
         </View>
       </View>
 
+      {/* AI Action Buttons */}
+      <View style={styles.section}>
+        <View style={styles.quickActionsRow}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => router.push('/ai-chat')}
+          >
+            <Text style={styles.actionButtonText}>AI Assistant</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => router.push('/drug-checker')}
+          >
+            <Text style={styles.actionButtonText}>Drug Checker</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
       {/* Nearby Pharmacies */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
