@@ -50,10 +50,6 @@ const navItems: Record<string, NavItem[]> = {
   ],
 };
 
-/**
- * Derives the active role from the current URL path.
- * Falls back to user profile role if URL doesn't contain a known role segment.
- */
 function getRoleFromPath(pathname: string): string | null {
   if (pathname.startsWith('/dashboard/admin')) return 'admin';
   if (pathname.startsWith('/dashboard/pharmacy')) return 'pharmacy';
@@ -67,74 +63,98 @@ export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
 
-  if (!profile) {
-    return null;
-  }
+  if (!profile) return null;
 
-  // Use URL path to determine which nav items to show, falling back to profile role
   const pathRole = getRoleFromPath(pathname);
   const activeRole = pathRole || profile.role;
   const items = navItems[activeRole] || navItems[profile.role] || [];
 
+  const roleLabel = activeRole === 'delivery_provider' ? 'Delivery' :
+    activeRole.charAt(0).toUpperCase() + activeRole.slice(1);
+
   return (
     <>
-      {/* Mobile Toggle Button */}
+      {/* Mobile Toggle */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 md:hidden bg-primary-600 text-white p-3 rounded-full shadow-lg z-40"
+        className="fixed top-4 left-4 md:hidden bg-white text-gray-700 p-2 rounded-xl shadow-lg z-50 border border-gray-200"
       >
-        {isOpen ? '✕' : '☰'}
+        {isOpen ? (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        ) : (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        )}
       </button>
 
       {/* Sidebar */}
       <aside
-        className={`fixed md:relative left-0 top-0 md:top-auto h-screen md:h-auto w-64 bg-gray-900 text-white z-40 md:z-auto transition-transform duration-300 ${
+        className={`fixed md:relative left-0 top-0 h-screen w-64 bg-gray-900 text-white z-40 md:z-auto transition-transform duration-300 flex flex-col ${
           isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
       >
-        {/* Sidebar Header */}
-        <div className="px-6 py-8 border-b border-gray-700">
-          <h2 className="text-lg font-bold capitalize">{activeRole.replace('_', ' ')}</h2>
-          <p className="text-sm text-gray-400 mt-1">{profile.name}</p>
+        {/* Logo / Brand */}
+        <div className="px-5 py-5 border-b border-gray-800">
+          <Link href="/" className="flex items-center gap-2.5">
+            <div className="w-8 h-8 bg-gradient-to-br from-primary-400 to-primary-600 rounded-lg flex items-center justify-center">
+              <span className="text-white text-sm font-bold">P</span>
+            </div>
+            <div>
+              <h1 className="font-bold text-sm tracking-tight">PharmaConnect</h1>
+              <p className="text-[10px] text-gray-500">{roleLabel} Portal</p>
+            </div>
+          </Link>
         </div>
 
-        {/* Navigation Items */}
-        <nav className="flex-1 overflow-y-auto py-6">
-          {items.map((item) => {
-            const isActive = pathname === item.href || pathname.startsWith(item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setIsOpen(false)}
-                className={`flex items-center gap-3 px-6 py-3 transition-colors ${
-                  isActive
-                    ? 'bg-primary-600 text-white border-r-4 border-primary-400'
-                    : 'text-gray-300 hover:bg-gray-800'
-                }`}
-              >
-                <span className="text-lg">{item.icon}</span>
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto py-3 px-3">
+          <div className="space-y-0.5">
+            {items.map((item) => {
+              const isExactMatch = pathname === item.href;
+              const isChildMatch = pathname.startsWith(item.href + '/');
+              const isActive = isExactMatch || (isChildMatch && item.href !== '/dashboard/customer' && item.href !== '/dashboard/pharmacy' && item.href !== '/dashboard/delivery' && item.href !== '/dashboard/admin');
+              const isDashboardActive = (item.href === '/dashboard/customer' || item.href === '/dashboard/pharmacy' || item.href === '/dashboard/delivery' || item.href === '/dashboard/admin') && isExactMatch;
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setIsOpen(false)}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 ${
+                    isActive || isDashboardActive
+                      ? 'bg-primary-600/90 text-white shadow-sm'
+                      : 'text-gray-400 hover:text-white hover:bg-gray-800/60'
+                  }`}
+                >
+                  <span className="text-base w-6 text-center">{item.icon}</span>
+                  <span className="font-medium">{item.label}</span>
+                </Link>
+              );
+            })}
+          </div>
         </nav>
 
-        {/* Sidebar Footer */}
-        <div className="border-t border-gray-700 p-6 space-y-3">
-          <Link
-            href={`/dashboard/${activeRole === 'delivery_provider' ? 'delivery' : activeRole}/settings`}
-            className="block text-gray-300 hover:text-white py-2"
-          >
-            Settings
-          </Link>
+        {/* User / Sign Out */}
+        <div className="border-t border-gray-800 p-4">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-9 h-9 bg-gradient-to-br from-primary-400 to-primary-600 rounded-xl flex items-center justify-center text-sm font-bold shadow-sm">
+              {profile.name?.charAt(0)?.toUpperCase() || 'U'}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{profile.name}</p>
+              <p className="text-[10px] text-gray-500 truncate">{profile.email}</p>
+            </div>
+          </div>
           <button
-            onClick={() => {
-              signOut();
-              setIsOpen(false);
-            }}
-            className="w-full text-left text-gray-300 hover:text-white py-2 px-0"
+            onClick={() => { signOut(); setIsOpen(false); }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-400 hover:text-white hover:bg-gray-800/60 rounded-lg transition-all"
           >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
             Sign Out
           </button>
         </div>
@@ -143,7 +163,7 @@ export default function Sidebar() {
       {/* Mobile Overlay */}
       {isOpen && (
         <div
-          className="fixed md:hidden inset-0 bg-black bg-opacity-50 z-30"
+          className="fixed md:hidden inset-0 bg-black/50 backdrop-blur-sm z-30"
           onClick={() => setIsOpen(false)}
         />
       )}
