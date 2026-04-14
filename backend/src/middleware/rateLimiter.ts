@@ -1,5 +1,4 @@
 import { Request, Response, NextFunction } from "express";
-import { getRedis } from "../config/redis.js";
 import logger from "../utils/logger.js";
 import { AuthenticatedRequest } from "./authenticate.js";
 
@@ -9,8 +8,72 @@ interface RateLimitOptions {
   message?: string;
 }
 
+// ─── In-Memory Fallback Store ─────────────────────────────────────────────────
+// Used when Redis is unavailable. LRU-style cleanup prevents unbounded growth.
+
+interface MemoryEntry {
+  count: number;
+  expiresAt: number;
+}
+
+const MEM_MAX_KEYS = 10_000;
+const memoryStore = new Map<string, MemoryEntry>();
+
+function memoryIncr(key: string, windowMs: number): number {
+  const now = Date.now();
+
+  // Periodic cleanup: evict expired entries when store is large
+  if (memoryStore.size > MEM_MAX_KEYS) {
+    for (const [k, v] of memoryStore) {
+      if (v.expiresAt <= now) memoryStore.delete(k);
+    }
+  }
+
+  const entry = memoryStore.get(key);
+
+  if (!entry || entry.expiresAt <= now) {
+    memoryStore.set(key, { count: 1, expiresAt: now + windowMs });
+    return 1;
+  }
+
+  entry.count += 1;
+  return entry.count;
+}
+
+// ─── Redis helpers ────────────────────────────────────────────────────────────
+
+let _redis: any = null;
+let _redisAvailable = true;
+let _redisCheckAt = 0;
+
+function getRedisClient(): any {
+  if (!_redisAvailable && Date.now() < _redisCheckAt) return null;
+  try {
+    // Lazy import to avoid crash if Redis not initialized
+    if (!_redis) {
+      const { redis } = require("../config/redis.js");
+      _redis = redis;
+    }
+    if (!_redis || _redis.status !== "ready") {
+      _redisAvailable = false;
+      _redisCheckAt = Date.now() + 30_000; // retry every 30s
+      return null;
+    }
+    _redisAvailable = true;
+    return _redis;
+  } catch {
+    _redisAvailable = false;
+    _redisCheckAt = Date.now() + 30_000;
+    return null;
+  }
+}
+
+// ─── Rate Limiter Factory ─────────────────────────────────────────────────────
+
 /**
- * Create rate limiter middleware using Redis
+ * Create rate limiter middleware with Redis primary + in-memory fallback.
+ * When Redis is down, enforcement continues via a local Map store so that
+ * rate limiting is never fully bypassed.
  */
 const createRateLimiter = (options: RateLimitOptions) => {
   return async (
@@ -18,41 +81,51 @@ const createRateLimiter = (options: RateLimitOptions) => {
     res: Response,
     next: NextFunction
   ): Promise<void> => {
+    const identifier = getIdentifier(req);
+    const key = `ratelimit:${identifier}`;
+
+    let current: number;
+
     try {
-      const redis = getRedis();
-      const key = `ratelimit:${getIdentifier(req)}`;
+      const redis = getRedisClient();
 
-      const current = await redis.incr(key);
-
-      if (current === 1) {
-        // Set expiry on first request
-        await redis.expire(key, Math.ceil(options.windowMs / 1000));
+      if (redis) {
+        // Primary: Redis
+        current = await redis.incr(key);
+        if (current === 1) {
+          await redis.expire(key, Math.ceil(options.windowMs / 1000));
+        }
+      } else {
+        // Fallback: in-memory
+        current = memoryIncr(key, options.windowMs);
       }
-
-      const remaining = Math.max(0, options.maxRequests - current);
-
-      res.setHeader("X-RateLimit-Limit", options.maxRequests);
-      res.setHeader("X-RateLimit-Remaining", remaining);
-      res.setHeader("X-RateLimit-Reset", Date.now() + options.windowMs);
-
-      if (current > options.maxRequests) {
-        logger.warn(`Rate limit exceeded for ${getIdentifier(req)}`);
-        res.status(429).json({
-          success: false,
-          error: {
-            code: "RATE_LIMIT_EXCEEDED",
-            message: options.message || "Too many requests, please try again later",
-          },
-        });
-        return;
-      }
-
-      next();
     } catch (error) {
-      logger.error("Rate limiter error:", error);
-      // Continue on error to prevent service disruption
-      next();
+      // Redis threw at runtime — fall back to memory for this request
+      logger.warn("Rate limiter Redis error, using in-memory fallback:", error);
+      _redisAvailable = false;
+      _redisCheckAt = Date.now() + 30_000;
+      current = memoryIncr(key, options.windowMs);
     }
+
+    const remaining = Math.max(0, options.maxRequests - current);
+
+    res.setHeader("X-RateLimit-Limit", options.maxRequests);
+    res.setHeader("X-RateLimit-Remaining", remaining);
+    res.setHeader("X-RateLimit-Reset", Date.now() + options.windowMs);
+
+    if (current > options.maxRequests) {
+      logger.warn(`Rate limit exceeded for ${identifier}`);
+      res.status(429).json({
+        success: false,
+        error: {
+          code: "RATE_LIMIT_EXCEEDED",
+          message: options.message || "Too many requests, please try again later",
+        },
+      });
+      return;
+    }
+
+    next();
   };
 };
 

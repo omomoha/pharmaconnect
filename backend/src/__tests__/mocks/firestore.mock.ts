@@ -8,7 +8,25 @@ export const createFirestoreMock = () => {
   const mockDocData: Record<string, any> = {};
   const mockCollectionData: Record<string, any[]> = {};
 
-  const mockDocRef = (collectionName: string, docId: string) => ({
+  /**
+   * Resolve FieldValue sentinels (like increment) into actual values.
+   * firebase-admin's FieldValue.increment() returns an object like { operand: N }.
+   */
+  const resolveFieldValues = (existing: any, updates: any): any => {
+    const resolved: any = {};
+    for (const [key, value] of Object.entries(updates)) {
+      if (value && typeof value === 'object' && 'operand' in (value as any)) {
+        // FieldValue.increment — apply the operand to the current value
+        const currentVal = existing?.[key] ?? 0;
+        resolved[key] = currentVal + (value as any).operand;
+      } else {
+        resolved[key] = value;
+      }
+    }
+    return resolved;
+  };
+
+  const mockDocRef = (collectionName: string, docId: string): any => ({
     set: jest.fn((data: any) => {
       mockDocData[docId] = data;
       // Also add to collection data with id field
@@ -28,11 +46,12 @@ export const createFirestoreMock = () => {
       })
     ),
     update: jest.fn((data: any) => {
-      mockDocData[docId] = { ...mockDocData[docId], ...data };
+      const resolved = resolveFieldValues(mockDocData[docId], data);
+      mockDocData[docId] = { ...mockDocData[docId], ...resolved };
       // Also update in collection data
       const existing = mockCollectionData[collectionName].findIndex(d => d.id === docId);
       if (existing >= 0) {
-        mockCollectionData[collectionName][existing] = { ...mockCollectionData[collectionName][existing], ...data };
+        mockCollectionData[collectionName][existing] = { ...mockCollectionData[collectionName][existing], ...resolved };
       }
       return Promise.resolve();
     }),
@@ -43,6 +62,11 @@ export const createFirestoreMock = () => {
         mockCollectionData[collectionName].splice(idx, 1);
       }
       return Promise.resolve();
+    }),
+    // Subcollection support: doc("orderId").collection("guest_info").doc("contact")
+    collection: jest.fn((subCollectionName: string) => {
+      const fullCollectionName = `${collectionName}/${docId}/${subCollectionName}`;
+      return mockCollectionRef(fullCollectionName);
     }),
   });
 

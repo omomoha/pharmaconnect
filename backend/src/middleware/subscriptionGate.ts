@@ -77,9 +77,9 @@ export function requireProductLimit() {
       );
 
       const db = getFirestore();
-      const snapshot = await db
+      const snapshot = await (db
         .collection(FIRESTORE_COLLECTIONS.PHARMACY_PRODUCTS)
-        .where("pharmacyId", "==", user.pharmacyId)
+        .where("pharmacyId", "==", user.pharmacyId) as any)
         .count()
         .get();
 

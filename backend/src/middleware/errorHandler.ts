@@ -7,9 +7,17 @@ export interface AppError extends Error {
   details?: unknown;
 }
 
+const isProduction = process.env.NODE_ENV === "production";
+
 /**
  * Global error handler middleware
  * Should be registered after all other middleware and routes
+ *
+ * In production:
+ *   - 5xx errors return a generic message (no internal details leak)
+ *   - 4xx errors return the specific message (client needs actionable info)
+ *   - Stack traces and internal details are NEVER sent to the client
+ *   - Full context is always logged server-side
  */
 export const errorHandler = (
   error: AppError | Error,
@@ -22,7 +30,7 @@ export const errorHandler = (
   const message = error.message || "An unexpected error occurred";
   const details = (error as AppError).details;
 
-  // Log error
+  // Always log the full error server-side
   if (statusCode >= 500) {
     logger.error("Server error:", {
       statusCode,
@@ -31,24 +39,32 @@ export const errorHandler = (
       stack: error.stack,
       url: req.url,
       method: req.method,
+      ip: req.ip,
     });
   } else {
     logger.warn("Client error:", {
       statusCode,
       code,
       message,
+      url: req.url,
+      method: req.method,
     });
   }
 
+  // Build client response — suppress internals in production for 5xx
   const errorResponse: any = {
     success: false,
     error: {
-      code,
-      message,
+      code: isProduction && statusCode >= 500 ? "INTERNAL_SERVER_ERROR" : code,
+      message:
+        isProduction && statusCode >= 500
+          ? "An unexpected error occurred. Please try again later."
+          : message,
     },
   };
 
-  if (details) {
+  // Only forward details for 4xx errors (validation, etc.) — never for 5xx
+  if (details && statusCode < 500) {
     errorResponse.error.details = details;
   }
 

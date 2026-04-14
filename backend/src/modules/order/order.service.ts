@@ -497,7 +497,14 @@ export class OrderService {
   }
 
   /**
-   * Cancel order
+   * Cancel order and restore inventory stock.
+   *
+   * Uses a Firestore transaction to atomically:
+   *   1. Mark the order as cancelled
+   *   2. Restore product quantities for all order items
+   *
+   * This prevents inventory desync when orders are cancelled after stock
+   * was decremented during order creation.
    */
   static async cancelOrder(id: string, reason?: string): Promise<Order> {
     try {
@@ -515,18 +522,48 @@ export class OrderService {
         throw new Error("Cannot cancel order in this status");
       }
 
-      const updateData: any = {
-        status: OrderStatus.CANCELLED,
-        updatedAt: new Date(),
-      };
+      // Fetch order items for stock restoration
+      const itemsSnapshot = await db
+        .collection(FIRESTORE_COLLECTIONS.ORDER_ITEMS)
+        .where("orderId", "==", id)
+        .get();
 
-      if (reason) {
-        updateData.cancellationReason = reason;
-      }
+      await db.runTransaction(async (transaction) => {
+        // Restore stock for each order item
+        for (const itemDoc of itemsSnapshot.docs) {
+          const item = itemDoc.data() as OrderItem;
+          const productRef = db
+            .collection(FIRESTORE_COLLECTIONS.PHARMACY_PRODUCTS)
+            .doc(item.pharmacyProductId);
 
-      await db.collection(FIRESTORE_COLLECTIONS.ORDERS).doc(id).update(updateData);
+          transaction.update(productRef, {
+            quantity: FieldValue.increment(item.quantity),
+            updatedAt: new Date(),
+          });
+        }
 
-      logger.info(`Order cancelled: ${id}`);
+        // Update order status
+        const updateData: any = {
+          status: OrderStatus.CANCELLED,
+          updatedAt: new Date(),
+        };
+
+        if (reason) {
+          updateData.cancellationReason = reason;
+        }
+
+        // If payment was completed, mark for refund
+        if (order.paymentStatus === PaymentStatus.PAID) {
+          updateData.paymentStatus = PaymentStatus.REFUNDED;
+        }
+
+        transaction.update(
+          db.collection(FIRESTORE_COLLECTIONS.ORDERS).doc(id),
+          updateData
+        );
+      });
+
+      logger.info(`Order cancelled with stock restoration: ${id} (${itemsSnapshot.size} items restored)`);
       return await this.getOrder(id) as Order;
     } catch (error) {
       logger.error(`Failed to cancel order ${id}:`, error);

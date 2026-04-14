@@ -17,6 +17,8 @@ import {
 } from "./middleware/errorHandler.js";
 import { publicRateLimiter } from "./middleware/rateLimiter.js";
 import { initializeChatSocket } from "./modules/chat/chat.socket.js";
+import { validateEncryptionConfig } from "./utils/encryption.js";
+import { initializeMonitoring, setupSentryErrorHandler } from "./config/monitoring.js";
 
 // Import routes
 import authRoutes from "./modules/auth/auth.routes.js";
@@ -131,6 +133,9 @@ export const createApp = (): {
   // 404 handler
   app.use(notFoundHandler);
 
+  // Sentry error handler (must be before global error handler)
+  setupSentryErrorHandler(app);
+
   // Global error handler
   app.use(errorHandler);
 
@@ -145,9 +150,15 @@ export const startServer = async (): Promise<{
   io: SocketIOServer;
 }> => {
   try {
+    // Initialize monitoring (Sentry — noop if SENTRY_DSN not set)
+    initializeMonitoring();
+
     // Initialize Firebase Admin SDK
     initializeFirebase();
     logger.info("Firebase initialized");
+
+    // Validate encryption configuration (fails fast in production if key missing)
+    validateEncryptionConfig();
 
     // Initialize Redis
     initializeRedis();

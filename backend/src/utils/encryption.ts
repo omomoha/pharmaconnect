@@ -20,14 +20,25 @@ const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 16; // 128-bit IV for GCM
 const AUTH_TAG_LENGTH = 16; // 128-bit auth tag
 
+let _startupKeyValidated = false;
+
 function getEncryptionKey(): Buffer {
   const keyHex = process.env.ENCRYPTION_KEY;
 
-  if (!keyHex || keyHex.length < 32) {
+  if (!keyHex || keyHex.length < 64) {
     if (process.env.NODE_ENV === "production") {
       throw new Error(
-        "ENCRYPTION_KEY must be set in production. Generate one with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
+        "CRITICAL: ENCRYPTION_KEY must be a 64-character hex string in production. " +
+        "Generate one with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\" " +
+        "Then set it via: firebase functions:secrets:set ENCRYPTION_KEY"
       );
+    }
+    if (!_startupKeyValidated) {
+      logger.warn(
+        "⚠️  ENCRYPTION_KEY not set — using dev fallback derived from JWT_SECRET. " +
+        "This is NOT safe for production. Set ENCRYPTION_KEY env var before deploying."
+      );
+      _startupKeyValidated = true;
     }
     // Dev fallback — deterministic key derived from JWT_SECRET
     return crypto
@@ -36,7 +47,35 @@ function getEncryptionKey(): Buffer {
       .digest();
   }
 
+  // Validate key is valid hex and exactly 32 bytes
+  if (!/^[0-9a-fA-F]{64}$/.test(keyHex)) {
+    throw new Error(
+      "ENCRYPTION_KEY must be exactly 64 hex characters (32 bytes). " +
+      "Generate one with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
+    );
+  }
+
   return Buffer.from(keyHex, "hex");
+}
+
+/**
+ * Validate encryption configuration at startup.
+ * Call once during app initialization to surface config issues early.
+ */
+export function validateEncryptionConfig(): void {
+  try {
+    getEncryptionKey();
+    _startupKeyValidated = true;
+    if (process.env.ENCRYPTION_KEY && process.env.ENCRYPTION_KEY.length === 64) {
+      logger.info("Encryption key validated successfully");
+    }
+  } catch (error) {
+    // Re-throw in production — app must not start without encryption key
+    if (process.env.NODE_ENV === "production") {
+      throw error;
+    }
+    logger.warn("Encryption config validation warning:", (error as Error).message);
+  }
 }
 
 export class PiiEncryption {
