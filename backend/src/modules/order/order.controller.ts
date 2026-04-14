@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { AuthenticatedRequest } from "../../middleware/authenticate.js";
 import { OrderService } from "./order.service.js";
+import { PharmacyService } from "../pharmacy/pharmacy.service.js";
 import { apiResponse } from "../../utils/helpers.js";
 import logger from "../../utils/logger.js";
 import { z } from "zod";
@@ -145,18 +146,25 @@ export class OrderController {
         return;
       }
 
-      // Check authorization
-      if (
-        req.user &&
-        orderData.order.customerId !== req.user.uid
-      ) {
-        res.status(403).json(
-          apiResponse(false, undefined, {
-            code: "FORBIDDEN",
-            message: "You do not have permission to view this order",
-          })
-        );
-        return;
+      // Check authorization — allow customer, pharmacy owner, or admin
+      if (req.user) {
+        const isCustomer = orderData.order.customerId === req.user.uid;
+        let isPharmacyOwner = false;
+
+        if (!isCustomer) {
+          const pharmacy = await PharmacyService.getPharmacy(orderData.order.pharmacyId);
+          isPharmacyOwner = !!pharmacy && pharmacy.userId === req.user.uid;
+        }
+
+        if (!isCustomer && !isPharmacyOwner) {
+          res.status(403).json(
+            apiResponse(false, undefined, {
+              code: "FORBIDDEN",
+              message: "You do not have permission to view this order",
+            })
+          );
+          return;
+        }
       }
 
       res.json(apiResponse(true, orderData));
@@ -236,6 +244,28 @@ export class OrderController {
 
       const { pharmacyId } = req.params;
 
+      // Verify the requesting user owns this pharmacy
+      const pharmacy = await PharmacyService.getPharmacy(pharmacyId);
+      if (!pharmacy) {
+        res.status(404).json(
+          apiResponse(false, undefined, {
+            code: "PHARMACY_NOT_FOUND",
+            message: "Pharmacy not found",
+          })
+        );
+        return;
+      }
+
+      if (pharmacy.userId !== req.user!.uid) {
+        res.status(403).json(
+          apiResponse(false, undefined, {
+            code: "FORBIDDEN",
+            message: "You do not have permission to view this pharmacy's orders",
+          })
+        );
+        return;
+      }
+
       const schema = z.object({
         limit: z.coerce.number().optional().default(100),
       });
@@ -296,9 +326,32 @@ export class OrderController {
 
       const validated = schema.parse(req.body);
 
+      // Verify authorization: only the pharmacy owner can update order status
+      const existingOrder = await OrderService.getOrder(orderId);
+      if (!existingOrder) {
+        res.status(404).json(
+          apiResponse(false, undefined, {
+            code: "ORDER_NOT_FOUND",
+            message: "Order not found",
+          })
+        );
+        return;
+      }
+
+      const pharmacy = await PharmacyService.getPharmacy(existingOrder.pharmacyId);
+      if (!pharmacy || pharmacy.userId !== req.user!.uid) {
+        res.status(403).json(
+          apiResponse(false, undefined, {
+            code: "FORBIDDEN",
+            message: "Only the pharmacy owner can update order status",
+          })
+        );
+        return;
+      }
+
       const order = await OrderService.updateOrderStatus(orderId, validated.status as any);
 
-      logger.info(`Order status updated by user ${req.user.uid}`);
+      logger.info(`Order status updated by pharmacy owner ${req.user!.uid}`);
 
       res.json(
         apiResponse(true, {
@@ -342,9 +395,38 @@ export class OrderController {
 
       const validated = schema.parse(req.body);
 
+      // Verify authorization: customer or pharmacy owner can cancel
+      const existingOrder = await OrderService.getOrder(orderId);
+      if (!existingOrder) {
+        res.status(404).json(
+          apiResponse(false, undefined, {
+            code: "ORDER_NOT_FOUND",
+            message: "Order not found",
+          })
+        );
+        return;
+      }
+
+      const isCustomer = existingOrder.customerId === req.user!.uid;
+      let isPharmacyOwner = false;
+      if (!isCustomer) {
+        const pharmacy = await PharmacyService.getPharmacy(existingOrder.pharmacyId);
+        isPharmacyOwner = !!pharmacy && pharmacy.userId === req.user!.uid;
+      }
+
+      if (!isCustomer && !isPharmacyOwner) {
+        res.status(403).json(
+          apiResponse(false, undefined, {
+            code: "FORBIDDEN",
+            message: "You do not have permission to cancel this order",
+          })
+        );
+        return;
+      }
+
       const order = await OrderService.cancelOrder(orderId, validated.reason);
 
-      logger.info(`Order cancelled by user ${req.user.uid}`);
+      logger.info(`Order cancelled by user ${req.user!.uid} (${isCustomer ? 'customer' : 'pharmacy'})`);
 
       res.json(
         apiResponse(true, {

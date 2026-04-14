@@ -166,11 +166,15 @@ export class PharmacyService {
     try {
       const db = getFirestore();
 
-      // Get all approved and active pharmacies
+      // Get approved and active pharmacies with a safety cap
+      // Note: Firestore lacks native geospatial queries, so we fetch
+      // up to 500 and filter in-memory. For production scale (10k+ pharmacies),
+      // migrate to a geohash-based approach or use a dedicated geo index.
       const snapshot = await db
         .collection(FIRESTORE_COLLECTIONS.PHARMACIES)
         .where("approvalStatus", "==", ApprovalStatus.APPROVED)
         .where("isActive", "==", true)
+        .limit(500)
         .get();
 
       const pharmacies: Pharmacy[] = [];
@@ -209,6 +213,28 @@ export class PharmacyService {
       return pharmacies.slice(0, limit);
     } catch (error) {
       logger.error("Failed to get nearby pharmacies:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get a single pharmacy product by ID
+   */
+  static async getPharmacyProduct(productId: string): Promise<PharmacyProduct | null> {
+    try {
+      const db = getFirestore();
+      const doc = await db
+        .collection(FIRESTORE_COLLECTIONS.PHARMACY_PRODUCTS)
+        .doc(productId)
+        .get();
+
+      if (!doc.exists) {
+        return null;
+      }
+
+      return doc.data() as PharmacyProduct;
+    } catch (error) {
+      logger.error(`Failed to get pharmacy product ${productId}:`, error);
       throw error;
     }
   }
@@ -340,25 +366,28 @@ export class PharmacyService {
   /**
    * Search pharmacies by name
    */
-  static async searchPharmacies(query: string): Promise<Pharmacy[]> {
+  static async searchPharmacies(query: string, limit: number = 50): Promise<Pharmacy[]> {
     try {
       const db = getFirestore();
+      // Firestore doesn't support LIKE queries, so we fetch a capped set
+      // and filter in-memory. For production scale, add a search index (Algolia/Typesense).
       const snapshot = await db
         .collection(FIRESTORE_COLLECTIONS.PHARMACIES)
         .where("approvalStatus", "==", ApprovalStatus.APPROVED)
         .where("isActive", "==", true)
-        .limit(20)
+        .limit(500)
         .get();
 
       const results = snapshot.docs
         .map((doc) => doc.data() as Pharmacy)
         .filter(
           (pharmacy) =>
+            !query ||
             pharmacy.name.toLowerCase().includes(query.toLowerCase()) ||
             pharmacy.address.toLowerCase().includes(query.toLowerCase())
         );
 
-      return results;
+      return results.slice(0, limit);
     } catch (error) {
       logger.error("Failed to search pharmacies:", error);
       throw error;

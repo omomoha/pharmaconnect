@@ -9,6 +9,7 @@ import {
   DrugCategory,
 } from "@pharmaconnect/shared/dist/types/index.js";
 import { FIRESTORE_COLLECTIONS, COMMISSION } from "@pharmaconnect/shared/dist/constants/index.js";
+import { PharmacyService } from "../pharmacy/pharmacy.service.js";
 import { v4 as uuid } from "uuid";
 
 /**
@@ -38,8 +39,36 @@ export class OrderService {
       const orderId = uuid();
       const now = new Date();
 
-      // Calculate totals
-      const subtotal = data.items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
+      // Server-side price verification — never trust client-sent prices
+      const verifiedItems = [];
+      for (const item of data.items) {
+        const product = await PharmacyService.getPharmacyProduct(item.pharmacyProductId);
+        if (!product) {
+          throw new Error(`Product not found: ${item.pharmacyProductId}`);
+        }
+        if (!product.isActive) {
+          throw new Error(`Product is no longer available: ${item.drugName}`);
+        }
+        if (product.pharmacyId !== data.pharmacyId) {
+          throw new Error(`Product does not belong to this pharmacy: ${item.drugName}`);
+        }
+        if (product.quantity < item.quantity) {
+          throw new Error(`Insufficient stock for ${item.drugName}: requested ${item.quantity}, available ${product.quantity}`);
+        }
+
+        // Use server-side price, applying discount if applicable
+        const serverPrice = product.discount
+          ? formatCurrency(product.price * (1 - product.discount / 100))
+          : product.price;
+
+        verifiedItems.push({
+          ...item,
+          unitPrice: serverPrice,
+        });
+      }
+
+      // Calculate totals from verified server-side prices
+      const subtotal = verifiedItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
       const pharmacyCommission = formatCurrency(
         subtotal * (COMMISSION.PHARMACY_COMMISSION_PERCENT / 100)
       );
@@ -69,11 +98,12 @@ export class OrderService {
         updatedAt: now,
       };
 
-      // Save order
-      await db.collection(FIRESTORE_COLLECTIONS.ORDERS).doc(orderId).set(order);
+      // Use batch write for atomicity — all or nothing
+      const batch = db.batch();
 
-      // Save order items
-      for (const item of data.items) {
+      batch.set(db.collection(FIRESTORE_COLLECTIONS.ORDERS).doc(orderId), order);
+
+      for (const item of verifiedItems) {
         const itemId = uuid();
         const orderItem: OrderItem = {
           id: itemId,
@@ -88,11 +118,13 @@ export class OrderService {
           updatedAt: now,
         };
 
-        await db
-          .collection(FIRESTORE_COLLECTIONS.ORDER_ITEMS)
-          .doc(itemId)
-          .set(orderItem);
+        batch.set(
+          db.collection(FIRESTORE_COLLECTIONS.ORDER_ITEMS).doc(itemId),
+          orderItem
+        );
       }
+
+      await batch.commit();
 
       logger.info(`Order created: ${orderId}`);
       return order;
@@ -127,7 +159,34 @@ export class OrderService {
       const orderId = uuid();
       const now = new Date();
 
-      const subtotal = data.items.reduce(
+      // Server-side price verification for guest orders too
+      const verifiedItems = [];
+      for (const item of data.items) {
+        const product = await PharmacyService.getPharmacyProduct(item.pharmacyProductId);
+        if (!product) {
+          throw new Error(`Product not found: ${item.pharmacyProductId}`);
+        }
+        if (!product.isActive) {
+          throw new Error(`Product is no longer available: ${item.drugName}`);
+        }
+        if (product.pharmacyId !== data.pharmacyId) {
+          throw new Error(`Product does not belong to this pharmacy: ${item.drugName}`);
+        }
+        if (product.quantity < item.quantity) {
+          throw new Error(`Insufficient stock for ${item.drugName}: requested ${item.quantity}, available ${product.quantity}`);
+        }
+
+        const serverPrice = product.discount
+          ? formatCurrency(product.price * (1 - product.discount / 100))
+          : product.price;
+
+        verifiedItems.push({
+          ...item,
+          unitPrice: serverPrice,
+        });
+      }
+
+      const subtotal = verifiedItems.reduce(
         (sum, item) => sum + item.unitPrice * item.quantity,
         0
       );
@@ -165,23 +224,26 @@ export class OrderService {
         updatedAt: now,
       };
 
-      await db.collection(FIRESTORE_COLLECTIONS.ORDERS).doc(orderId).set(order);
+      // Use batch write for atomicity — all or nothing
+      const batch = db.batch();
 
-      // Also store guest contact info in a subcollection for order fulfillment
-      await db
-        .collection(FIRESTORE_COLLECTIONS.ORDERS)
-        .doc(orderId)
-        .collection("guest_info")
-        .doc("contact")
-        .set({
+      batch.set(db.collection(FIRESTORE_COLLECTIONS.ORDERS).doc(orderId), order);
+
+      // Store guest contact info in a subcollection
+      batch.set(
+        db.collection(FIRESTORE_COLLECTIONS.ORDERS)
+          .doc(orderId)
+          .collection("guest_info")
+          .doc("contact"),
+        {
           email: data.guestEmail,
           phone: data.guestPhone,
           name: data.guestName,
           createdAt: now,
-        });
+        }
+      );
 
-      // Save order items
-      for (const item of data.items) {
+      for (const item of verifiedItems) {
         const itemId = uuid();
         const orderItem: OrderItem = {
           id: itemId,
@@ -196,11 +258,13 @@ export class OrderService {
           updatedAt: now,
         };
 
-        await db
-          .collection(FIRESTORE_COLLECTIONS.ORDER_ITEMS)
-          .doc(itemId)
-          .set(orderItem);
+        batch.set(
+          db.collection(FIRESTORE_COLLECTIONS.ORDER_ITEMS).doc(itemId),
+          orderItem
+        );
       }
+
+      await batch.commit();
 
       logger.info(`Guest order created: ${orderId} for ${data.guestEmail}`);
       return order;
