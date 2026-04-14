@@ -240,9 +240,9 @@ export class PharmacyService {
   }
 
   /**
-   * Get pharmacy products
+   * Get pharmacy products (enriched with drug catalog info)
    */
-  static async getPharmacyProducts(pharmacyId: string): Promise<PharmacyProduct[]> {
+  static async getPharmacyProducts(pharmacyId: string): Promise<Record<string, unknown>[]> {
     try {
       const db = getFirestore();
       const snapshot = await db
@@ -251,7 +251,46 @@ export class PharmacyService {
         .where("isActive", "==", true)
         .get();
 
-      return snapshot.docs.map((doc) => doc.data() as PharmacyProduct);
+      const products = snapshot.docs.map((doc) => doc.data() as PharmacyProduct);
+
+      // Collect unique drugCatalogItemIds to batch-fetch from drug_catalog
+      const catalogIds = [...new Set(products.map((p) => p.drugCatalogItemId).filter(Boolean))];
+
+      // Fetch drug catalog items
+      const catalogMap = new Map<string, Record<string, unknown>>();
+      if (catalogIds.length > 0) {
+        // Firestore 'in' queries support max 30 items per batch
+        const batches = [];
+        for (let i = 0; i < catalogIds.length; i += 30) {
+          batches.push(catalogIds.slice(i, i + 30));
+        }
+
+        for (const batch of batches) {
+          const catalogSnapshot = await db
+            .collection(FIRESTORE_COLLECTIONS.DRUG_CATALOG)
+            .where("id", "in", batch)
+            .get();
+
+          catalogSnapshot.docs.forEach((doc) => {
+            const data = doc.data();
+            catalogMap.set(data.id, data);
+          });
+        }
+      }
+
+      // Enrich products with drug catalog info
+      return products.map((product) => {
+        const catalogItem = catalogMap.get(product.drugCatalogItemId);
+        return {
+          ...product,
+          drugName: catalogItem?.commonName || undefined,
+          description: catalogItem?.description || undefined,
+          category: catalogItem?.category || undefined,
+          strength: catalogItem?.strength || undefined,
+          form: catalogItem?.form || undefined,
+          scientificName: catalogItem?.scientificName || undefined,
+        };
+      });
     } catch (error) {
       logger.error(`Failed to get products for pharmacy ${pharmacyId}:`, error);
       throw error;
