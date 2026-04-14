@@ -22,7 +22,7 @@ interface AvailableOrder {
   total: number;
   deliveryFee: number;
   status: string;
-  createdAt: string;
+  createdAt: Date | string;
 }
 
 type SortType = 'newest' | 'reward';

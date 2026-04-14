@@ -9,20 +9,13 @@ import Input from '@/components/ui/Input';
 import Modal from '@/components/ui/Modal';
 import toast from 'react-hot-toast';
 import { getMyDeliveries, updateAssignmentStatus, verifySecurityCode } from '@/lib/services/delivery.service';
+import type { DeliveryAssignment } from '@/shared/types';
+import { DeliveryAssignmentStatus } from '@/shared/types';
 
-interface DeliveryItem {
-  id: string;
-  orderId: string;
-  deliveryProviderId: string;
-  pickupLatitude: number;
-  pickupLongitude: number;
-  deliveryLatitude: number;
-  deliveryLongitude: number;
-  status: string;
+type DeliveryItem = DeliveryAssignment & {
   riderCode?: string;
   customerCode?: string;
-  createdAt: string;
-}
+};
 
 const STATUS_MAP: Record<string, string> = {
   accepted: 'Accepted',
@@ -51,8 +44,14 @@ export default function ActiveDeliveriesPage() {
       const res = await getMyDeliveries();
       if (res.success && res.data) {
         // Filter for active statuses only
-        const active = (res.data.deliveries || []).filter((d: DeliveryItem) =>
-          ['accepted', 'picked_up', 'in_transit', 'arrived'].includes(d.status)
+        const activeStatuses: string[] = [
+          DeliveryAssignmentStatus.ACCEPTED,
+          DeliveryAssignmentStatus.PICKED_UP,
+          DeliveryAssignmentStatus.IN_TRANSIT,
+          DeliveryAssignmentStatus.ARRIVED,
+        ];
+        const active = (res.data.deliveries || []).filter((d) =>
+          activeStatuses.includes(d.status)
         );
         setDeliveries(active);
       }
