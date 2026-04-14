@@ -87,17 +87,31 @@ export default function SubscriptionPage() {
       setError(null);
       setSuccessMessage(null);
 
-      // For paid tiers, in production this would redirect to Paystack checkout first
-      // For now, we do the tier change directly
-      const res = await apiClient.post('/subscriptions/change-tier', {
+      // Downgrading to free tier — direct change, no payment needed
+      if (tierId === 'pharma_lite') {
+        const res = await apiClient.post('/subscriptions/change-tier', {
+          tier: tierId,
+        });
+        if (res?.data) {
+          setCurrentSubscription(res.data.subscription);
+          setCurrentPlan(res.data.plan);
+          setSuccessMessage(res.message || 'Plan changed successfully!');
+        }
+        return;
+      }
+
+      // Paid tier — redirect to Paystack checkout
+      const res = await apiClient.post('/payments/subscription/initialize', {
         tier: tierId,
       });
 
-      if (res?.data) {
-        setCurrentSubscription(res.data.subscription);
-        setCurrentPlan(res.data.plan);
-        setSuccessMessage(res.message || 'Plan changed successfully!');
+      if (res?.data?.payment?.authorizationUrl) {
+        // Redirect to Paystack hosted checkout page
+        window.location.href = res.data.payment.authorizationUrl;
+        return;
       }
+
+      setError('Failed to start payment. Please try again.');
     } catch (err: any) {
       setError(err.message || 'Failed to change plan');
     } finally {
