@@ -407,8 +407,15 @@ export default function CheckoutPage() {
                     />
 
                     <div className="flex-1 min-w-0">
-                      <div className="font-bold text-gray-900">
-                        {provider.businessName}
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-gray-900">
+                          {provider.businessName}
+                        </span>
+                        {(provider as any).discount && (provider as any).discount > 0 && (
+                          <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                            {(provider as any).discount}% OFF
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
                         <span>★ {provider.rating}</span>
@@ -421,6 +428,11 @@ export default function CheckoutPage() {
                       <div className="font-bold text-primary-600">
                         ₦{provider.estimatedFee.toLocaleString()}
                       </div>
+                      {(provider as any).originalFee && (provider as any).originalFee !== provider.estimatedFee && (
+                        <div className="text-xs text-gray-400 line-through">
+                          ₦{(provider as any).originalFee.toLocaleString()}
+                        </div>
+                      )}
                       <div className="text-xs text-gray-600">delivery</div>
                     </div>
                   </label>

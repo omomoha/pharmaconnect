@@ -1,12 +1,16 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import PageHeader from '@/components/ui/PageHeader';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Modal from '@/components/ui/Modal';
 import StatusBadge from '@/components/ui/StatusBadge';
+import { useAuth } from '@/contexts/AuthContext';
+import toast from 'react-hot-toast';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 
 interface ProfileData {
   name: string;
@@ -57,11 +61,89 @@ const DOCUMENTS: Document[] = [
 ];
 
 export default function DeliveryProfilePage() {
+  const { user } = useAuth();
   const [profile, setProfile] = useState<ProfileData>(INITIAL_PROFILE);
   const [isOnline, setIsOnline] = useState(true);
   const [editModal, setEditModal] = useState(false);
   const [formData, setFormData] = useState(profile);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Pricing & Discount state
+  const [providerId, setProviderId] = useState<string | null>(null);
+  const [pricingData, setPricingData] = useState({ baseFee: '', perKmFee: '', discount: '' });
+  const [pricingLoading, setPricingLoading] = useState(false);
+  const [pricingModal, setPricingModal] = useState(false);
+
+  const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
+    if (!user) return {};
+    const token = await user.getIdToken();
+    return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+  }, [user]);
+
+  // Load delivery provider data
+  useEffect(() => {
+    async function loadProvider() {
+      if (!user) return;
+      try {
+        const headers = await getAuthHeaders();
+        // Try to get provider ID from profile
+        const profileRes = await fetch(`${API_URL}/auth/me`, { headers });
+        const profileResult = await profileRes.json();
+        if (profileResult.success && profileResult.data?.user?.deliveryProviderId) {
+          setProviderId(profileResult.data.user.deliveryProviderId);
+        }
+      } catch {
+        // Silent — profile page still works without API
+      }
+    }
+    loadProvider();
+  }, [user, getAuthHeaders]);
+
+  const handleSavePricing = async () => {
+    if (!providerId) {
+      toast.error('No delivery provider linked to your account');
+      return;
+    }
+    const baseFee = parseFloat(pricingData.baseFee);
+    const perKmFee = parseFloat(pricingData.perKmFee);
+    const discount = parseFloat(pricingData.discount) || 0;
+
+    if (isNaN(baseFee) || baseFee <= 0) {
+      toast.error('Base fee must be a positive number');
+      return;
+    }
+    if (isNaN(perKmFee) || perKmFee <= 0) {
+      toast.error('Per-km fee must be a positive number');
+      return;
+    }
+    if (discount < 0 || discount > 100) {
+      toast.error('Discount must be between 0 and 100%');
+      return;
+    }
+
+    setPricingLoading(true);
+    try {
+      const headers = await getAuthHeaders();
+      const body: Record<string, number> = { baseFee, perKmFee, discount };
+      const res = await fetch(`${API_URL}/delivery/providers/${providerId}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify(body),
+      });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.error?.message || 'Update failed');
+      }
+      setPricingModal(false);
+      toast.success(discount > 0
+        ? `Pricing updated with ${discount}% delivery discount`
+        : 'Pricing updated successfully');
+    } catch {
+      toast.error('Failed to update pricing');
+    } finally {
+      setPricingLoading(false);
+    }
+  };
 
   const handleEditChange = (field: keyof ProfileData, value: string) => {
     setFormData({ ...formData, [field]: value });
@@ -250,6 +332,73 @@ export default function DeliveryProfilePage() {
         </CardContent>
       </Card>
 
+      {/* Pricing & Discount */}
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <h3 className="font-bold text-gray-900">Pricing & Delivery Discount</h3>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setPricingModal(true)}
+            >
+              Update Pricing
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-gray-50 rounded-lg p-4">
+              <p className="text-xs text-gray-500 uppercase font-semibold mb-2">Base Fee</p>
+              <p className="text-2xl font-bold text-gray-900">
+                ₦{pricingData.baseFee ? parseFloat(pricingData.baseFee).toLocaleString() : '—'}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">Charged per delivery</p>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4">
+              <p className="text-xs text-gray-500 uppercase font-semibold mb-2">Per-KM Rate</p>
+              <p className="text-2xl font-bold text-gray-900">
+                ₦{pricingData.perKmFee ? parseFloat(pricingData.perKmFee).toLocaleString() : '—'}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">Additional per kilometre</p>
+            </div>
+            <div className={`rounded-lg p-4 ${pricingData.discount && parseFloat(pricingData.discount) > 0 ? 'bg-green-50' : 'bg-gray-50'}`}>
+              <p className="text-xs text-gray-500 uppercase font-semibold mb-2">Delivery Discount</p>
+              <p className={`text-2xl font-bold ${pricingData.discount && parseFloat(pricingData.discount) > 0 ? 'text-green-600' : 'text-gray-900'}`}>
+                {pricingData.discount && parseFloat(pricingData.discount) > 0 ? `${pricingData.discount}% OFF` : 'None'}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">Applied to delivery fee</p>
+            </div>
+          </div>
+
+          {pricingData.baseFee && pricingData.perKmFee && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm font-semibold text-blue-900 mb-2">Example fee for a 5km delivery:</p>
+              {(() => {
+                const base = parseFloat(pricingData.baseFee) || 0;
+                const perKm = parseFloat(pricingData.perKmFee) || 0;
+                const disc = parseFloat(pricingData.discount) || 0;
+                const rawFee = base + 5 * perKm;
+                const finalFee = disc > 0 ? rawFee * (1 - disc / 100) : rawFee;
+                return (
+                  <p className="text-sm text-blue-800">
+                    {disc > 0 ? (
+                      <>
+                        <span className="line-through text-blue-500">₦{rawFee.toLocaleString()}</span>
+                        <span className="font-bold text-green-700 ml-2">₦{finalFee.toLocaleString()}</span>
+                        <span className="ml-1 text-green-600">({disc}% off)</span>
+                      </>
+                    ) : (
+                      <span className="font-bold">₦{rawFee.toLocaleString()}</span>
+                    )}
+                  </p>
+                );
+              })()}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Documents Section */}
       <Card>
         <CardHeader>
@@ -297,6 +446,61 @@ export default function DeliveryProfilePage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Pricing Modal */}
+      <Modal
+        isOpen={pricingModal}
+        onClose={() => setPricingModal(false)}
+        title="Update Delivery Pricing"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <Input
+            label="Base Fee (₦)"
+            type="number"
+            placeholder="e.g., 500"
+            value={pricingData.baseFee}
+            onChange={(e) => setPricingData(prev => ({ ...prev, baseFee: e.target.value }))}
+            min="0"
+            step="50"
+          />
+          <Input
+            label="Per-KM Rate (₦)"
+            type="number"
+            placeholder="e.g., 100"
+            value={pricingData.perKmFee}
+            onChange={(e) => setPricingData(prev => ({ ...prev, perKmFee: e.target.value }))}
+            min="0"
+            step="10"
+          />
+          <Input
+            label="Delivery Discount (%) — set to 0 to remove"
+            type="number"
+            placeholder="e.g., 15"
+            value={pricingData.discount}
+            onChange={(e) => setPricingData(prev => ({ ...prev, discount: e.target.value }))}
+            min="0"
+            max="100"
+          />
+
+          {pricingData.baseFee && pricingData.perKmFee && pricingData.discount && parseFloat(pricingData.discount) > 0 && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+              <p className="text-sm text-green-800">
+                Customers will see <strong>{pricingData.discount}% off</strong> on your delivery fees.
+                For a 5km delivery: <span className="line-through">₦{(parseFloat(pricingData.baseFee) + 5 * parseFloat(pricingData.perKmFee)).toLocaleString()}</span>{' '}
+                <span className="font-bold">₦{((parseFloat(pricingData.baseFee) + 5 * parseFloat(pricingData.perKmFee)) * (1 - parseFloat(pricingData.discount) / 100)).toLocaleString()}</span>
+              </p>
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-2">
+            <Button variant="outline" className="flex-1" onClick={() => setPricingModal(false)}>Cancel</Button>
+            <Button variant="primary" className="flex-1" onClick={handleSavePricing} isLoading={pricingLoading}>
+              Save Pricing
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Edit Profile Modal */}
       <Modal

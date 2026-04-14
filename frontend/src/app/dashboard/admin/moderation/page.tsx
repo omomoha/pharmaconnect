@@ -29,167 +29,9 @@ interface FlaggedMessage {
   }>;
 }
 
-// Sample flagged messages data
-const SAMPLE_FLAGGED_MESSAGES: FlaggedMessage[] = [
-  {
-    id: '1',
-    conversationId: 'conv-1',
-    messageId: 'msg-100',
-    senderName: 'John Okafor',
-    senderRole: 'customer',
-    recipientName: 'Amara Pharmacy',
-    messageContent: 'Do you have any antibiotics? I need something strong for my infection.',
-    riskLevel: 'High',
-    reason: 'Prescription drug mention detected - AI flagged for manual review',
-    timestamp: '2026-03-26 14:30',
-    status: 'Pending',
-    conversationContext: [
-      {
-        sender: 'John Okafor',
-        content: 'Hi, do you have medications in stock?',
-        timestamp: '2026-03-26 14:15',
-      },
-      {
-        sender: 'Amara Pharmacy',
-        content: 'Yes, what are you looking for?',
-        timestamp: '2026-03-26 14:18',
-      },
-      {
-        sender: 'John Okafor',
-        content: 'Do you have any antibiotics? I need something strong for my infection.',
-        timestamp: '2026-03-26 14:30',
-      },
-    ],
-  },
-  {
-    id: '2',
-    conversationId: 'conv-2',
-    messageId: 'msg-101',
-    senderName: 'Chioma Adeyemi',
-    senderRole: 'customer',
-    recipientName: 'HealthCare Plus',
-    messageContent: 'This is ridiculous! You are incompetent and your pharmacy sucks!',
-    riskLevel: 'High',
-    reason: 'Harassment/Abusive language detected',
-    timestamp: '2026-03-25 12:15',
-    status: 'Reviewed',
-    conversationContext: [
-      {
-        sender: 'Chioma Adeyemi',
-        content: 'Hi, is this product in stock?',
-        timestamp: '2026-03-25 11:50',
-      },
-      {
-        sender: 'HealthCare Plus',
-        content: 'Yes, we have it available',
-        timestamp: '2026-03-25 11:55',
-      },
-      {
-        sender: 'Chioma Adeyemi',
-        content: 'This is ridiculous! You are incompetent and your pharmacy sucks!',
-        timestamp: '2026-03-25 12:15',
-      },
-    ],
-  },
-  {
-    id: '3',
-    conversationId: 'conv-3',
-    messageId: 'msg-102',
-    senderName: 'Tunde Ibrahim',
-    senderRole: 'customer',
-    recipientName: 'MedPlus Pharmacy',
-    messageContent: 'I need 50 units of this product. Can we negotiate the price outside the platform?',
-    riskLevel: 'Medium',
-    reason: 'Suspicious activity - bulk order with request for external transaction',
-    timestamp: '2026-03-25 10:00',
-    status: 'Pending',
-    conversationContext: [
-      {
-        sender: 'Tunde Ibrahim',
-        content: 'Do you offer bulk discounts?',
-        timestamp: '2026-03-25 09:45',
-      },
-      {
-        sender: 'MedPlus Pharmacy',
-        content: 'Yes, for orders above 20 units',
-        timestamp: '2026-03-25 09:50',
-      },
-      {
-        sender: 'Tunde Ibrahim',
-        content: 'I need 50 units. Can we negotiate outside the platform?',
-        timestamp: '2026-03-25 10:00',
-      },
-    ],
-  },
-  {
-    id: '4',
-    conversationId: 'conv-4',
-    messageId: 'msg-103',
-    senderName: 'Premium Pharmacy',
-    senderRole: 'pharmacy',
-    recipientName: 'Zainab Mohammed',
-    messageContent: 'Contact me on WhatsApp +234-801-234-5678 for faster response',
-    riskLevel: 'Medium',
-    reason: 'Policy violation - directing customer to external communication channel',
-    timestamp: '2026-03-24 16:45',
-    status: 'User Warned',
-    conversationContext: [
-      {
-        sender: 'Zainab Mohammed',
-        content: 'Hi, do you sell codeine?',
-        timestamp: '2026-03-24 16:30',
-      },
-      {
-        sender: 'Premium Pharmacy',
-        content: 'Yes, but requires prescription',
-        timestamp: '2026-03-24 16:35',
-      },
-      {
-        sender: 'Premium Pharmacy',
-        content: 'Contact me on WhatsApp for faster response',
-        timestamp: '2026-03-24 16:45',
-      },
-    ],
-  },
-  {
-    id: '5',
-    conversationId: 'conv-5',
-    messageId: 'msg-104',
-    senderName: 'Samuel Adekunle',
-    senderRole: 'rider',
-    recipientName: 'Ayo Adebayo',
-    messageContent: 'Fine. Your order has been cancelled due to your behavior.',
-    riskLevel: 'High',
-    reason: 'Delivery conflict - potential harassment between parties',
-    timestamp: '2026-03-23 18:00',
-    status: 'User Suspended',
-    conversationContext: [
-      {
-        sender: 'Ayo Adebayo',
-        content: 'Where is my order? You are late!',
-        timestamp: '2026-03-23 17:40',
-      },
-      {
-        sender: 'Samuel Adekunle',
-        content: 'I am 10 minutes away',
-        timestamp: '2026-03-23 17:45',
-      },
-      {
-        sender: 'Ayo Adebayo',
-        content: 'If you are late, you will regret it',
-        timestamp: '2026-03-23 17:55',
-      },
-      {
-        sender: 'Samuel Adekunle',
-        content: 'Your order has been cancelled due to your behavior',
-        timestamp: '2026-03-23 18:00',
-      },
-    ],
-  },
-];
 
 export default function ModerationDashboardPage() {
-  const [flags, setFlags] = useState<FlaggedMessage[]>(SAMPLE_FLAGGED_MESSAGES);
+  const [flags, setFlags] = useState<FlaggedMessage[]>([]);
   const [activeTab, setActiveTab] = useState('Pending');
   const [selectedFlag, setSelectedFlag] = useState<FlaggedMessage | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -201,7 +43,7 @@ export default function ModerationDashboardPage() {
 
   const tabs = ['Pending', 'Reviewed', 'Dismissed', 'User Warned', 'User Suspended'];
 
-  // Fetch flagged alerts from API with fallback to sample data
+  // Fetch flagged alerts from API
   useEffect(() => {
     const fetchFlags = async () => {
       try {
@@ -209,29 +51,24 @@ export default function ModerationDashboardPage() {
         const response = await getFlaggedAlerts();
         if (response.success && response.data) {
           const alerts = Array.isArray(response.data) ? response.data : (response.data as any).alerts || [];
-          if (alerts.length > 0) {
-            // Map API response to local FlaggedMessage interface
-            const mapped: FlaggedMessage[] = alerts.map((alert: any) => ({
-              id: alert.id,
-              conversationId: alert.conversationId || '',
-              messageId: alert.messageId || '',
-              senderName: alert.senderName || 'Unknown',
-              senderRole: alert.senderRole || 'customer',
-              recipientName: alert.recipientName || 'Unknown',
-              messageContent: alert.messageContent || alert.flaggedTerms?.join(', ') || '',
-              riskLevel: alert.aiConfidence > 0.9 ? 'High' : alert.aiConfidence > 0.6 ? 'Medium' : 'Low',
-              reason: alert.flagReason || alert.flaggedTerms?.join(', ') || 'Flagged for review',
-              timestamp: alert.createdAt ? new Date(alert.createdAt._seconds ? alert.createdAt._seconds * 1000 : alert.createdAt).toLocaleString() : '',
-              status: alert.adminReviewed ? (alert.adminAction === 'dismissed' ? 'Dismissed' : alert.adminAction === 'warning_sent' ? 'User Warned' : alert.adminAction === 'user_suspended' ? 'User Suspended' : 'Reviewed') : 'Pending',
-              conversationContext: alert.conversationContext || [],
-            }));
-            setFlags(mapped);
-          }
-          // If no alerts from API, keep sample data as placeholder
+          const mapped: FlaggedMessage[] = alerts.map((alert: any) => ({
+            id: alert.id,
+            conversationId: alert.conversationId || '',
+            messageId: alert.messageId || '',
+            senderName: alert.senderName || 'Unknown',
+            senderRole: alert.senderRole || 'customer',
+            recipientName: alert.recipientName || 'Unknown',
+            messageContent: alert.messageContent || alert.flaggedTerms?.join(', ') || '',
+            riskLevel: alert.aiConfidence > 0.9 ? 'High' : alert.aiConfidence > 0.6 ? 'Medium' : 'Low',
+            reason: alert.flagReason || alert.flaggedTerms?.join(', ') || 'Flagged for review',
+            timestamp: alert.createdAt ? new Date(alert.createdAt._seconds ? alert.createdAt._seconds * 1000 : alert.createdAt).toLocaleString() : '',
+            status: alert.adminReviewed ? (alert.adminAction === 'dismissed' ? 'Dismissed' : alert.adminAction === 'warning_sent' ? 'User Warned' : alert.adminAction === 'user_suspended' ? 'User Suspended' : 'Reviewed') : 'Pending',
+            conversationContext: alert.conversationContext || [],
+          }));
+          setFlags(mapped);
         }
       } catch (error) {
         console.error('Failed to fetch flagged messages:', error);
-        // Keep sample data on error
       } finally {
         setLoading(false);
       }
@@ -356,7 +193,7 @@ export default function ModerationDashboardPage() {
       />
 
       {/* Stats Row */}
-      <div className="grid md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
         <StatsCard label="Total Flags" value={totalFlags.toString()} icon="🚩" />
         <StatsCard label="Pending Review" value={pendingFlags.toString()} icon="⏳" />
         <StatsCard label="High Risk" value={highRiskFlags.toString()} icon="🔴" />
@@ -390,20 +227,20 @@ export default function ModerationDashboardPage() {
               <CardContent className="p-6">
                 <div className="space-y-4">
                   {/* Header */}
-                  <div className="flex justify-between items-start gap-4">
-                    <div className="flex-1">
+                  <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xl">⚠️</span>
-                        <h3 className="font-semibold text-gray-900">
+                        <span className="text-xl flex-shrink-0">⚠️</span>
+                        <h3 className="font-semibold text-gray-900 break-words">
                           {flag.reason}
                         </h3>
                       </div>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-gray-600 break-words">
                         <span className="font-medium">Message:</span>{' '}
                         {flag.messageContent}
                       </p>
                     </div>
-                    <div className="flex gap-2 flex-shrink-0">
+                    <div className="flex gap-2 flex-shrink-0 flex-wrap">
                       <span
                         className={`px-3 py-1 rounded-full text-xs font-medium ${getRiskColor(
                           flag.riskLevel
@@ -422,7 +259,7 @@ export default function ModerationDashboardPage() {
                   </div>
 
                   {/* User Info */}
-                  <div className="flex gap-6 text-sm py-3 border-y border-gray-200">
+                  <div className="flex flex-wrap gap-4 md:gap-6 text-sm py-3 border-y border-gray-200">
                     <div className="flex items-center gap-2">
                       <span className="text-lg">👤</span>
                       <div>
@@ -522,8 +359,16 @@ export default function ModerationDashboardPage() {
           ))
         ) : (
           <Card>
-            <CardContent className="py-12 text-center">
-              <p className="text-gray-600">No flagged messages in this category</p>
+            <CardContent className="py-16 text-center">
+              <div className="text-4xl mb-3">✅</div>
+              <p className="text-gray-900 font-medium mb-1">
+                {flags.length === 0 ? 'No flagged messages yet' : `No ${activeTab.toLowerCase()} flags`}
+              </p>
+              <p className="text-sm text-gray-500">
+                {flags.length === 0
+                  ? 'When the moderation system flags a message, it will appear here for review.'
+                  : 'Check other tabs for flagged messages.'}
+              </p>
             </CardContent>
           </Card>
         )}

@@ -29,134 +29,12 @@ interface Conversation {
   messages: Message[];
 }
 
-const SAMPLE_CONVERSATIONS: Conversation[] = [
-  {
-    id: '1',
-    customerName: 'John Doe',
-    avatar: 'J',
-    orderNumber: 'ORD-2026-0001',
-    lastMessage: 'Thank you! The medication worked great.',
-    lastMessageTime: '2 min ago',
-    unreadCount: 1,
-    status: 'Online',
-    messages: [
-      {
-        id: '1',
-        sender: 'customer',
-        text: 'Hi, I received my order. Thank you!',
-        timestamp: '10:30 AM',
-      },
-      {
-        id: '2',
-        sender: 'pharmacy',
-        text: 'You\'re welcome! Please let us know if you have any issues.',
-        timestamp: '10:32 AM',
-      },
-      {
-        id: '3',
-        sender: 'customer',
-        text: 'Thank you! The medication worked great.',
-        timestamp: '02:15 PM',
-        readAt: new Date(),
-      },
-    ],
-  },
-  {
-    id: '2',
-    customerName: 'Jane Smith',
-    avatar: 'J',
-    orderNumber: 'ORD-2026-0002',
-    lastMessage: 'Do you have this in stock?',
-    lastMessageTime: '15 min ago',
-    unreadCount: 0,
-    status: 'Online',
-    messages: [
-      {
-        id: '1',
-        sender: 'customer',
-        text: 'Hi, do you have Ibuprofen in stock?',
-        timestamp: '01:45 PM',
-      },
-      {
-        id: '2',
-        sender: 'pharmacy',
-        text: 'Yes, we have Ibuprofen 400mg available.',
-        timestamp: '01:50 PM',
-      },
-      {
-        id: '3',
-        sender: 'customer',
-        text: 'Great! Do you have this in stock?',
-        timestamp: '02:00 PM',
-      },
-    ],
-  },
-  {
-    id: '3',
-    customerName: 'Mike Johnson',
-    avatar: 'M',
-    orderNumber: 'ORD-2026-0003',
-    lastMessage: 'When will my order be ready?',
-    lastMessageTime: '1 hour ago',
-    unreadCount: 0,
-    status: 'Offline',
-    messages: [
-      {
-        id: '1',
-        sender: 'customer',
-        text: 'I just placed an order. When will it be ready?',
-        timestamp: '11:30 AM',
-      },
-      {
-        id: '2',
-        sender: 'pharmacy',
-        text: 'Your order is being prepared. It will be ready in about 30 minutes.',
-        timestamp: '11:35 AM',
-      },
-      {
-        id: '3',
-        sender: 'customer',
-        text: 'When will my order be ready?',
-        timestamp: '12:30 PM',
-      },
-    ],
-  },
-  {
-    id: '4',
-    customerName: 'Sarah Williams',
-    avatar: 'S',
-    orderNumber: 'ORD-2026-0004',
-    lastMessage: 'Can I get a refund for the wrong item?',
-    lastMessageTime: '3 hours ago',
-    unreadCount: 1,
-    status: 'Offline',
-    messages: [
-      {
-        id: '1',
-        sender: 'customer',
-        text: 'Hi, I received the wrong item in my order.',
-        timestamp: '11:00 AM',
-      },
-      {
-        id: '2',
-        sender: 'pharmacy',
-        text: 'We\'re sorry to hear that. Can you describe what was wrong?',
-        timestamp: '11:05 AM',
-      },
-      {
-        id: '3',
-        sender: 'customer',
-        text: 'I ordered tablets but received capsules. Can I get a refund for the wrong item?',
-        timestamp: '11:10 AM',
-      },
-    ],
-  },
-];
 
 export default function PharmacyMessagesPage() {
-  const [conversations, setConversations] = useState<Conversation[]>(SAMPLE_CONVERSATIONS);
-  const [activeConversationId, setActiveConversationId] = useState(SAMPLE_CONVERSATIONS[0].id);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [apiLoaded, setApiLoaded] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [messageInput, setMessageInput] = useState('');
   const [showMobileList, setShowMobileList] = useState(true);
   const [typingUsers, setTypingUsers] = useState<{ [key: string]: string }>({});
@@ -167,33 +45,35 @@ export default function PharmacyMessagesPage() {
     (c) => c.id === activeConversationId
   );
 
-  // Fetch real conversations from API on mount
+  // Fetch conversations from API on mount
   useEffect(() => {
     const fetchConversationsFromApi = async () => {
       try {
+        setLoading(true);
         const res = await getConversations();
         if (res.success && res.data) {
           const apiConvs = Array.isArray(res.data) ? res.data : (res.data as any).conversations || [];
-          if (apiConvs.length > 0) {
-            const mapped: Conversation[] = apiConvs.map((conv: any) => ({
-              id: conv.id,
-              customerName: conv.customerName || conv.participantName || 'Customer',
-              avatar: (conv.customerName || conv.participantName || 'C')[0].toUpperCase(),
-              orderNumber: conv.orderId || '',
-              lastMessage: conv.lastMessage || '',
-              lastMessageTime: conv.updatedAt ? new Date(conv.updatedAt._seconds ? conv.updatedAt._seconds * 1000 : conv.updatedAt).toLocaleTimeString() : '',
-              unreadCount: conv.unreadCount || 0,
-              status: conv.status || 'active',
-              messages: [],
-            }));
-            setConversations(mapped);
+          const mapped: Conversation[] = apiConvs.map((conv: any) => ({
+            id: conv.id,
+            customerName: conv.customerName || conv.participantName || 'Customer',
+            avatar: (conv.customerName || conv.participantName || 'C')[0].toUpperCase(),
+            orderNumber: conv.orderId || '',
+            lastMessage: conv.lastMessage || '',
+            lastMessageTime: conv.updatedAt ? new Date(conv.updatedAt._seconds ? conv.updatedAt._seconds * 1000 : conv.updatedAt).toLocaleTimeString() : '',
+            unreadCount: conv.unreadCount || 0,
+            status: conv.status || 'active',
+            messages: [],
+          }));
+          setConversations(mapped);
+          if (mapped.length > 0) {
             setActiveConversationId(mapped[0].id);
-            setApiLoaded(true);
           }
+          setApiLoaded(true);
         }
       } catch (error) {
         console.error('Failed to fetch conversations from API:', error);
-        // Keep sample data as fallback
+      } finally {
+        setLoading(false);
       }
     };
     fetchConversationsFromApi();
@@ -285,19 +165,19 @@ export default function PharmacyMessagesPage() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setMessageInput(e.target.value);
-    emitTyping(activeConversationId);
+    if (activeConversationId) emitTyping(activeConversationId);
 
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
     }
 
     typingTimeoutRef.current = setTimeout(() => {
-      emitStoppedTyping(activeConversationId);
+      if (activeConversationId) emitStoppedTyping(activeConversationId);
     }, 2000);
   };
 
   const handleSendMessage = () => {
-    if (!messageInput.trim() || !activeConversation) return;
+    if (!messageInput.trim() || !activeConversation || !activeConversationId) return;
 
     emitStoppedTyping(activeConversationId);
 
@@ -347,6 +227,34 @@ export default function PharmacyMessagesPage() {
     setShowMobileList(false);
   };
 
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Messages" description="Chat with customers about their orders" />
+        <div className="flex items-center justify-center py-16">
+          <div className="w-10 h-10 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
+        </div>
+      </div>
+    );
+  }
+
+  if (conversations.length === 0) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Messages" description="Chat with customers about their orders" />
+        <Card>
+          <CardContent className="py-16 text-center">
+            <div className="text-4xl mb-3">💬</div>
+            <p className="text-gray-900 font-medium mb-1">No conversations yet</p>
+            <p className="text-sm text-gray-500">
+              When customers message you about orders, conversations will appear here.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 h-full">
       <PageHeader
@@ -354,7 +262,7 @@ export default function PharmacyMessagesPage() {
         description="Chat with customers about their orders"
       />
 
-      <div className="grid md:grid-cols-3 gap-6 h-[calc(100vh-300px)]">
+      <div className="grid md:grid-cols-3 gap-4 md:gap-6 h-[calc(100vh-300px)]">
         <Card
           className={`md:block ${
             showMobileList ? 'block' : 'hidden'

@@ -292,7 +292,7 @@ export class PharmacyController {
         sku: z.string(),
         quantity: z.number().positive(),
         price: z.number().positive(),
-        discount: z.number().optional(),
+        discount: z.number().min(0).max(100).optional(),
         expiryDate: z.string().datetime(),
         batchNumber: z.string(),
       });
@@ -421,7 +421,7 @@ export class PharmacyController {
       const schema = z.object({
         price: z.number().positive().optional(),
         quantity: z.number().min(0).optional(),
-        discount: z.number().min(0).optional(),
+        discount: z.number().min(0).max(100).optional(),
         expiryDate: z.string().datetime().optional(),
         batchNumber: z.string().optional(),
         isActive: z.boolean().optional(),

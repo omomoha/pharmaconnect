@@ -82,7 +82,7 @@ export default function DeliveryDashboard() {
       </div>
 
       {/* Earnings Summary */}
-      <div className="grid md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
         <Card>
           <CardContent className="pt-6">
             <p className="text-gray-600 text-sm font-medium mb-2">Today's Earnings</p>
@@ -108,7 +108,7 @@ export default function DeliveryDashboard() {
         </Card>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
         {/* Active Deliveries */}
         <Card className="lg:col-span-2">
           <CardHeader>

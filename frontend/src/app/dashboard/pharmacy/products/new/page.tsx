@@ -12,6 +12,7 @@ interface FormData {
   category: string;
   description: string;
   price: string;
+  discount: string;
   stock: string;
   unit: string;
   active: boolean;
@@ -45,6 +46,7 @@ export default function AddProductPage() {
     category: 'Pain Relief',
     description: '',
     price: '',
+    discount: '',
     stock: '',
     unit: 'tablets',
     active: true,
@@ -90,6 +92,9 @@ export default function AddProductPage() {
     if (!formData.price || parseFloat(formData.price) <= 0) {
       newErrors.price = 'Valid price is required';
     }
+    if (formData.discount && (parseFloat(formData.discount) < 0 || parseFloat(formData.discount) > 100)) {
+      newErrors.discount = 'Discount must be between 0 and 100%';
+    }
     if (!formData.stock || parseInt(formData.stock) < 0) {
       newErrors.stock = 'Valid stock quantity is required';
     }
@@ -108,6 +113,7 @@ export default function AddProductPage() {
         category: 'Pain Relief',
         description: '',
         price: '',
+        discount: '',
         stock: '',
         unit: 'tablets',
         active: true,
@@ -222,7 +228,7 @@ export default function AddProductPage() {
             <h2 className="text-lg font-bold text-gray-900">Pricing & Stock</h2>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-3 gap-4">
               <Input
                 label="Price (₦)"
                 name="price"
@@ -237,6 +243,19 @@ export default function AddProductPage() {
               />
 
               <Input
+                label="Discount (%)"
+                name="discount"
+                type="number"
+                placeholder="e.g., 10"
+                value={formData.discount}
+                onChange={handleInputChange}
+                error={errors.discount}
+                step="1"
+                min="0"
+                max="100"
+              />
+
+              <Input
                 label="Stock Quantity"
                 name="stock"
                 type="number"
@@ -248,6 +267,21 @@ export default function AddProductPage() {
                 required
               />
             </div>
+
+            {formData.price && formData.discount && parseFloat(formData.discount) > 0 && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                <p className="text-sm text-green-800">
+                  <span className="font-medium">Discounted price:</span>{' '}
+                  <span className="font-bold">
+                    ₦{(parseFloat(formData.price) * (1 - parseFloat(formData.discount) / 100)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                  <span className="text-green-600 ml-2 line-through">
+                    ₦{parseFloat(formData.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                  <span className="ml-2 text-green-700 font-medium">({formData.discount}% off)</span>
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 

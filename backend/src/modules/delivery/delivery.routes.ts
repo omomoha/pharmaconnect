@@ -18,6 +18,14 @@ router.post(
   asyncHandler((req, res) => DeliveryController.registerProvider(req, res))
 );
 
+// PATCH /api/v1/delivery/providers/:providerId - Update delivery provider (fees, discount, etc.)
+router.patch(
+  "/providers/:providerId",
+  authenticate,
+  authRateLimiter,
+  asyncHandler((req, res) => DeliveryController.updateProvider(req, res))
+);
+
 // GET /api/v1/delivery/available - Get available delivery providers
 router.get(
   "/available",

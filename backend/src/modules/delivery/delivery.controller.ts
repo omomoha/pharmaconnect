@@ -41,6 +41,7 @@ export class DeliveryController {
         vehicleDocUrl: z.string().url(),
         baseFee: z.number().positive(),
         perKmFee: z.number().positive(),
+        discount: z.number().min(0).max(100).optional(),
       });
 
       const validated = schema.parse(req.body);
@@ -60,6 +61,67 @@ export class DeliveryController {
         apiResponse(false, undefined, {
           code: "REGISTRATION_FAILED",
           message: "Failed to register delivery provider",
+        })
+      );
+    }
+  }
+
+  /**
+   * PATCH /providers/:providerId
+   * Update delivery provider (fees, discount, profile details)
+   */
+  static async updateProvider(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json(
+          apiResponse(false, undefined, {
+            code: "UNAUTHORIZED",
+            message: "User not authenticated",
+          })
+        );
+        return;
+      }
+
+      const { providerId } = req.params;
+
+      // Verify ownership
+      const provider = await DeliveryService.getProvider(providerId);
+      if (!provider || provider.userId !== req.user.uid) {
+        res.status(403).json(
+          apiResponse(false, undefined, {
+            code: "FORBIDDEN",
+            message: "You do not have permission to update this provider",
+          })
+        );
+        return;
+      }
+
+      const schema = z.object({
+        businessName: z.string().min(1).optional(),
+        email: z.string().email().optional(),
+        phoneNumber: z.string().optional(),
+        address: z.string().min(1).optional(),
+        baseFee: z.number().positive().optional(),
+        perKmFee: z.number().positive().optional(),
+        discount: z.number().min(0).max(100).optional(),
+      });
+
+      const validated = schema.parse(req.body);
+
+      const updated = await DeliveryService.updateProvider(providerId, validated);
+
+      logger.info(`Delivery provider updated: ${providerId}`);
+
+      res.json(apiResponse(true, { provider: updated }));
+    } catch (error) {
+      logger.error("Update provider error:", error);
+      res.status(500).json(
+        apiResponse(false, undefined, {
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to update delivery provider",
         })
       );
     }

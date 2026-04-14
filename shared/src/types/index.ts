@@ -255,8 +255,9 @@ export interface DeliveryProvider {
   ownerName: string;
   ownerIdDocUrl: string; // Owner's Government ID
   vehicleDocUrl: string; // Vehicle registration/insurance
-  baseFee: number; // Base delivery fee in currency
-  perKmFee: number; // Per-km rate in currency
+  baseFee: number; // Base delivery fee in Naira
+  perKmFee: number; // Per-km rate in Naira
+  discount?: number; // percentage discount on delivery fee (0-100), set by delivery provider
   approvalStatus: ApprovalStatus;
   isActive: boolean;
   rating: number; // 0-5
@@ -446,7 +447,9 @@ export interface AvailableDeliveryProvider {
   businessName: string;
   baseFee: number;
   perKmFee: number;
-  estimatedFee: number; // calculated for this delivery
+  discount?: number; // percentage discount currently active
+  estimatedFee: number; // calculated fee after discount
+  originalFee?: number; // fee before discount (only present when discount active)
   estimatedDuration: number; // minutes
   rating: number;
   totalReviews: number;

@@ -33,6 +33,7 @@ export class DeliveryService {
       vehicleDocUrl: string;
       baseFee: number;
       perKmFee: number;
+      discount?: number; // percentage discount on delivery fee (0-100)
     }
   ): Promise<DeliveryProvider> {
     try {
@@ -54,6 +55,7 @@ export class DeliveryService {
         vehicleDocUrl: data.vehicleDocUrl,
         baseFee: data.baseFee,
         perKmFee: data.perKmFee,
+        ...(data.discount !== undefined && data.discount > 0 ? { discount: data.discount } : {}),
         approvalStatus: ApprovalStatus.PENDING,
         isActive: true,
         rating: 0,
@@ -71,6 +73,43 @@ export class DeliveryService {
       return provider;
     } catch (error) {
       logger.error("Failed to register delivery provider:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update delivery provider details (fees, discount, etc.)
+   */
+  static async updateProvider(
+    providerId: string,
+    data: Partial<Pick<DeliveryProvider, 'baseFee' | 'perKmFee' | 'discount' | 'businessName' | 'phoneNumber' | 'address' | 'email'>>
+  ): Promise<DeliveryProvider> {
+    try {
+      const db = getFirestore();
+      const updateData: any = {
+        ...data,
+        updatedAt: new Date(),
+      };
+
+      // If discount is explicitly set to 0 or undefined, remove it
+      if (data.discount === 0 || data.discount === undefined) {
+        delete updateData.discount;
+      }
+
+      await db
+        .collection(FIRESTORE_COLLECTIONS.DELIVERY_PROVIDERS)
+        .doc(providerId)
+        .update(updateData);
+
+      const updated = await this.getProvider(providerId);
+      if (!updated) {
+        throw new Error("Provider not found after update");
+      }
+
+      logger.info(`Delivery provider updated: ${providerId}`);
+      return updated;
+    } catch (error) {
+      logger.error(`Failed to update delivery provider ${providerId}:`, error);
       throw error;
     }
   }
@@ -102,16 +141,23 @@ export class DeliveryService {
 
       const providers: AvailableDeliveryProvider[] = snapshot.docs.map((doc) => {
         const provider = doc.data() as DeliveryProvider;
-        const estimatedFee = formatCurrency(
+        const rawFee = formatCurrency(
           provider.baseFee + distance * provider.perKmFee
         );
         const estimatedDuration = Math.ceil(distance * 5); // ~5 min per km estimate
+
+        // Apply discount if the provider has set one
+        const hasDiscount = provider.discount && provider.discount > 0;
+        const estimatedFee = hasDiscount
+          ? formatCurrency(rawFee * (1 - provider.discount! / 100))
+          : rawFee;
 
         return {
           id: provider.id,
           businessName: provider.businessName,
           baseFee: provider.baseFee,
           perKmFee: provider.perKmFee,
+          ...(hasDiscount ? { discount: provider.discount, originalFee: rawFee } : {}),
           estimatedFee,
           estimatedDuration,
           rating: provider.rating,

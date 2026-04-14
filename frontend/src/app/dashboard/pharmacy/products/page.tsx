@@ -37,7 +37,15 @@ export default function ProductsPage() {
   const [pharmacyId, setPharmacyId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [deleteModal, setDeleteModal] = useState(false);
+  const [editModal, setEditModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [editForm, setEditForm] = useState({ price: '', quantity: '', discount: '', batchNumber: '' });
+  const [editLoading, setEditLoading] = useState(false);
+  const [bulkMode, setBulkMode] = useState(false);
+  const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
+  const [bulkDiscountModal, setBulkDiscountModal] = useState(false);
+  const [bulkDiscount, setBulkDiscount] = useState('');
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
     if (!user) return {};
@@ -86,6 +94,112 @@ export default function ProductsPage() {
     return name.toLowerCase().includes(search.toLowerCase());
   });
 
+  const handleEdit = (product: Product) => {
+    setSelectedProduct(product);
+    setEditForm({
+      price: product.price.toString(),
+      quantity: product.quantity.toString(),
+      discount: (product.discount || 0).toString(),
+      batchNumber: product.batchNumber,
+    });
+    setEditModal(true);
+  };
+
+  const confirmEdit = async () => {
+    if (!selectedProduct || !pharmacyId) return;
+    setEditLoading(true);
+    try {
+      const headers = await getAuthHeaders();
+      const body: Record<string, unknown> = {};
+      const newPrice = parseFloat(editForm.price);
+      const newQty = parseInt(editForm.quantity);
+      const newDiscount = parseFloat(editForm.discount);
+      if (!isNaN(newPrice) && newPrice > 0) body.price = newPrice;
+      if (!isNaN(newQty) && newQty >= 0) body.quantity = newQty;
+      if (!isNaN(newDiscount) && newDiscount >= 0) body.discount = newDiscount;
+      if (editForm.batchNumber.trim()) body.batchNumber = editForm.batchNumber.trim();
+
+      const res = await fetch(
+        `${API_URL}/pharmacies/${pharmacyId}/products/${selectedProduct.id}`,
+        { method: 'PATCH', headers, body: JSON.stringify(body) }
+      );
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.error?.message || 'Update failed');
+      }
+      setProducts(prev =>
+        prev.map(p =>
+          p.id === selectedProduct.id
+            ? { ...p, ...body } as Product
+            : p
+        )
+      );
+      setEditModal(false);
+      setSelectedProduct(null);
+      toast.success('Product updated');
+    } catch {
+      toast.error('Failed to update product');
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const toggleBulkSelect = (productId: string) => {
+    setBulkSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(productId)) {
+        next.delete(productId);
+      } else {
+        next.add(productId);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (bulkSelected.size === filteredProducts.length) {
+      setBulkSelected(new Set());
+    } else {
+      setBulkSelected(new Set(filteredProducts.map(p => p.id)));
+    }
+  };
+
+  const applyBulkDiscount = async () => {
+    if (!pharmacyId || bulkSelected.size === 0) return;
+    const discountValue = parseFloat(bulkDiscount);
+    if (isNaN(discountValue) || discountValue < 0 || discountValue > 100) {
+      toast.error('Discount must be between 0 and 100%');
+      return;
+    }
+    setBulkLoading(true);
+    try {
+      const headers = await getAuthHeaders();
+      let successCount = 0;
+      for (const productId of bulkSelected) {
+        const res = await fetch(
+          `${API_URL}/pharmacies/${pharmacyId}/products/${productId}`,
+          { method: 'PATCH', headers, body: JSON.stringify({ discount: discountValue }) }
+        );
+        const result = await res.json();
+        if (res.ok && result.success) successCount++;
+      }
+      setProducts(prev =>
+        prev.map(p =>
+          bulkSelected.has(p.id) ? { ...p, discount: discountValue } : p
+        )
+      );
+      setBulkDiscountModal(false);
+      setBulkMode(false);
+      setBulkSelected(new Set());
+      setBulkDiscount('');
+      toast.success(`Discount ${discountValue > 0 ? `of ${discountValue}%` : 'removed'} applied to ${successCount} product${successCount !== 1 ? 's' : ''}`);
+    } catch {
+      toast.error('Failed to apply bulk discount');
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
   const handleDelete = (product: Product) => {
     setSelectedProduct(product);
     setDeleteModal(true);
@@ -95,19 +209,14 @@ export default function ProductsPage() {
     if (!selectedProduct || !pharmacyId) return;
     try {
       const headers = await getAuthHeaders();
-      // Soft-delete by setting isActive to false (backend uses PATCH or custom endpoint)
-      // Using the product update approach — we don't have a DELETE endpoint,
-      // so we'll remove from UI optimistically
-      const res = await fetch(`${API_URL}/pharmacies/${pharmacyId}/products`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          // This is a workaround — ideally we'd have a DELETE endpoint
-          // For now we'll just hide it from the UI
-        }),
-      });
-      // Even if the backend call structure is imperfect, remove from local state
-      void res;
+      const res = await fetch(
+        `${API_URL}/pharmacies/${pharmacyId}/products/${selectedProduct.id}`,
+        { method: 'DELETE', headers }
+      );
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.error?.message || 'Delete failed');
+      }
       setProducts(prev => prev.filter(p => p.id !== selectedProduct.id));
       setDeleteModal(false);
       setSelectedProduct(null);
@@ -148,14 +257,27 @@ export default function ProductsPage() {
         title="Product Catalog"
         description={`${products.length} products in your catalog`}
         actions={
-          <Link href="/dashboard/pharmacy/products/new">
-            <Button variant="primary">
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Add Product
-            </Button>
-          </Link>
+          <div className="flex gap-2 flex-wrap">
+            {products.length > 0 && (
+              <Button
+                variant={bulkMode ? 'secondary' : 'outline'}
+                onClick={() => {
+                  setBulkMode(!bulkMode);
+                  setBulkSelected(new Set());
+                }}
+              >
+                {bulkMode ? 'Cancel Bulk' : 'Bulk Discount'}
+              </Button>
+            )}
+            <Link href="/dashboard/pharmacy/products/new">
+              <Button variant="primary">
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Add Product
+              </Button>
+            </Link>
+          </div>
         }
       />
 
@@ -169,6 +291,37 @@ export default function ProductsPage() {
           />
         </CardContent>
       </Card>
+
+      {bulkMode && (
+        <Card>
+          <CardContent className="py-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="flex items-center gap-2 cursor-pointer text-sm">
+                <input
+                  type="checkbox"
+                  checked={bulkSelected.size === filteredProducts.length && filteredProducts.length > 0}
+                  onChange={toggleSelectAll}
+                  className="w-4 h-4 rounded"
+                />
+                Select All
+              </label>
+              <span className="text-sm text-gray-500">
+                {bulkSelected.size} of {filteredProducts.length} selected
+              </span>
+              <div className="ml-auto">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  disabled={bulkSelected.size === 0}
+                  onClick={() => setBulkDiscountModal(true)}
+                >
+                  Apply Discount to Selected ({bulkSelected.size})
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {filteredProducts.length === 0 ? (
         <Card>
@@ -186,24 +339,42 @@ export default function ProductsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {filteredProducts.map((product) => {
             const displayName = product.drugName || product.sku || `Product ${product.id.slice(0, 6)}`;
             const displayCategory = product.category || 'Uncategorized';
 
             return (
-              <Card key={product.id}>
+              <Card key={product.id} className={bulkMode && bulkSelected.has(product.id) ? 'ring-2 ring-primary-500' : ''}>
                 <CardContent className="pt-6">
                   <div className="space-y-4">
+                    {bulkMode && (
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={bulkSelected.has(product.id)}
+                          onChange={() => toggleBulkSelect(product.id)}
+                          className="w-4 h-4 rounded"
+                        />
+                        <span className="text-sm text-gray-500">Select</span>
+                      </label>
+                    )}
                     <div className="flex justify-between items-start gap-2">
                       <div className="flex-1">
                         <h3 className="font-bold text-gray-900 text-lg">{displayName}</h3>
                         {product.strength && (
                           <p className="text-sm text-gray-500 mt-0.5">{product.strength}</p>
                         )}
-                        <span className="inline-block mt-2 px-3 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
-                          {displayCategory}
-                        </span>
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          <span className="inline-block px-3 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
+                            {displayCategory}
+                          </span>
+                          {product.discount && product.discount > 0 ? (
+                            <span className="inline-block px-3 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                              {product.discount}% OFF
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
                       <div className="text-right">
                         <div className={`w-3 h-3 rounded-full ${product.isActive ? 'bg-green-500' : 'bg-gray-400'}`} />
@@ -248,9 +419,9 @@ export default function ProductsPage() {
                     </div>
 
                     <div className="flex gap-2 pt-2">
-                      <Link href={`/dashboard/pharmacy/products/${product.id}`} className="flex-1">
-                        <Button variant="outline" size="sm" className="w-full">Edit</Button>
-                      </Link>
+                      <Button variant="outline" size="sm" className="flex-1" onClick={() => handleEdit(product)}>
+                        Edit
+                      </Button>
                       <Button
                         variant="ghost"
                         size="sm"
@@ -276,11 +447,101 @@ export default function ProductsPage() {
       <Modal isOpen={deleteModal} onClose={() => setDeleteModal(false)} title="Delete Product" size="sm">
         <div className="space-y-4">
           <p className="text-gray-700">
-            Are you sure you want to delete <strong>{selectedProduct?.drugName || selectedProduct?.sku}</strong>? This action cannot be undone.
+            Are you sure you want to delete <strong>{selectedProduct?.drugName || selectedProduct?.sku}</strong>? This will deactivate the product from your catalog.
           </p>
           <div className="flex gap-3">
             <Button variant="outline" className="flex-1" onClick={() => setDeleteModal(false)}>Cancel</Button>
             <Button variant="primary" className="flex-1 bg-red-600 hover:bg-red-700" onClick={confirmDelete}>Delete</Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal isOpen={bulkDiscountModal} onClose={() => setBulkDiscountModal(false)} title="Apply Bulk Discount" size="sm">
+        <div className="space-y-4">
+          <p className="text-gray-700">
+            Apply a discount to <strong>{bulkSelected.size} selected product{bulkSelected.size !== 1 ? 's' : ''}</strong>. Set to 0 to remove existing discounts.
+          </p>
+          <Input
+            label="Discount Percentage (%)"
+            type="number"
+            placeholder="e.g., 15"
+            value={bulkDiscount}
+            onChange={(e) => setBulkDiscount(e.target.value)}
+            min="0"
+            max="100"
+          />
+          {bulkDiscount && parseFloat(bulkDiscount) > 0 && (
+            <p className="text-sm text-green-700 bg-green-50 rounded-lg p-2">
+              All selected products will show <strong>{bulkDiscount}% off</strong> their listed price.
+            </p>
+          )}
+          {bulkDiscount === '0' && (
+            <p className="text-sm text-gray-600 bg-gray-50 rounded-lg p-2">
+              This will remove the discount from all selected products.
+            </p>
+          )}
+          <div className="flex gap-3 pt-2">
+            <Button variant="outline" className="flex-1" onClick={() => setBulkDiscountModal(false)}>Cancel</Button>
+            <Button variant="primary" className="flex-1" onClick={applyBulkDiscount} isLoading={bulkLoading}>
+              Apply Discount
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal isOpen={editModal} onClose={() => setEditModal(false)} title="Edit Product" size="md">
+        <div className="space-y-4">
+          <div className="bg-gray-50 rounded-lg p-3 mb-2">
+            <p className="font-semibold text-gray-900">{selectedProduct?.drugName || selectedProduct?.sku}</p>
+            {selectedProduct?.strength && (
+              <p className="text-sm text-gray-500">{selectedProduct.strength}</p>
+            )}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Price (₦)"
+              type="number"
+              value={editForm.price}
+              onChange={(e) => setEditForm(prev => ({ ...prev, price: e.target.value }))}
+            />
+            <Input
+              label="Stock Quantity"
+              type="number"
+              value={editForm.quantity}
+              onChange={(e) => setEditForm(prev => ({ ...prev, quantity: e.target.value }))}
+            />
+            <Input
+              label="Discount (%) — 0 to remove"
+              type="number"
+              value={editForm.discount}
+              onChange={(e) => setEditForm(prev => ({ ...prev, discount: e.target.value }))}
+              min="0"
+              max="100"
+            />
+            <Input
+              label="Batch Number"
+              type="text"
+              value={editForm.batchNumber}
+              onChange={(e) => setEditForm(prev => ({ ...prev, batchNumber: e.target.value }))}
+            />
+          </div>
+          {editForm.price && editForm.discount && parseFloat(editForm.discount) > 0 && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+              <p className="text-sm text-green-800">
+                <span className="font-medium">Customer pays:</span>{' '}
+                <span className="font-bold">
+                  ₦{(parseFloat(editForm.price) * (1 - parseFloat(editForm.discount) / 100)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+                <span className="text-green-600 ml-2 line-through">
+                  ₦{parseFloat(editForm.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+                <span className="ml-2 text-green-700 font-medium">({editForm.discount}% off)</span>
+              </p>
+            </div>
+          )}
+          <div className="flex gap-3 pt-2">
+            <Button variant="outline" className="flex-1" onClick={() => setEditModal(false)}>Cancel</Button>
+            <Button variant="primary" className="flex-1" onClick={confirmEdit} isLoading={editLoading}>Save Changes</Button>
           </div>
         </div>
       </Modal>

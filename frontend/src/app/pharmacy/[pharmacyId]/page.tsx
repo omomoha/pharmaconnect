@@ -118,12 +118,17 @@ export default function PharmacyDetailPage() {
     const quantity = productQuantities[product.id] || 1;
     const displayName = product.drugName || product.sku || `Product ${product.id.slice(0, 6)}`;
 
+    // Use discounted price if discount is set by the pharmacy
+    const finalPrice = product.discount && product.discount > 0
+      ? Math.round(product.price * (1 - product.discount / 100) * 100) / 100
+      : product.price;
+
     const cartItem: CartItem = {
       pharmacyId: pharmacy.id,
       productId: product.id,
       productName: displayName,
       quantity,
-      price: product.price,
+      price: finalPrice,
     };
 
     const existingCart: CartItem[] = JSON.parse(localStorage.getItem('cart') || '[]');
