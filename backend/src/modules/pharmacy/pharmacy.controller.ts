@@ -321,4 +321,181 @@ export class PharmacyController {
       );
     }
   }
+
+  /**
+   * PATCH /:pharmacyId
+   * Update pharmacy profile
+   */
+  static async updatePharmacy(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json(
+          apiResponse(false, undefined, {
+            code: "UNAUTHORIZED",
+            message: "User not authenticated",
+          })
+        );
+        return;
+      }
+
+      const { pharmacyId } = req.params;
+
+      // Verify ownership
+      const pharmacy = await PharmacyService.getPharmacy(pharmacyId);
+      if (!pharmacy || pharmacy.userId !== req.user.uid) {
+        res.status(403).json(
+          apiResponse(false, undefined, {
+            code: "FORBIDDEN",
+            message: "You do not have permission to update this pharmacy",
+          })
+        );
+        return;
+      }
+
+      const schema = z.object({
+        name: z.string().min(1).optional(),
+        email: z.string().email().optional(),
+        phoneNumber: z.string().optional(),
+        address: z.string().min(1).optional(),
+        latitude: z.number().optional(),
+        longitude: z.number().optional(),
+        operatingHours: z.record(z.any()).optional(),
+        description: z.string().optional(),
+        logoUrl: z.string().url().optional(),
+      });
+
+      const validated = schema.parse(req.body);
+
+      const updated = await PharmacyService.updatePharmacy(pharmacyId, validated as any);
+
+      logger.info(`Pharmacy updated: ${pharmacyId}`);
+
+      res.json(apiResponse(true, { pharmacy: updated }));
+    } catch (error) {
+      logger.error("Update pharmacy error:", error);
+      res.status(500).json(
+        apiResponse(false, undefined, {
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to update pharmacy",
+        })
+      );
+    }
+  }
+
+  /**
+   * PATCH /:pharmacyId/products/:productId
+   * Update product
+   */
+  static async updateProduct(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json(
+          apiResponse(false, undefined, {
+            code: "UNAUTHORIZED",
+            message: "User not authenticated",
+          })
+        );
+        return;
+      }
+
+      const { pharmacyId, productId } = req.params;
+
+      // Verify ownership
+      const pharmacy = await PharmacyService.getPharmacy(pharmacyId);
+      if (!pharmacy || pharmacy.userId !== req.user.uid) {
+        res.status(403).json(
+          apiResponse(false, undefined, {
+            code: "FORBIDDEN",
+            message: "You do not have permission to update products for this pharmacy",
+          })
+        );
+        return;
+      }
+
+      const schema = z.object({
+        price: z.number().positive().optional(),
+        quantity: z.number().min(0).optional(),
+        discount: z.number().min(0).optional(),
+        expiryDate: z.string().datetime().optional(),
+        batchNumber: z.string().optional(),
+        isActive: z.boolean().optional(),
+      });
+
+      const validated = schema.parse(req.body);
+
+      const updateData: Record<string, unknown> = { ...validated };
+      if (validated.expiryDate) {
+        updateData.expiryDate = new Date(validated.expiryDate);
+      }
+
+      const product = await PharmacyService.updateProduct(productId, updateData as any);
+
+      logger.info(`Product updated: ${productId}`);
+
+      res.json(apiResponse(true, { product }));
+    } catch (error) {
+      logger.error("Update product error:", error);
+      res.status(500).json(
+        apiResponse(false, undefined, {
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to update product",
+        })
+      );
+    }
+  }
+
+  /**
+   * DELETE /:pharmacyId/products/:productId
+   * Deactivate (soft delete) product
+   */
+  static async deleteProduct(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json(
+          apiResponse(false, undefined, {
+            code: "UNAUTHORIZED",
+            message: "User not authenticated",
+          })
+        );
+        return;
+      }
+
+      const { pharmacyId, productId } = req.params;
+
+      // Verify ownership
+      const pharmacy = await PharmacyService.getPharmacy(pharmacyId);
+      if (!pharmacy || pharmacy.userId !== req.user.uid) {
+        res.status(403).json(
+          apiResponse(false, undefined, {
+            code: "FORBIDDEN",
+            message: "You do not have permission to delete products for this pharmacy",
+          })
+        );
+        return;
+      }
+
+      await PharmacyService.deleteProduct(productId);
+
+      logger.info(`Product deactivated: ${productId}`);
+
+      res.json(apiResponse(true, { message: "Product deleted successfully" }));
+    } catch (error) {
+      logger.error("Delete product error:", error);
+      res.status(500).json(
+        apiResponse(false, undefined, {
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to delete product",
+        })
+      );
+    }
+  }
 }

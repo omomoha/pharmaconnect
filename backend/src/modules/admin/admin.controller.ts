@@ -403,6 +403,41 @@ export class AdminController {
   }
 
   /**
+   * GET /orders
+   * Get all orders with optional status filter
+   */
+  static async getOrders(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
+    try {
+      const schema = z.object({
+        status: z.string().optional(),
+        limit: z.coerce.number().optional().default(100),
+      });
+
+      const validated = schema.parse(req.query);
+
+      const orders = await AdminService.getAllOrders(validated.status, validated.limit);
+
+      res.json(
+        apiResponse(true, {
+          orders,
+          count: orders.length,
+        })
+      );
+    } catch (error) {
+      logger.error("Get orders error:", error);
+      res.status(500).json(
+        apiResponse(false, undefined, {
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to retrieve orders",
+        })
+      );
+    }
+  }
+
+  /**
    * GET /transactions
    * Get all transactions
    */

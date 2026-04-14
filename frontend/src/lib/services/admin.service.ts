@@ -230,6 +230,31 @@ export async function getDashboard(): Promise<ApiResponse<any>> {
   }
 }
 
+/**
+ * Get all orders (admin)
+ */
+export async function getOrders(
+  status?: string,
+  limit?: number
+): Promise<ApiResponse<{ orders: any[]; count: number }>> {
+  try {
+    const params: Record<string, string> = {};
+    if (status) params.status = status;
+    if (limit) params.limit = limit.toString();
+    const response = await apiClient.get('/admin/orders', { params });
+    return response;
+  } catch (error) {
+    console.error('Failed to fetch orders:', error);
+    return {
+      success: false,
+      error: {
+        code: 'FETCH_ORDERS_ERROR',
+        message: 'Failed to fetch orders',
+      },
+    };
+  }
+}
+
 export interface TransactionsParams {
   page?: number;
   limit?: number;

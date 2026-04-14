@@ -96,6 +96,13 @@ router.get(
   asyncHandler((req, res) => AdminController.getDashboardStats(req, res))
 );
 
+// GET /api/v1/admin/orders - Get all orders
+router.get(
+  "/orders",
+  ...adminAuth,
+  asyncHandler((req, res) => AdminController.getOrders(req, res))
+);
+
 // GET /api/v1/admin/transactions - Get transactions
 router.get(
   "/transactions",

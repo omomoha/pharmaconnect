@@ -191,3 +191,78 @@ export async function addProduct(
     };
   }
 }
+
+/**
+ * Update a product
+ */
+export async function updateProduct(
+  pharmacyId: string,
+  productId: string,
+  data: Partial<AddProductData>
+): Promise<ApiResponse<PharmacyProduct>> {
+  try {
+    const response = await apiClient.patch(
+      `/pharmacies/${pharmacyId}/products/${productId}`,
+      data
+    );
+    return response;
+  } catch (error) {
+    console.error('Failed to update product:', error);
+    return {
+      success: false,
+      error: {
+        code: 'UPDATE_PRODUCT_ERROR',
+        message: 'Failed to update product',
+      },
+    };
+  }
+}
+
+/**
+ * Delete (deactivate) a product
+ */
+export async function deleteProduct(
+  pharmacyId: string,
+  productId: string
+): Promise<ApiResponse<void>> {
+  try {
+    const response = await apiClient.delete(
+      `/pharmacies/${pharmacyId}/products/${productId}`
+    );
+    return response;
+  } catch (error) {
+    console.error('Failed to delete product:', error);
+    return {
+      success: false,
+      error: {
+        code: 'DELETE_PRODUCT_ERROR',
+        message: 'Failed to delete product',
+      },
+    };
+  }
+}
+
+/**
+ * Update pharmacy profile
+ */
+export async function updatePharmacy(
+  pharmacyId: string,
+  data: Record<string, unknown>
+): Promise<ApiResponse<Pharmacy>> {
+  try {
+    const response = await apiClient.patch(
+      `/pharmacies/${pharmacyId}`,
+      data
+    );
+    return response;
+  } catch (error) {
+    console.error('Failed to update pharmacy:', error);
+    return {
+      success: false,
+      error: {
+        code: 'UPDATE_PHARMACY_ERROR',
+        message: 'Failed to update pharmacy profile',
+      },
+    };
+  }
+}

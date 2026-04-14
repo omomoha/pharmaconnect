@@ -354,4 +354,34 @@ export class AdminService {
       throw error;
     }
   }
+
+  /**
+   * Get all orders with optional status filter
+   */
+  static async getAllOrders(
+    status?: string,
+    limit: number = 100
+  ): Promise<Order[]> {
+    try {
+      const db = getFirestore();
+      let query = db
+        .collection(FIRESTORE_COLLECTIONS.ORDERS)
+        .orderBy("createdAt", "desc")
+        .limit(limit);
+
+      if (status) {
+        query = db
+          .collection(FIRESTORE_COLLECTIONS.ORDERS)
+          .where("status", "==", status)
+          .orderBy("createdAt", "desc")
+          .limit(limit);
+      }
+
+      const snapshot = await query.get();
+      return snapshot.docs.map((doc) => doc.data() as Order);
+    } catch (error) {
+      logger.error("Failed to get all orders:", error);
+      throw error;
+    }
+  }
 }

@@ -63,4 +63,25 @@ router.post(
   asyncHandler((req, res) => PharmacyController.addProduct(req, res))
 );
 
+// PATCH /api/v1/pharmacies/:pharmacyId - Update pharmacy profile
+router.patch(
+  "/:pharmacyId",
+  authenticate,
+  asyncHandler((req, res) => PharmacyController.updatePharmacy(req, res))
+);
+
+// PATCH /api/v1/pharmacies/:pharmacyId/products/:productId - Update product
+router.patch(
+  "/:pharmacyId/products/:productId",
+  authenticate,
+  asyncHandler((req, res) => PharmacyController.updateProduct(req, res))
+);
+
+// DELETE /api/v1/pharmacies/:pharmacyId/products/:productId - Deactivate product
+router.delete(
+  "/:pharmacyId/products/:productId",
+  authenticate,
+  asyncHandler((req, res) => PharmacyController.deleteProduct(req, res))
+);
+
 export default router;
