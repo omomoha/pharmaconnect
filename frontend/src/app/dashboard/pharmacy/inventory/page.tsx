@@ -39,7 +39,7 @@ export default function InventoryPage() {
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [restockQuantities, setRestockQuantities] = useState<Record<string, string>>({});
 
-  const getAuthHeaders = useCallback(async () => {
+  const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
     if (!user) return {};
     const token = await user.getIdToken();
     return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };

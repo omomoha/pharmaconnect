@@ -61,7 +61,7 @@ export default function OrdersPage() {
   const [showModal, setShowModal] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
 
-  const getAuthHeaders = useCallback(async () => {
+  const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
     if (!user) return {};
     const token = await user.getIdToken();
     return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };

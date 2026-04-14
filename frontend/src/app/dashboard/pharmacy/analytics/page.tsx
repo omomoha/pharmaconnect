@@ -24,7 +24,7 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [timePeriod, setTimePeriod] = useState('month');
 
-  const getAuthHeaders = useCallback(async () => {
+  const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
     if (!user) return {};
     const token = await user.getIdToken();
     return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };

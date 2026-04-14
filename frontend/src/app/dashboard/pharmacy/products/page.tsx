@@ -39,7 +39,7 @@ export default function ProductsPage() {
   const [deleteModal, setDeleteModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
-  const getAuthHeaders = useCallback(async () => {
+  const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
     if (!user) return {};
     const token = await user.getIdToken();
     return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
