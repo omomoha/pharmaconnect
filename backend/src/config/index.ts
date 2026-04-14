@@ -20,7 +20,10 @@ const envSchema = z.object({
   PAYSTACK_SECRET_KEY: z.string().optional(),
   PAYSTACK_PUBLIC_KEY: z.string().optional(),
 
-  // OpenAI
+  // AI (Claude / Anthropic)
+  ANTHROPIC_API_KEY: z.string().optional(),
+
+  // OpenAI (deprecated — kept for fallback)
   OPENAI_API_KEY: z.string().optional(),
 
   // URLs

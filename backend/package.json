@@ -21,6 +21,7 @@
     "node": "20"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
     "@pharmaconnect/shared": "file:./_shared",
     "compression": "^1.7.4",
     "cookie-parser": "^1.4.6",

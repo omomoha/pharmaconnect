@@ -51,9 +51,67 @@ export const DELIVERY = {
 
 // ===== COMMISSION & PRICING CONSTANTS =====
 export const COMMISSION = {
-  PHARMACY_COMMISSION_PERCENT: 10,
-  DELIVERY_COMMISSION_PERCENT: 5,
+  PHARMACY_COMMISSION_PERCENT: 0.1,
+  DELIVERY_COMMISSION_PERCENT: 0.1,
   SERVICE_FEE_PERCENT: 2,
+} as const;
+
+// ===== SUBSCRIPTION TIER CONSTANTS =====
+export const SUBSCRIPTION_TIERS = {
+  PHARMA_LITE: {
+    id: "pharma_lite",
+    name: "PharmaLite",
+    priceNGN: 0,
+    maxProducts: 50,
+    features: ["basic_listing", "order_management", "basic_analytics"],
+    commissionPercent: 0.1,
+    aiChatEnabled: false,
+    prioritySupport: false,
+    promotedListing: false,
+    customStorefront: false,
+  },
+  PHARMA_PRO: {
+    id: "pharma_pro",
+    name: "PharmaPro",
+    priceNGN: 15000,
+    maxProducts: 500,
+    features: [
+      "basic_listing",
+      "order_management",
+      "advanced_analytics",
+      "ai_chat_assistant",
+      "priority_support",
+      "promoted_listing",
+    ],
+    commissionPercent: 0.1,
+    aiChatEnabled: true,
+    prioritySupport: true,
+    promotedListing: true,
+    customStorefront: false,
+  },
+  PHARMA_ELITE: {
+    id: "pharma_elite",
+    name: "PharmaElite",
+    priceNGN: 25000,
+    maxProducts: -1, // Unlimited
+    features: [
+      "basic_listing",
+      "order_management",
+      "advanced_analytics",
+      "ai_chat_assistant",
+      "priority_support",
+      "promoted_listing",
+      "custom_storefront",
+      "dedicated_account_manager",
+      "bulk_upload",
+      "api_access",
+    ],
+    commissionPercent: 0.1,
+    aiChatEnabled: true,
+    prioritySupport: true,
+    promotedListing: true,
+    customStorefront: true,
+  },
 } as const;
 
 // ===== SEARCH CONSTANTS =====
@@ -202,6 +260,9 @@ export const FIRESTORE_COLLECTIONS = {
   REVIEWS: "reviews",
   NOTIFICATIONS: "notifications",
   AUDIT_LOGS: "audit_logs",
+  PHARMACY_SUBSCRIPTIONS: "pharmacy_subscriptions",
+  SUBSCRIPTION_INVOICES: "subscription_invoices",
+  PAYOUT_REQUESTS: "payout_requests",
 } as const;
 
 // ===== VALIDATION RULES =====

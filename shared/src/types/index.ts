@@ -452,3 +452,75 @@ export interface AvailableDeliveryProvider {
   totalReviews: number;
   distance: number; // km from pharmacy to customer
 }
+
+// ===== SUBSCRIPTION TYPES =====
+
+export enum SubscriptionTier {
+  PHARMA_LITE = "pharma_lite",
+  PHARMA_PRO = "pharma_pro",
+  PHARMA_ELITE = "pharma_elite",
+}
+
+export enum SubscriptionStatus {
+  ACTIVE = "active",
+  PAST_DUE = "past_due",
+  CANCELLED = "cancelled",
+  EXPIRED = "expired",
+  TRIAL = "trial",
+}
+
+export interface SubscriptionPlan {
+  id: string;
+  tier: SubscriptionTier;
+  name: string;
+  priceNGN: number;
+  maxProducts: number; // -1 = unlimited
+  features: string[];
+  commissionPercent: number;
+  aiChatEnabled: boolean;
+  prioritySupport: boolean;
+  promotedListing: boolean;
+  customStorefront: boolean;
+}
+
+export interface PharmacySubscription {
+  id: string;
+  pharmacyId: string;
+  tier: SubscriptionTier;
+  status: SubscriptionStatus;
+  currentPeriodStart: Date;
+  currentPeriodEnd: Date;
+  paystackSubscriptionCode?: string;
+  paystackCustomerCode?: string;
+  cancelAtPeriodEnd: boolean;
+  trialEndDate?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface SubscriptionInvoice {
+  id: string;
+  pharmacyId: string;
+  subscriptionId: string;
+  amountNGN: number;
+  status: "paid" | "pending" | "failed" | "refunded";
+  paystackReference?: string;
+  periodStart: Date;
+  periodEnd: Date;
+  paidAt?: Date;
+  createdAt: Date;
+}
+
+export interface PayoutRequest {
+  id: string;
+  pharmacyId: string;
+  amountNGN: number;
+  status: "pending" | "processing" | "completed" | "failed";
+  bankCode: string;
+  accountNumber: string;
+  accountName: string;
+  paystackTransferCode?: string;
+  processedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}

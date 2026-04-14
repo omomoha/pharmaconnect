@@ -3,6 +3,7 @@ import { PharmacyController } from "./pharmacy.controller.js";
 import { authenticate, optionalAuthenticate } from "../../middleware/authenticate.js";
 import { asyncHandler } from "../../middleware/errorHandler.js";
 import { authRateLimiter } from "../../middleware/rateLimiter.js";
+import { requireProductLimit } from "../../middleware/subscriptionGate.js";
 
 const router = Router();
 
@@ -46,11 +47,12 @@ router.get(
   asyncHandler((req, res) => PharmacyController.getPharmacyProducts(req, res))
 );
 
-// POST /api/v1/pharmacies/:pharmacyId/products - Add product
+// POST /api/v1/pharmacies/:pharmacyId/products - Add product (respects tier product limit)
 router.post(
   "/:pharmacyId/products",
   authenticate,
   authRateLimiter,
+  requireProductLimit(),
   asyncHandler((req, res) => PharmacyController.addProduct(req, res))
 );
 
