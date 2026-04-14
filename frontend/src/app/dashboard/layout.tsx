@@ -1,7 +1,7 @@
 'use client';
 
 import React, { ReactNode, useState, useRef, useEffect, lazy, Suspense } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import Sidebar from '@/components/layout/Sidebar';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,6 +16,7 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, profile, loading } = useAuth();
   const { notifications, unreadCount, markAsRead } = useNotifications();
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
@@ -43,8 +44,19 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   useEffect(() => {
     if (!loading && !user) {
       router.push('/login');
+    } else if (!loading && user && profile?.role) {
+      const roleSegment = pathname?.split('/')[2]; // e.g., 'customer', 'pharmacy', 'delivery', 'admin'
+      const roleMap: Record<string, string> = {
+        customer: 'customer',
+        pharmacy: 'pharmacy',
+        delivery: 'delivery_provider',
+        admin: 'admin',
+      };
+      if (roleSegment && roleMap[roleSegment] && roleMap[roleSegment] !== profile.role) {
+        router.push(`/dashboard/${profile.role === 'delivery_provider' ? 'delivery' : profile.role}`);
+      }
     }
-  }, [loading, user, router]);
+  }, [loading, user, profile, pathname, router]);
 
   if (loading) {
     return (
@@ -73,7 +85,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <AIChatWidget />
       </Suspense>
 
-      <main className="flex-1 overflow-y-auto">
+      <main id="main-content" className="flex-1 overflow-y-auto">
         {/* Top Bar */}
         <div className="bg-white/80 backdrop-blur-md border-b border-gray-200/60 sticky top-0 z-30">
           <div className="px-6 py-3 flex justify-between items-center">

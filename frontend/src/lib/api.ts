@@ -59,7 +59,14 @@ export async function get(url: string, options?: FetchOptions) {
   });
 
   if (!response.ok) {
-    throw new Error(`API Error: ${response.status} ${response.statusText}`);
+    let errorMessage = `API Error: ${response.status} ${response.statusText}`;
+    try {
+      const errorBody = await response.json();
+      errorMessage = errorBody.error?.message || errorBody.message || errorMessage;
+    } catch {
+      // Response body not JSON, use default message
+    }
+    throw new Error(errorMessage);
   }
 
   return response.json();
@@ -77,7 +84,14 @@ export async function post(url: string, data?: Record<string, any>, options?: Fe
   });
 
   if (!response.ok) {
-    throw new Error(`API Error: ${response.status} ${response.statusText}`);
+    let errorMessage = `API Error: ${response.status} ${response.statusText}`;
+    try {
+      const errorBody = await response.json();
+      errorMessage = errorBody.error?.message || errorBody.message || errorMessage;
+    } catch {
+      // Response body not JSON, use default message
+    }
+    throw new Error(errorMessage);
   }
 
   return response.json();
@@ -95,7 +109,14 @@ export async function put(url: string, data?: Record<string, any>, options?: Fet
   });
 
   if (!response.ok) {
-    throw new Error(`API Error: ${response.status} ${response.statusText}`);
+    let errorMessage = `API Error: ${response.status} ${response.statusText}`;
+    try {
+      const errorBody = await response.json();
+      errorMessage = errorBody.error?.message || errorBody.message || errorMessage;
+    } catch {
+      // Response body not JSON, use default message
+    }
+    throw new Error(errorMessage);
   }
 
   return response.json();
@@ -113,7 +134,14 @@ export async function patch(url: string, data?: Record<string, any>, options?: F
   });
 
   if (!response.ok) {
-    throw new Error(`API Error: ${response.status} ${response.statusText}`);
+    let errorMessage = `API Error: ${response.status} ${response.statusText}`;
+    try {
+      const errorBody = await response.json();
+      errorMessage = errorBody.error?.message || errorBody.message || errorMessage;
+    } catch {
+      // Response body not JSON, use default message
+    }
+    throw new Error(errorMessage);
   }
 
   return response.json();
@@ -129,7 +157,14 @@ export async function deleteRequest(url: string, options?: FetchOptions) {
   });
 
   if (!response.ok) {
-    throw new Error(`API Error: ${response.status} ${response.statusText}`);
+    let errorMessage = `API Error: ${response.status} ${response.statusText}`;
+    try {
+      const errorBody = await response.json();
+      errorMessage = errorBody.error?.message || errorBody.message || errorMessage;
+    } catch {
+      // Response body not JSON, use default message
+    }
+    throw new Error(errorMessage);
   }
 
   return response.json();

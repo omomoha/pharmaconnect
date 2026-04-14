@@ -22,6 +22,11 @@ export const initializeChatSocket = (io: Server): void => {
       const token = socket.handshake.auth.token;
 
       if (!token) {
+        logger.warn("Socket auth error: no token provided");
+        socket.emit('auth_error', {
+          message: "Authorization token is required",
+          code: "NO_TOKEN",
+        });
         return next(new Error("Authorization token is required"));
       }
 
@@ -43,12 +48,23 @@ export const initializeChatSocket = (io: Server): void => {
       next();
     } catch (error) {
       logger.warn("Socket authentication error:", error);
+      socket.emit('auth_error', {
+        message: "Authentication failed",
+        code: "AUTH_FAILED",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
       next(new Error("Authentication failed"));
     }
   });
 
   io.on(SOCKET_EVENTS.CONNECT, (socket: Socket) => {
     logger.info(`Socket connected: ${socket.id}`);
+
+    // Emit auth success event to client
+    socket.emit('auth_success', {
+      userId: socket.data.user.uid,
+      role: socket.data.user.role,
+    });
 
     // Join chat room
     socket.on(SOCKET_EVENTS.CHAT_ROOM_JOIN, (data: { conversationId: string }) => {

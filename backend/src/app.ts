@@ -65,21 +65,16 @@ export const createApp = (): {
   // Compression
   app.use(compression());
 
-  // Body parsing
-  app.use(express.json({ limit: "10mb" }));
+  // Body parsing with raw body capture for Paystack webhook verification
+  app.use(
+    express.json({
+      limit: "10mb",
+      verify: (req: any, _res, buf) => {
+        req.rawBody = buf.toString();
+      },
+    })
+  );
   app.use(express.urlencoded({ limit: "10mb", extended: true }));
-
-  // Store raw body for Paystack webhook verification
-  app.use((req: Request, _res: Response, next: NextFunction) => {
-    let data = "";
-    req.on("data", (chunk) => {
-      data += chunk;
-    });
-    req.on("end", () => {
-      (req as any).rawBody = data;
-      next();
-    });
-  });
 
   // Cookie parser
   app.use(cookieParser());

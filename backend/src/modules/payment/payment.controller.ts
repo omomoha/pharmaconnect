@@ -158,14 +158,14 @@ export class PaymentController {
       }
 
       const schema = z.object({
-        reference: z.string(),
+        orderId: z.string(),
         reason: z.string().optional(),
       });
 
       const validated = schema.parse(req.body);
 
       const refund = await PaymentService.refundPayment(
-        validated.reference,
+        validated.orderId,
         validated.reason
       );
 

@@ -119,18 +119,18 @@ export class PharmacyController {
   ): Promise<void> {
     try {
       const schema = z.object({
-        latitude: z.coerce.number(),
-        longitude: z.coerce.number(),
-        radiusKm: z.coerce.number().optional().default(10),
+        lat: z.coerce.number(),
+        lng: z.coerce.number(),
+        radius: z.coerce.number().optional().default(10),
         limit: z.coerce.number().optional().default(20),
       });
 
       const validated = schema.parse(req.query);
 
       const pharmacies = await PharmacyService.getNearbyPharmacies(
-        validated.latitude,
-        validated.longitude,
-        validated.radiusKm,
+        validated.lat,
+        validated.lng,
+        validated.radius,
         validated.limit
       );
 
