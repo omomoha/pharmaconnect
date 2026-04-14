@@ -201,6 +201,19 @@ function RegisterContent() {
             </label>
           </div>
 
+          {/* Marketing Consent */}
+          <div className="flex items-start gap-2">
+            <input
+              type="checkbox"
+              id="marketing"
+              className="mt-1"
+              defaultChecked
+            />
+            <label htmlFor="marketing" className="text-sm text-gray-600">
+              Send me updates about new pharmacies, promotions, and health tips via email and SMS
+            </label>
+          </div>
+
           <Button
             type="submit"
             variant="primary"

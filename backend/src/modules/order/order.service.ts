@@ -103,6 +103,114 @@ export class OrderService {
   }
 
   /**
+   * Create a guest order (no Firebase auth required)
+   */
+  static async createGuestOrder(data: {
+    guestEmail: string;
+    guestPhone: string;
+    guestName: string;
+    pharmacyId: string;
+    deliveryAddress: string;
+    deliveryLatitude: number;
+    deliveryLongitude: number;
+    items: Array<{
+      pharmacyProductId: string;
+      drugName: string;
+      category: string;
+      quantity: number;
+      unitPrice: number;
+    }>;
+    notes?: string;
+  }): Promise<Order> {
+    try {
+      const db = getFirestore();
+      const orderId = uuid();
+      const now = new Date();
+
+      const subtotal = data.items.reduce(
+        (sum, item) => sum + item.unitPrice * item.quantity,
+        0
+      );
+      const pharmacyCommission = formatCurrency(
+        subtotal * (COMMISSION.PHARMACY_COMMISSION_PERCENT / 100)
+      );
+      const serviceFee = formatCurrency(
+        subtotal * (COMMISSION.SERVICE_FEE_PERCENT / 100)
+      );
+      const deliveryFee = 0;
+      const deliveryCommission = 0;
+      const total = formatCurrency(subtotal + serviceFee + deliveryFee);
+
+      // Use a guest customer ID prefix so we can distinguish guest orders
+      const guestCustomerId = `guest_${orderId}`;
+
+      const order: Order = {
+        id: orderId,
+        customerId: guestCustomerId,
+        pharmacyId: data.pharmacyId,
+        status: OrderStatus.PENDING,
+        paymentStatus: PaymentStatus.PENDING,
+        subtotal,
+        pharmacyCommission,
+        deliveryFee,
+        deliveryCommission,
+        serviceFee,
+        total,
+        paymentMethod: "paystack",
+        deliveryAddress: data.deliveryAddress,
+        deliveryLatitude: data.deliveryLatitude,
+        deliveryLongitude: data.deliveryLongitude,
+        notes: data.notes,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      await db.collection(FIRESTORE_COLLECTIONS.ORDERS).doc(orderId).set(order);
+
+      // Also store guest contact info in a subcollection for order fulfillment
+      await db
+        .collection(FIRESTORE_COLLECTIONS.ORDERS)
+        .doc(orderId)
+        .collection("guest_info")
+        .doc("contact")
+        .set({
+          email: data.guestEmail,
+          phone: data.guestPhone,
+          name: data.guestName,
+          createdAt: now,
+        });
+
+      // Save order items
+      for (const item of data.items) {
+        const itemId = uuid();
+        const orderItem: OrderItem = {
+          id: itemId,
+          orderId,
+          pharmacyProductId: item.pharmacyProductId,
+          drugName: item.drugName,
+          category: item.category as DrugCategory,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          subtotal: item.unitPrice * item.quantity,
+          createdAt: now,
+          updatedAt: now,
+        };
+
+        await db
+          .collection(FIRESTORE_COLLECTIONS.ORDER_ITEMS)
+          .doc(itemId)
+          .set(orderItem);
+      }
+
+      logger.info(`Guest order created: ${orderId} for ${data.guestEmail}`);
+      return order;
+    } catch (error) {
+      logger.error("Failed to create guest order:", error);
+      throw error;
+    }
+  }
+
+  /**
    * Get order by ID
    */
   static async getOrder(id: string): Promise<Order | null> {

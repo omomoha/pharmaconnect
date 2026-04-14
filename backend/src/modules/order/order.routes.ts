@@ -10,12 +10,19 @@ const router = Router();
  * Order Routes
  */
 
-// POST /api/v1/orders - Create new order
+// POST /api/v1/orders - Create new order (authenticated)
 router.post(
   "/",
   authenticate,
   authRateLimiter,
   asyncHandler((req, res) => OrderController.createOrder(req, res))
+);
+
+// POST /api/v1/orders/guest - Create guest order (no auth required)
+router.post(
+  "/guest",
+  authRateLimiter,
+  asyncHandler((req, res) => OrderController.createGuestOrder(req, res))
 );
 
 // GET /api/v1/orders/user/my-orders - Get user's orders

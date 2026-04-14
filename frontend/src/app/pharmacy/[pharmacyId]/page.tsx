@@ -152,7 +152,7 @@ export default function PharmacyDetailPage({
 }: {
   params: { pharmacyId: string };
 }) {
-  const { user } = useAuth();
+  useAuth();
   const [activeTab, setActiveTab] = useState('products');
   const [productQuantities, setProductQuantities] = useState<
     Record<string, number>
@@ -166,10 +166,6 @@ export default function PharmacyDetailPage({
   ];
 
   const handleAddToCart = (product: Product) => {
-    if (!user) {
-      toast.error('Please log in to add items to cart');
-      return;
-    }
 
     const quantity = productQuantities[product.id] || 1;
     const cart: CartItem = {
@@ -288,7 +284,7 @@ export default function PharmacyDetailPage({
                 <div className="font-bold text-lg text-primary-600 mb-3">
                   {cartCount} items - ₦{getCartTotal().toLocaleString()}
                 </div>
-                <Link href="/customer/cart">
+                <Link href="/cart">
                   <Button size="sm" variant="primary" className="w-full">
                     View Cart
                   </Button>

@@ -1,4 +1,4 @@
-import { Response } from "express";
+import { Request, Response } from "express";
 import { AuthenticatedRequest } from "../../middleware/authenticate.js";
 import { OrderService } from "./order.service.js";
 import { apiResponse } from "../../utils/helpers.js";
@@ -66,6 +66,57 @@ export class OrderController {
         apiResponse(false, undefined, {
           code: "ORDER_CREATION_FAILED",
           message: "Failed to create order",
+        })
+      );
+    }
+  }
+
+  /**
+   * POST /guest
+   * Create guest order (no auth required)
+   */
+  static async createGuestOrder(
+    req: Request,
+    res: Response
+  ): Promise<void> {
+    try {
+      const schema = z.object({
+        guestEmail: z.string().email(),
+        guestPhone: z.string().min(10),
+        guestName: z.string().min(1),
+        pharmacyId: z.string().min(1),
+        deliveryAddress: z.string().min(1),
+        deliveryLatitude: z.number(),
+        deliveryLongitude: z.number(),
+        items: z.array(
+          z.object({
+            pharmacyProductId: z.string(),
+            drugName: z.string(),
+            category: z.nativeEnum(DrugCategory),
+            quantity: z.number().positive(),
+            unitPrice: z.number().positive(),
+          })
+        ),
+        notes: z.string().optional(),
+      });
+
+      const validated = schema.parse(req.body);
+
+      const order = await OrderService.createGuestOrder(validated);
+
+      logger.info(`Guest order created: ${order.id}`);
+
+      res.status(201).json(
+        apiResponse(true, {
+          order,
+        })
+      );
+    } catch (error) {
+      logger.error("Create guest order error:", error);
+      res.status(500).json(
+        apiResponse(false, undefined, {
+          code: "GUEST_ORDER_CREATION_FAILED",
+          message: "Failed to create guest order",
         })
       );
     }
