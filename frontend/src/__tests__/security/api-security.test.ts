@@ -4,7 +4,7 @@
  * Socket.IO auth, and delivery verification security
  */
 
-import { fetchWithAuth, apiClient } from '@/lib/api';
+import { apiClient } from '@/lib/api';
 import {
   initializePayment,
   verifyPayment,

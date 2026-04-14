@@ -1,5 +1,3 @@
-import React from 'react';
-
 type Variant = 'success' | 'warning' | 'danger' | 'info' | 'neutral';
 type Size = 'sm' | 'md';
 

@@ -1,6 +1,4 @@
-import React from 'react';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { auth, db } from '@/lib/firebase';
 
