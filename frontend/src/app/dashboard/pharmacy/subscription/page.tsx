@@ -42,7 +42,7 @@ const FEATURE_LABELS: Record<string, string> = {
 };
 
 export default function SubscriptionPage() {
-  const { profile } = useAuth();
+  useAuth(); // Ensures user is authenticated
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [currentSubscription, setCurrentSubscription] = useState<Subscription | null>(null);
   const [currentPlan, setCurrentPlan] = useState<SubscriptionPlan | null>(null);
