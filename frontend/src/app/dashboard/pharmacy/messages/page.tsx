@@ -157,6 +157,15 @@ export default function PharmacyMessagesPage() {
   const [conversations, setConversations] = useState<Conversation[]>(SAMPLE_CONVERSATIONS);
   const [activeConversationId, setActiveConversationId] = useState(SAMPLE_CONVERSATIONS[0].id);
   const [apiLoaded, setApiLoaded] = useState(false);
+  const [messageInput, setMessageInput] = useState('');
+  const [showMobileList, setShowMobileList] = useState(true);
+  const [typingUsers, setTypingUsers] = useState<{ [key: string]: string }>({});
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const activeConversation = conversations.find(
+    (c) => c.id === activeConversationId
+  );
 
   // Fetch real conversations from API on mount
   useEffect(() => {
@@ -216,15 +225,6 @@ export default function PharmacyMessagesPage() {
     };
     fetchMessages();
   }, [activeConversationId, apiLoaded]);
-  const [messageInput, setMessageInput] = useState('');
-  const [showMobileList, setShowMobileList] = useState(true);
-  const [typingUsers, setTypingUsers] = useState<{ [key: string]: string }>({});
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const activeConversation = conversations.find(
-    (c) => c.id === activeConversationId
-  );
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
