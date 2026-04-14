@@ -7,6 +7,7 @@ import Input from '@/components/ui/Input';
 import PageHeader from '@/components/ui/PageHeader';
 import TypingIndicator from '@/components/chat/TypingIndicator';
 import { joinChatRoom, sendChatMessage, onChatMessageReceive, emitTyping, emitStoppedTyping, onTyping } from '@/lib/socket';
+import { getConversations, getConversation } from '@/lib/services/chat.service';
 
 interface Message {
   id: string;
@@ -155,6 +156,66 @@ const SAMPLE_CONVERSATIONS: Conversation[] = [
 export default function PharmacyMessagesPage() {
   const [conversations, setConversations] = useState<Conversation[]>(SAMPLE_CONVERSATIONS);
   const [activeConversationId, setActiveConversationId] = useState(SAMPLE_CONVERSATIONS[0].id);
+  const [apiLoaded, setApiLoaded] = useState(false);
+
+  // Fetch real conversations from API on mount
+  useEffect(() => {
+    const fetchConversationsFromApi = async () => {
+      try {
+        const res = await getConversations();
+        if (res.success && res.data) {
+          const apiConvs = Array.isArray(res.data) ? res.data : (res.data as any).conversations || [];
+          if (apiConvs.length > 0) {
+            const mapped: Conversation[] = apiConvs.map((conv: any) => ({
+              id: conv.id,
+              customerName: conv.customerName || conv.participantName || 'Customer',
+              avatar: (conv.customerName || conv.participantName || 'C')[0].toUpperCase(),
+              orderNumber: conv.orderId || '',
+              lastMessage: conv.lastMessage || '',
+              lastMessageTime: conv.updatedAt ? new Date(conv.updatedAt._seconds ? conv.updatedAt._seconds * 1000 : conv.updatedAt).toLocaleTimeString() : '',
+              unreadCount: conv.unreadCount || 0,
+              status: conv.status || 'active',
+              messages: [],
+            }));
+            setConversations(mapped);
+            setActiveConversationId(mapped[0].id);
+            setApiLoaded(true);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch conversations from API:', error);
+        // Keep sample data as fallback
+      }
+    };
+    fetchConversationsFromApi();
+  }, []);
+
+  // Fetch messages when active conversation changes (for API-loaded conversations)
+  useEffect(() => {
+    if (!apiLoaded || !activeConversationId) return;
+    const fetchMessages = async () => {
+      try {
+        const res = await getConversation(activeConversationId);
+        if (res.success && res.data) {
+          const msgs = (res.data as any).messages || [];
+          const mapped = msgs.map((m: any) => ({
+            id: m.id,
+            sender: m.senderId === 'pharmacy' ? 'pharmacy' : 'customer',
+            text: m.content || m.text || '',
+            timestamp: m.createdAt ? new Date(m.createdAt._seconds ? m.createdAt._seconds * 1000 : m.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '',
+          }));
+          setConversations((prev) =>
+            prev.map((c) =>
+              c.id === activeConversationId ? { ...c, messages: mapped } : c
+            )
+          );
+        }
+      } catch (error) {
+        console.error('Failed to fetch messages:', error);
+      }
+    };
+    fetchMessages();
+  }, [activeConversationId, apiLoaded]);
   const [messageInput, setMessageInput] = useState('');
   const [showMobileList, setShowMobileList] = useState(true);
   const [typingUsers, setTypingUsers] = useState<{ [key: string]: string }>({});

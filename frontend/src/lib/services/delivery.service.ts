@@ -47,6 +47,54 @@ export interface VerifySecurityCodeData {
 }
 
 /**
+ * Get current rider's delivery assignments
+ */
+export async function getMyDeliveries(
+  status?: string,
+  limit?: number
+): Promise<ApiResponse<{ deliveries: DeliveryAssignment[]; count: number }>> {
+  try {
+    const params: Record<string, string> = {};
+    if (status) params.status = status;
+    if (limit) params.limit = limit.toString();
+    const response = await apiClient.get('/delivery/assignments/user/my-deliveries', { params });
+    return response;
+  } catch (error) {
+    console.error('Failed to fetch my deliveries:', error);
+    return {
+      success: false,
+      error: {
+        code: 'FETCH_MY_DELIVERIES_ERROR',
+        message: 'Failed to fetch your deliveries',
+      },
+    };
+  }
+}
+
+/**
+ * Get orders available for delivery pickup
+ */
+export async function getAvailableOrders(
+  limit?: number
+): Promise<ApiResponse<{ orders: Record<string, unknown>[]; count: number }>> {
+  try {
+    const params: Record<string, string> = {};
+    if (limit) params.limit = limit.toString();
+    const response = await apiClient.get('/delivery/available-orders', { params });
+    return response;
+  } catch (error) {
+    console.error('Failed to fetch available orders:', error);
+    return {
+      success: false,
+      error: {
+        code: 'FETCH_AVAILABLE_ORDERS_ERROR',
+        message: 'Failed to fetch available orders',
+      },
+    };
+  }
+}
+
+/**
  * Register a new delivery provider
  */
 export async function registerProvider(

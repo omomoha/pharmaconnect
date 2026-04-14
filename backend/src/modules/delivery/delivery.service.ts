@@ -360,6 +360,109 @@ export class DeliveryService {
   }
 
   /**
+   * Get delivery assignments for a user (rider/provider)
+   * Returns all assignments where the user is the delivery provider owner
+   */
+  static async getMyDeliveries(
+    userId: string,
+    status?: string,
+    limit: number = 50
+  ): Promise<DeliveryAssignment[]> {
+    try {
+      const db = getFirestore();
+
+      // First find the provider linked to this user
+      const providerSnapshot = await db
+        .collection(FIRESTORE_COLLECTIONS.DELIVERY_PROVIDERS)
+        .where("userId", "==", userId)
+        .limit(1)
+        .get();
+
+      if (providerSnapshot.empty) {
+        return [];
+      }
+
+      const providerId = providerSnapshot.docs[0].id;
+
+      // Query assignments for this provider
+      let query = db
+        .collection(FIRESTORE_COLLECTIONS.DELIVERY_ASSIGNMENTS)
+        .where("deliveryProviderId", "==", providerId)
+        .orderBy("createdAt", "desc")
+        .limit(limit);
+
+      if (status) {
+        query = db
+          .collection(FIRESTORE_COLLECTIONS.DELIVERY_ASSIGNMENTS)
+          .where("deliveryProviderId", "==", providerId)
+          .where("status", "==", status)
+          .orderBy("createdAt", "desc")
+          .limit(limit);
+      }
+
+      const snapshot = await query.get();
+      return snapshot.docs.map((doc) => doc.data() as DeliveryAssignment);
+    } catch (error) {
+      logger.error(`Failed to get deliveries for user ${userId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get available delivery orders (orders ready for pickup without assignment)
+   */
+  static async getAvailableOrders(
+    _userId: string,
+    limit: number = 50
+  ): Promise<Record<string, unknown>[]> {
+    try {
+      const db = getFirestore();
+
+      // Find orders that are ready_for_pickup and don't yet have a delivery assignment
+      const ordersSnapshot = await db
+        .collection(FIRESTORE_COLLECTIONS.ORDERS)
+        .where("status", "==", "ready_for_pickup")
+        .orderBy("createdAt", "desc")
+        .limit(limit)
+        .get();
+
+      if (ordersSnapshot.empty) {
+        return [];
+      }
+
+      const orders = ordersSnapshot.docs.map((doc) => doc.data());
+
+      // Enrich with pharmacy info
+      const pharmacyIds = [...new Set(orders.map((o: any) => o.pharmacyId).filter(Boolean))];
+      const pharmacyMap = new Map<string, any>();
+
+      for (const pid of pharmacyIds) {
+        const pharmacyDoc = await db
+          .collection(FIRESTORE_COLLECTIONS.PHARMACIES)
+          .doc(pid)
+          .get();
+        if (pharmacyDoc.exists) {
+          pharmacyMap.set(pid, pharmacyDoc.data());
+        }
+      }
+
+      return orders.map((order: any) => {
+        const pharmacy = pharmacyMap.get(order.pharmacyId);
+        return {
+          ...order,
+          pharmacyName: pharmacy?.name || "Unknown Pharmacy",
+          pharmacyAddress: pharmacy?.address || "",
+          pharmacyLatitude: pharmacy?.latitude || 0,
+          pharmacyLongitude: pharmacy?.longitude || 0,
+        };
+      });
+    } catch (error) {
+      logger.error(`Failed to get available orders:`, error);
+      throw error;
+    }
+  }
+
+  /**
    * Get provider by ID
    */
   static async getProvider(id: string): Promise<DeliveryProvider | null> {

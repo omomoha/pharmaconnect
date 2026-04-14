@@ -1,107 +1,63 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import PageHeader from '@/components/ui/PageHeader';
 import { Card, CardContent } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import StatusBadge from '@/components/ui/StatusBadge';
 import Modal from '@/components/ui/Modal';
+import toast from 'react-hot-toast';
+import { getAvailableOrders, createAssignment } from '@/lib/services/delivery.service';
 
 interface AvailableOrder {
   id: string;
+  pharmacyId: string;
   pharmacyName: string;
-  deliveryArea: string;
-  distance: number;
-  estimatedTime: string;
-  reward: number;
-  priority: 'Normal' | 'High' | 'Urgent';
-  pickupAddress: string;
-  customerArea: string;
+  pharmacyAddress: string;
+  pharmacyLatitude: number;
+  pharmacyLongitude: number;
+  deliveryAddress: string;
+  deliveryLatitude: number;
+  deliveryLongitude: number;
+  total: number;
+  deliveryFee: number;
+  status: string;
+  createdAt: string;
 }
 
-const SAMPLE_ORDERS: AvailableOrder[] = [
-  {
-    id: '1',
-    pharmacyName: 'MediCare Stores',
-    deliveryArea: 'Ikoyi to Ajose Adeogun',
-    distance: 2.1,
-    estimatedTime: '5-8 mins',
-    reward: 2500,
-    priority: 'Normal',
-    pickupAddress: '789 VI Road, Lagos',
-    customerArea: 'Ikoyi',
-  },
-  {
-    id: '2',
-    pharmacyName: 'HealthFirst Pharmacy',
-    deliveryArea: 'Lekki to Ikoyi',
-    distance: 4.2,
-    estimatedTime: '10-12 mins',
-    reward: 3500,
-    priority: 'High',
-    pickupAddress: '123 Lekki Phase 1, Lagos',
-    customerArea: 'Lekki',
-  },
-  {
-    id: '3',
-    pharmacyName: 'PharmaPlus',
-    deliveryArea: 'Ikeja to Allen Avenue',
-    distance: 6.8,
-    estimatedTime: '15-18 mins',
-    reward: 4500,
-    priority: 'Normal',
-    pickupAddress: '555 Obafemi Awolowo Way, Ikeja',
-    customerArea: 'Ikeja',
-  },
-  {
-    id: '4',
-    pharmacyName: 'Guardian Pharmacy',
-    deliveryArea: 'Surulere to Yaba',
-    distance: 5.3,
-    estimatedTime: '12-15 mins',
-    reward: 5000,
-    priority: 'Urgent',
-    pickupAddress: '321 Ikorodu Road, Surulere',
-    customerArea: 'Yaba',
-  },
-  {
-    id: '5',
-    pharmacyName: 'Life Pharmacy',
-    deliveryArea: 'Shomolu to Bariga',
-    distance: 3.5,
-    estimatedTime: '8-10 mins',
-    reward: 2800,
-    priority: 'Normal',
-    pickupAddress: '111 Ikorodu Road, Shomolu',
-    customerArea: 'Shomolu',
-  },
-  {
-    id: '6',
-    pharmacyName: 'Quick Med Pharmacy',
-    deliveryArea: 'VI to Lekki',
-    distance: 3.8,
-    estimatedTime: '9-11 mins',
-    reward: 3200,
-    priority: 'High',
-    pickupAddress: '456 Ligali Ayorinde, V.I',
-    customerArea: 'Lekki',
-  },
-];
-
-type SortType = 'distance' | 'reward';
+type SortType = 'newest' | 'reward';
 
 export default function AvailableOrdersPage() {
-  const [orders, setOrders] = useState<AvailableOrder[]>(SAMPLE_ORDERS);
-  const [sortBy, setSortBy] = useState<SortType>('distance');
+  const [orders, setOrders] = useState<AvailableOrder[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [sortBy, setSortBy] = useState<SortType>('newest');
   const [acceptModal, setAcceptModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<AvailableOrder | null>(null);
+  const [accepting, setAccepting] = useState(false);
+
+  const fetchOrders = useCallback(async () => {
+    try {
+      const res = await getAvailableOrders();
+      if (res.success && res.data) {
+        setOrders((res.data.orders || []) as AvailableOrder[]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch available orders:', error);
+      toast.error('Failed to load available orders');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
 
   const sortedOrders = [...orders].sort((a, b) => {
-    if (sortBy === 'distance') {
-      return a.distance - b.distance;
-    } else {
-      return b.reward - a.reward;
+    if (sortBy === 'reward') {
+      return (b.deliveryFee || 0) - (a.deliveryFee || 0);
     }
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
   const handleAcceptClick = (order: AvailableOrder) => {
@@ -109,24 +65,44 @@ export default function AvailableOrdersPage() {
     setAcceptModal(true);
   };
 
-  const handleConfirmAccept = () => {
+  const handleConfirmAccept = async () => {
     if (!selectedOrder) return;
-    // Remove order from available list
-    setOrders(orders.filter((o) => o.id !== selectedOrder.id));
-    setAcceptModal(false);
-    alert(`Delivery accepted from ${selectedOrder.pharmacyName}!`);
-  };
 
-  const getPriorityIcon = (priority: string): string => {
-    switch (priority) {
-      case 'Urgent':
-        return '🔴';
-      case 'High':
-        return '🟠';
-      default:
-        return '🟡';
+    setAccepting(true);
+    try {
+      const res = await createAssignment({
+        orderId: selectedOrder.id,
+        deliveryProviderId: '', // Will be filled by backend from auth context
+        pickupLatitude: selectedOrder.pharmacyLatitude || 0,
+        pickupLongitude: selectedOrder.pharmacyLongitude || 0,
+        deliveryLatitude: selectedOrder.deliveryLatitude || 0,
+        deliveryLongitude: selectedOrder.deliveryLongitude || 0,
+      });
+
+      if (res.success) {
+        toast.success(`Delivery accepted from ${selectedOrder.pharmacyName}!`);
+        setOrders(orders.filter((o) => o.id !== selectedOrder.id));
+        setAcceptModal(false);
+      } else {
+        toast.error(res.error?.message || 'Failed to accept delivery');
+      }
+    } catch {
+      toast.error('Failed to accept delivery');
+    } finally {
+      setAccepting(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Available Orders" description="Browse and accept new delivery orders" />
+        <div className="flex justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -139,18 +115,18 @@ export default function AvailableOrdersPage() {
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="flex gap-2">
           <Button
-            variant={sortBy === 'distance' ? 'primary' : 'outline'}
+            variant={sortBy === 'newest' ? 'primary' : 'outline'}
             size="sm"
-            onClick={() => setSortBy('distance')}
+            onClick={() => setSortBy('newest')}
           >
-            📍 Closest First
+            Newest First
           </Button>
           <Button
             variant={sortBy === 'reward' ? 'primary' : 'outline'}
             size="sm"
             onClick={() => setSortBy('reward')}
           >
-            💰 Highest Reward
+            Highest Reward
           </Button>
         </div>
         <div className="text-sm text-gray-600 flex items-center">
@@ -171,44 +147,42 @@ export default function AvailableOrdersPage() {
           {sortedOrders.map((order) => (
             <Card key={order.id} className="hover:shadow-lg transition-shadow">
               <CardContent className="p-6 space-y-4">
-                {/* Pharmacy & Priority */}
+                {/* Pharmacy Info */}
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <h3 className="font-bold text-gray-900 text-lg">{order.pharmacyName}</h3>
-                    <p className="text-sm text-gray-600">{order.deliveryArea}</p>
+                    <p className="text-sm text-gray-600">{order.pharmacyAddress}</p>
                   </div>
-                  <StatusBadge status={order.priority} size="sm" />
+                  <StatusBadge status="Ready" size="sm" />
                 </div>
 
                 {/* Details Grid */}
-                <div className="grid grid-cols-3 gap-4 py-4 border-y border-gray-200">
+                <div className="grid grid-cols-2 gap-4 py-4 border-y border-gray-200">
                   <div>
                     <p className="text-xs font-semibold text-gray-500 uppercase mb-1">
-                      Distance
+                      Order Total
                     </p>
-                    <p className="text-lg font-bold text-gray-900">{order.distance} km</p>
+                    <p className="text-lg font-bold text-gray-900">
+                      {'\u20A6'}{(order.total || 0).toLocaleString()}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs font-semibold text-gray-500 uppercase mb-1">
-                      Est. Time
+                      Delivery Fee
                     </p>
-                    <p className="text-lg font-bold text-gray-900">{order.estimatedTime}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-gray-500 uppercase mb-1">
-                      Reward
+                    <p className="text-lg font-bold text-primary-600">
+                      {'\u20A6'}{(order.deliveryFee || 0).toLocaleString()}
                     </p>
-                    <p className="text-lg font-bold text-primary-600">₦{order.reward.toLocaleString()}</p>
                   </div>
                 </div>
 
                 {/* Location Info */}
                 <div className="bg-gray-50 p-3 rounded-lg space-y-2">
                   <div className="text-xs font-semibold text-gray-600">
-                    Pickup: <span className="text-gray-900 font-normal">{order.pickupAddress}</span>
+                    Pickup: <span className="text-gray-900 font-normal">{order.pharmacyAddress}</span>
                   </div>
                   <div className="text-xs font-semibold text-gray-600">
-                    Deliver to: <span className="text-gray-900 font-normal">{order.customerArea}</span>
+                    Deliver to: <span className="text-gray-900 font-normal">{order.deliveryAddress || 'Address provided on accept'}</span>
                   </div>
                 </div>
 
@@ -218,7 +192,7 @@ export default function AvailableOrdersPage() {
                   className="w-full"
                   onClick={() => handleAcceptClick(order)}
                 >
-                  {getPriorityIcon(order.priority)} Accept Delivery
+                  Accept Delivery
                 </Button>
               </CardContent>
             </Card>
@@ -240,23 +214,20 @@ export default function AvailableOrdersPage() {
                 <div>
                   <p className="text-sm text-gray-600">From</p>
                   <p className="font-semibold text-gray-900">{selectedOrder.pharmacyName}</p>
-                  <p className="text-xs text-gray-500">{selectedOrder.pickupAddress}</p>
+                  <p className="text-xs text-gray-500">{selectedOrder.pharmacyAddress}</p>
                 </div>
 
                 <div>
-                  <p className="text-sm text-gray-600">To</p>
-                  <p className="font-semibold text-gray-900">{selectedOrder.customerArea}</p>
+                  <p className="text-sm text-gray-600">Deliver to</p>
+                  <p className="font-semibold text-gray-900">{selectedOrder.deliveryAddress || 'Customer address'}</p>
                 </div>
 
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <p className="text-xs font-semibold text-blue-700 mb-1">ESTIMATED EARNINGS</p>
-                  <p className="text-2xl font-bold text-primary-600">₦{selectedOrder.reward.toLocaleString()}</p>
+                  <p className="text-xs font-semibold text-blue-700 mb-1">DELIVERY FEE</p>
+                  <p className="text-2xl font-bold text-primary-600">
+                    {'\u20A6'}{(selectedOrder.deliveryFee || 0).toLocaleString()}
+                  </p>
                 </div>
-
-                <p className="text-sm text-gray-600">
-                  Distance: <span className="font-semibold">{selectedOrder.distance} km</span> | Time:{' '}
-                  <span className="font-semibold">{selectedOrder.estimatedTime}</span>
-                </p>
               </div>
 
               <p className="text-sm text-gray-500 bg-gray-50 p-3 rounded">
@@ -268,8 +239,9 @@ export default function AvailableOrdersPage() {
                   variant="primary"
                   className="flex-1"
                   onClick={handleConfirmAccept}
+                  disabled={accepting}
                 >
-                  Accept & Start
+                  {accepting ? 'Accepting...' : 'Accept & Start'}
                 </Button>
                 <Button
                   variant="outline"

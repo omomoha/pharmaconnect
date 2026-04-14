@@ -1,103 +1,94 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import PageHeader from '@/components/ui/PageHeader';
 import { Card, CardContent } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import StatusBadge from '@/components/ui/StatusBadge';
 import Input from '@/components/ui/Input';
 import Modal from '@/components/ui/Modal';
+import toast from 'react-hot-toast';
+import { getMyDeliveries, updateAssignmentStatus, verifySecurityCode } from '@/lib/services/delivery.service';
 
 interface DeliveryItem {
   id: string;
   orderId: string;
-  customerName: string;
-  pharmacyName: string;
-  pickupAddress: string;
-  deliveryAddress: string;
-  distance: number;
-  eta: string;
-  status: 'Picked Up' | 'In Transit' | 'Arriving';
+  deliveryProviderId: string;
+  pickupLatitude: number;
+  pickupLongitude: number;
+  deliveryLatitude: number;
+  deliveryLongitude: number;
+  status: string;
+  riderCode?: string;
   customerCode?: string;
-  riderCode: string;
+  createdAt: string;
 }
 
-const SAMPLE_DELIVERIES: DeliveryItem[] = [
-  {
-    id: '1',
-    orderId: 'ORD-2024-0001',
-    customerName: 'Chioma Adeyemi',
-    pharmacyName: 'HealthFirst Pharmacy, Lekki',
-    pickupAddress: '123 Lekki Phase 1, Lagos',
-    deliveryAddress: '456 Ikoyi Avenue, Lagos',
-    distance: 4.2,
-    eta: '8 mins',
-    status: 'In Transit',
-    riderCode: 'XK9M',
-  },
-  {
-    id: '2',
-    orderId: 'ORD-2024-0002',
-    customerName: 'Okoro Chinedu',
-    pharmacyName: 'MediCare Stores, V.I',
-    pickupAddress: '789 VI Road, Lagos',
-    deliveryAddress: '321 Ajose Adeogun, V.I',
-    distance: 2.1,
-    eta: '5 mins',
-    status: 'Arriving',
-    riderCode: 'PQ7L',
-  },
-  {
-    id: '3',
-    orderId: 'ORD-2024-0003',
-    customerName: 'Zainab Mohammed',
-    pharmacyName: 'PharmaPlus, Ikeja',
-    pickupAddress: '555 Obafemi Awolowo Way, Ikeja',
-    deliveryAddress: '777 Allen Avenue, Ikeja',
-    distance: 6.8,
-    eta: '15 mins',
-    status: 'Picked Up',
-    riderCode: 'RT2K',
-  },
-];
+const STATUS_MAP: Record<string, string> = {
+  accepted: 'Accepted',
+  picked_up: 'Picked Up',
+  in_transit: 'In Transit',
+  arrived: 'Arriving',
+};
+
+const NEXT_STATUS: Record<string, string> = {
+  accepted: 'picked_up',
+  picked_up: 'in_transit',
+  in_transit: 'arrived',
+};
 
 export default function ActiveDeliveriesPage() {
-  const [deliveries, setDeliveries] = useState<DeliveryItem[]>(SAMPLE_DELIVERIES);
+  const [deliveries, setDeliveries] = useState<DeliveryItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedDelivery, setSelectedDelivery] = useState<DeliveryItem | null>(null);
-  const [_statusDropdown, _setStatusDropdown] = useState<string | null>(null);
   const [verifyModal, setVerifyModal] = useState(false);
   const [customerCodeInput, setCustomerCodeInput] = useState('');
   const [verificationError, setVerificationError] = useState('');
+  const [updating, setUpdating] = useState(false);
 
-  const getNextStatus = (current: string): string => {
-    switch (current) {
-      case 'Picked Up':
-        return 'In Transit';
-      case 'In Transit':
-        return 'Arriving';
-      case 'Arriving':
-        return 'Delivered';
-      default:
-        return current;
+  const fetchDeliveries = useCallback(async () => {
+    try {
+      const res = await getMyDeliveries();
+      if (res.success && res.data) {
+        // Filter for active statuses only
+        const active = (res.data.deliveries || []).filter((d: DeliveryItem) =>
+          ['accepted', 'picked_up', 'in_transit', 'arrived'].includes(d.status)
+        );
+        setDeliveries(active);
+      }
+    } catch (error) {
+      console.error('Failed to fetch deliveries:', error);
+      toast.error('Failed to load deliveries');
+    } finally {
+      setLoading(false);
     }
-  };
+  }, []);
 
-  const handleStatusUpdate = (deliveryId: string) => {
-    setDeliveries((prev) =>
-      prev.map((d) =>
-        d.id === deliveryId
-          ? {
-              ...d,
-              status:
-                (getNextStatus(d.status) as
-                  | 'Picked Up'
-                  | 'In Transit'
-                  | 'Arriving') || d.status,
-            }
-          : d
-      )
-    );
-    _setStatusDropdown(null);
+  useEffect(() => {
+    fetchDeliveries();
+  }, [fetchDeliveries]);
+
+  const handleStatusUpdate = async (deliveryId: string) => {
+    const delivery = deliveries.find((d) => d.id === deliveryId);
+    if (!delivery) return;
+
+    const nextStatus = NEXT_STATUS[delivery.status];
+    if (!nextStatus) return;
+
+    setUpdating(true);
+    try {
+      const res = await updateAssignmentStatus(deliveryId, nextStatus as any);
+      if (res.success) {
+        toast.success(`Status updated to ${STATUS_MAP[nextStatus] || nextStatus}`);
+        fetchDeliveries();
+      } else {
+        toast.error(res.error?.message || 'Failed to update status');
+      }
+    } catch {
+      toast.error('Failed to update status');
+    } finally {
+      setUpdating(false);
+    }
   };
 
   const handleArrivingClick = (delivery: DeliveryItem) => {
@@ -107,22 +98,41 @@ export default function ActiveDeliveriesPage() {
     setVerificationError('');
   };
 
-  const handleVerifyCode = () => {
+  const handleVerifyCode = async () => {
     if (!selectedDelivery) return;
 
-    // Simple verification logic - in real app this would be sent to backend
-    if (customerCodeInput.trim()) {
-      setVerificationError('');
-      // Simulate successful verification
-      alert(
-        `Code verified! Customer ${selectedDelivery.customerName} confirmed receipt.`
-      );
-      setVerifyModal(false);
-      handleStatusUpdate(selectedDelivery.id);
-    } else {
-      setVerificationError('Please enter the customer code');
+    if (!customerCodeInput.trim() || customerCodeInput.length < 6) {
+      setVerificationError('Please enter the 6-digit customer code');
+      return;
+    }
+
+    setUpdating(true);
+    try {
+      const res = await verifySecurityCode(selectedDelivery.id, customerCodeInput);
+      if (res.success) {
+        toast.success('Delivery verified successfully!');
+        setVerifyModal(false);
+        fetchDeliveries();
+      } else {
+        setVerificationError(res.error?.message || 'Invalid code');
+      }
+    } catch {
+      setVerificationError('Verification failed. Please try again.');
+    } finally {
+      setUpdating(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Active Deliveries" description="Manage your current delivery orders" />
+        <div className="flex justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -149,96 +159,71 @@ export default function ActiveDeliveriesPage() {
                 <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 pb-4 border-b border-gray-200">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <span className="font-bold text-gray-900">{delivery.orderId}</span>
-                      <StatusBadge status={delivery.status} size="sm" />
+                      <span className="font-bold text-gray-900">
+                        {delivery.orderId?.slice(0, 13) || delivery.id.slice(0, 8)}
+                      </span>
+                      <StatusBadge status={STATUS_MAP[delivery.status] || delivery.status} size="sm" />
                     </div>
-                    <p className="text-sm font-semibold text-gray-700">
-                      {delivery.customerName}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">{delivery.pharmacyName}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-lg font-bold text-gray-900">{delivery.distance} km</p>
-                    <p className="text-sm text-gray-500">ETA: {delivery.eta}</p>
-                  </div>
-                </div>
-
-                {/* Address Section */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4 border-b border-gray-100">
-                  <div>
-                    <p className="text-xs font-semibold text-gray-500 uppercase mb-1">
-                      Pickup
+                    <p className="text-sm text-gray-500">
+                      {new Date(delivery.createdAt).toLocaleDateString()}
                     </p>
-                    <p className="text-sm text-gray-700">{delivery.pickupAddress}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-gray-500 uppercase mb-1">
-                      Delivery
-                    </p>
-                    <p className="text-sm text-gray-700">{delivery.deliveryAddress}</p>
                   </div>
                 </div>
 
                 {/* Security Code Section */}
-                {delivery.status === 'Arriving' && (
+                {delivery.status === 'arrived' && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
                     <div>
                       <p className="text-xs font-semibold text-blue-700 uppercase mb-1">
                         Customer Code to Verify
                       </p>
                       <Input
-                        placeholder="Enter 4-digit code"
-                        maxLength={4}
-                        className="uppercase"
+                        placeholder="Enter 6-digit code"
+                        maxLength={6}
                         value={customerCodeInput}
-                        onChange={(e) => setCustomerCodeInput(e.target.value.toUpperCase())}
+                        onChange={(e) => setCustomerCodeInput(e.target.value)}
                       />
-                      {verificationError && (
-                        <p className="text-xs text-red-600 mt-2">{verificationError}</p>
-                      )}
                     </div>
-                    <div>
-                      <p className="text-xs font-semibold text-blue-700 uppercase mb-2">
-                        Your Code (Show Customer)
-                      </p>
-                      <div className="bg-white border-2 border-blue-300 rounded-lg p-3 text-center">
-                        <p className="text-3xl font-bold text-primary-600 tracking-widest">
-                          {delivery.riderCode}
+                    {delivery.riderCode && (
+                      <div>
+                        <p className="text-xs font-semibold text-blue-700 uppercase mb-2">
+                          Your Code (Show Customer)
                         </p>
+                        <div className="bg-white border-2 border-blue-300 rounded-lg p-3 text-center">
+                          <p className="text-3xl font-bold text-primary-600 tracking-widest">
+                            {delivery.riderCode}
+                          </p>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 )}
 
                 {/* Action Buttons */}
                 <div className="flex flex-col sm:flex-row gap-3 pt-4">
-                  {delivery.status !== 'Arriving' ? (
+                  {delivery.status !== 'arrived' ? (
                     <Button
                       variant="primary"
                       size="sm"
                       onClick={() => handleStatusUpdate(delivery.id)}
+                      disabled={updating}
                       className="flex-1"
                     >
-                      Update Status → {getNextStatus(delivery.status)}
+                      {updating ? 'Updating...' : `Update Status → ${STATUS_MAP[NEXT_STATUS[delivery.status]] || 'Next'}`}
                     </Button>
                   ) : (
                     <Button
                       variant="primary"
                       size="sm"
                       onClick={() => handleArrivingClick(delivery)}
+                      disabled={updating}
                       className="flex-1"
                     >
                       Verify & Deliver
                     </Button>
                   )}
-
-                  <Button variant="outline" size="sm" className="flex-1 sm:flex-initial">
-                    📍 Navigate
-                  </Button>
-
-                  <Button variant="ghost" size="sm" className="flex-1 sm:flex-initial">
-                    ☎️ Call
-                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -255,32 +240,35 @@ export default function ActiveDeliveriesPage() {
       >
         <div className="space-y-4">
           <p className="text-gray-700">
-            Enter the 4-digit code provided by {selectedDelivery?.customerName} to confirm delivery.
+            Enter the 6-digit code provided by the customer to confirm delivery.
           </p>
 
           <Input
             label="Customer Verification Code"
-            placeholder="0000"
-            maxLength={4}
+            placeholder="000000"
+            maxLength={6}
             value={customerCodeInput}
-            onChange={(e) => setCustomerCodeInput(e.target.value.toUpperCase())}
+            onChange={(e) => setCustomerCodeInput(e.target.value)}
             error={verificationError}
           />
 
-          <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
-            <strong>Your Code to Show Customer:</strong>
-            <div className="text-2xl font-bold text-primary-600 mt-2 tracking-widest">
-              {selectedDelivery?.riderCode}
+          {selectedDelivery?.riderCode && (
+            <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+              <strong>Your Code to Show Customer:</strong>
+              <div className="text-2xl font-bold text-primary-600 mt-2 tracking-widest">
+                {selectedDelivery.riderCode}
+              </div>
             </div>
-          </p>
+          )}
 
           <div className="flex gap-3 pt-4">
             <Button
               variant="primary"
               className="flex-1"
               onClick={handleVerifyCode}
+              disabled={updating}
             >
-              Verify & Complete Delivery
+              {updating ? 'Verifying...' : 'Verify & Complete Delivery'}
             </Button>
             <Button
               variant="outline"

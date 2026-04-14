@@ -25,6 +25,20 @@ router.get(
   asyncHandler((req, res) => DeliveryController.getAvailableProviders(req, res))
 );
 
+// GET /api/v1/delivery/assignments/user/my-deliveries - Get rider's deliveries
+router.get(
+  "/assignments/user/my-deliveries",
+  authenticate,
+  asyncHandler((req, res) => DeliveryController.getMyDeliveries(req, res))
+);
+
+// GET /api/v1/delivery/available-orders - Get orders available for pickup
+router.get(
+  "/available-orders",
+  authenticate,
+  asyncHandler((req, res) => DeliveryController.getAvailableOrders(req, res))
+);
+
 // POST /api/v1/delivery/assignments - Create delivery assignment
 router.post(
   "/assignments",

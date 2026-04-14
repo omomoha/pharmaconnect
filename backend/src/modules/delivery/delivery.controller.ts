@@ -119,6 +119,102 @@ export class DeliveryController {
   }
 
   /**
+   * GET /assignments/user/my-deliveries
+   * Get current user's delivery assignments
+   */
+  static async getMyDeliveries(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json(
+          apiResponse(false, undefined, {
+            code: "UNAUTHORIZED",
+            message: "User not authenticated",
+          })
+        );
+        return;
+      }
+
+      const schema = z.object({
+        status: z.string().optional(),
+        limit: z.coerce.number().optional().default(50),
+      });
+
+      const validated = schema.parse(req.query);
+
+      const deliveries = await DeliveryService.getMyDeliveries(
+        req.user.uid,
+        validated.status,
+        validated.limit
+      );
+
+      res.json(
+        apiResponse(true, {
+          deliveries,
+          count: deliveries.length,
+        })
+      );
+    } catch (error) {
+      logger.error("Get my deliveries error:", error);
+      res.status(500).json(
+        apiResponse(false, undefined, {
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to retrieve deliveries",
+        })
+      );
+    }
+  }
+
+  /**
+   * GET /available-orders
+   * Get orders available for delivery pickup
+   */
+  static async getAvailableOrders(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json(
+          apiResponse(false, undefined, {
+            code: "UNAUTHORIZED",
+            message: "User not authenticated",
+          })
+        );
+        return;
+      }
+
+      const schema = z.object({
+        limit: z.coerce.number().optional().default(50),
+      });
+
+      const validated = schema.parse(req.query);
+
+      const orders = await DeliveryService.getAvailableOrders(
+        req.user.uid,
+        validated.limit
+      );
+
+      res.json(
+        apiResponse(true, {
+          orders,
+          count: orders.length,
+        })
+      );
+    } catch (error) {
+      logger.error("Get available orders error:", error);
+      res.status(500).json(
+        apiResponse(false, undefined, {
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to retrieve available orders",
+        })
+      );
+    }
+  }
+
+  /**
    * POST /assignments
    * Create delivery assignment
    */

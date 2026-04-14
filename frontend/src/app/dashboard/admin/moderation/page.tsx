@@ -8,6 +8,7 @@ import StatsCard from '@/components/ui/StatsCard';
 import Tabs from '@/components/ui/Tabs';
 import Modal from '@/components/ui/Modal';
 import toast from 'react-hot-toast';
+import { getFlaggedAlerts, reviewFlaggedAlert } from '@/lib/services/admin.service';
 
 interface FlaggedMessage {
   id: string;
@@ -200,16 +201,38 @@ export default function ModerationDashboardPage() {
 
   const tabs = ['Pending', 'Reviewed', 'Dismissed', 'User Warned', 'User Suspended'];
 
-  // Fetch flagged messages (currently using sample data, would be API call)
+  // Fetch flagged alerts from API with fallback to sample data
   useEffect(() => {
     const fetchFlags = async () => {
       try {
         setLoading(true);
-        // In production, would call: const response = await apiClient.get('/api/v1/admin/flagged-messages');
-        // For now, using sample data
-        setLoading(false);
+        const response = await getFlaggedAlerts();
+        if (response.success && response.data) {
+          const alerts = Array.isArray(response.data) ? response.data : (response.data as any).alerts || [];
+          if (alerts.length > 0) {
+            // Map API response to local FlaggedMessage interface
+            const mapped: FlaggedMessage[] = alerts.map((alert: any) => ({
+              id: alert.id,
+              conversationId: alert.conversationId || '',
+              messageId: alert.messageId || '',
+              senderName: alert.senderName || 'Unknown',
+              senderRole: alert.senderRole || 'customer',
+              recipientName: alert.recipientName || 'Unknown',
+              messageContent: alert.messageContent || alert.flaggedTerms?.join(', ') || '',
+              riskLevel: alert.aiConfidence > 0.9 ? 'High' : alert.aiConfidence > 0.6 ? 'Medium' : 'Low',
+              reason: alert.flagReason || alert.flaggedTerms?.join(', ') || 'Flagged for review',
+              timestamp: alert.createdAt ? new Date(alert.createdAt._seconds ? alert.createdAt._seconds * 1000 : alert.createdAt).toLocaleString() : '',
+              status: alert.adminReviewed ? (alert.adminAction === 'dismissed' ? 'Dismissed' : alert.adminAction === 'warning_sent' ? 'User Warned' : alert.adminAction === 'user_suspended' ? 'User Suspended' : 'Reviewed') : 'Pending',
+              conversationContext: alert.conversationContext || [],
+            }));
+            setFlags(mapped);
+          }
+          // If no alerts from API, keep sample data as placeholder
+        }
       } catch (error) {
         console.error('Failed to fetch flagged messages:', error);
+        // Keep sample data on error
+      } finally {
         setLoading(false);
       }
     };
@@ -246,6 +269,20 @@ export default function ModerationDashboardPage() {
     if (!selectedFlag || !selectedAction) return;
 
     try {
+      // Map local action names to API FlagAction enum
+      const actionMap: Record<string, string> = {
+        dismiss: 'dismissed',
+        warn: 'warning_sent',
+        suspend: 'user_suspended',
+      };
+
+      // Call the real API
+      const apiAction = actionMap[selectedAction] || 'dismissed';
+      await reviewFlaggedAlert(selectedFlag.id, {
+        action: apiAction as any,
+        notes: `Action taken via moderation dashboard: ${selectedAction}`,
+      });
+
       // Optimistic update
       const updatedFlags = flags.map((f) => {
         if (f.id === selectedFlag.id) {
@@ -267,7 +304,6 @@ export default function ModerationDashboardPage() {
       setIsActionModalOpen(false);
       setSelectedAction(null);
 
-      // In production, would call API to persist action
       const actionName =
         selectedAction === 'dismiss'
           ? 'dismissed'
