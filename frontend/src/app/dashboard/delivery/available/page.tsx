@@ -39,7 +39,7 @@ export default function AvailableOrdersPage() {
     try {
       const res = await getAvailableOrders();
       if (res.success && res.data) {
-        setOrders((res.data.orders || []) as AvailableOrder[]);
+        setOrders((res.data.orders || []) as unknown as AvailableOrder[]);
       }
     } catch (error) {
       console.error('Failed to fetch available orders:', error);
