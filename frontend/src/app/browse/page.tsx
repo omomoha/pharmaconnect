@@ -44,7 +44,7 @@ export default function BrowsePharmaciesPage() {
     [drugNames, symptoms, aiCategories]
   );
 
-  const { activeIndex: browseActiveIdx, handleKeyDown: handleBrowseKeyDown, resetIndex: resetBrowseIdx } = useDropdownKeyboard(
+  const { handleKeyDown: handleBrowseKeyDown, resetIndex: resetBrowseIdx } = useDropdownKeyboard(
     showSearchDropdown ? browseDropdownItems : [],
     (item) => { setSearchQuery(item); setShowSearchDropdown(false); },
     () => setShowSearchDropdown(false),
