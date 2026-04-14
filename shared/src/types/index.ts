@@ -318,6 +318,7 @@ export interface DeliveryVerification {
   riderVerifiedAt?: Date;
   bothVerifiedAt?: Date;
   codeExpiryAt: Date;
+  attemptCount?: number; // tracks failed verification attempts
   createdAt: Date;
   updatedAt: Date;
 }

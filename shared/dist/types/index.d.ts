@@ -287,6 +287,7 @@ export interface DeliveryVerification {
     riderVerifiedAt?: Date;
     bothVerifiedAt?: Date;
     codeExpiryAt: Date;
+    attemptCount?: number;
     createdAt: Date;
     updatedAt: Date;
 }

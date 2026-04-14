@@ -19,19 +19,36 @@ const mockFirestore = createFirestoreMock();
 const mockGetPharmacyProduct = PharmacyService.getPharmacyProduct as jest.Mock;
 
 describe('OrderService', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.clearAllMocks();
     mockFirestore.reset();
     (getFirestore as jest.Mock).mockReturnValue(mockFirestore);
 
-    // Mock PharmacyService.getPharmacyProduct — returns a valid product
-    // belonging to 'pharmacy-456' (the standard test pharmacyId).
-    // Price matches what tests expect from client-side unitPrice.
+    // Pre-seed product docs in Firestore mock for transaction-based createOrder.
+    // The transactional createOrder reads products directly from Firestore
+    // instead of calling PharmacyService.getPharmacyProduct.
     const productPrices: Record<string, number> = {
       'product-1': 500,
       'product-2': 1200,
     };
 
+    // Seed products 0-4 (tests use product-0..product-4 in the loop test)
+    for (let i = 0; i < 5; i++) {
+      const productId = `product-${i}`;
+      await mockFirestore.collection('pharmacy_products').doc(productId).set({
+        id: productId,
+        pharmacyId: 'pharmacy-456',
+        drugCatalogItemId: `drug-${i}`,
+        sku: `MOCK-${i}`,
+        quantity: 100,
+        price: productPrices[productId] || 500,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    }
+
+    // Keep the PharmacyService mock for any code paths that still use it
     mockGetPharmacyProduct.mockImplementation((productId: string) => {
       if (productId.startsWith('product-')) {
         return Promise.resolve({

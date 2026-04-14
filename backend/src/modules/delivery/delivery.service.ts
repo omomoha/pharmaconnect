@@ -8,8 +8,11 @@ import {
   DeliveryAssignmentStatus,
   AvailableDeliveryProvider,
   ApprovalStatus,
+  OrderStatus,
 } from "@pharmaconnect/shared/dist/types/index.js";
 import { FIRESTORE_COLLECTIONS, DELIVERY } from "@pharmaconnect/shared/dist/constants/index.js";
+import { FieldValue } from "firebase-admin/firestore";
+import { PiiEncryption } from "../../utils/encryption.js";
 import { v4 as uuid } from "uuid";
 
 /**
@@ -41,6 +44,11 @@ export class DeliveryService {
       const id = uuid();
       const now = new Date();
 
+      // Encrypt PII fields before storage
+      const encryptedCacNumber = PiiEncryption.encrypt(data.cacNumber);
+      const encryptedCacDocUrl = PiiEncryption.encrypt(data.cacDocUrl);
+      const encryptedOwnerIdDocUrl = PiiEncryption.encrypt(data.ownerIdDocUrl);
+
       const provider: DeliveryProvider = {
         id,
         userId,
@@ -48,10 +56,10 @@ export class DeliveryService {
         email: data.email,
         phoneNumber: data.phoneNumber,
         address: data.address,
-        cacNumber: data.cacNumber,
-        cacDocUrl: data.cacDocUrl,
+        cacNumber: encryptedCacNumber,
+        cacDocUrl: encryptedCacDocUrl,
         ownerName: data.ownerName,
-        ownerIdDocUrl: data.ownerIdDocUrl,
+        ownerIdDocUrl: encryptedOwnerIdDocUrl,
         vehicleDocUrl: data.vehicleDocUrl,
         baseFee: data.baseFee,
         perKmFee: data.perKmFee,
@@ -180,7 +188,8 @@ export class DeliveryService {
   }
 
   /**
-   * Create delivery assignment
+   * Create delivery assignment — uses a Firestore transaction to prevent
+   * two riders from claiming the same order simultaneously.
    */
   static async createAssignment(data: {
     orderId: string;
@@ -194,6 +203,7 @@ export class DeliveryService {
     try {
       const db = getFirestore();
       const id = uuid();
+      const verificationId = uuid();
       const now = new Date();
 
       const distance = calculateDistanceKm(
@@ -202,6 +212,10 @@ export class DeliveryService {
         data.deliveryLatitude,
         data.deliveryLongitude
       );
+
+      const orderRef = db.collection(FIRESTORE_COLLECTIONS.ORDERS).doc(data.orderId);
+      const assignmentRef = db.collection(FIRESTORE_COLLECTIONS.DELIVERY_ASSIGNMENTS).doc(id);
+      const verificationRef = db.collection(FIRESTORE_COLLECTIONS.DELIVERY_VERIFICATIONS).doc(verificationId);
 
       const assignment: DeliveryAssignment = {
         id,
@@ -219,29 +233,45 @@ export class DeliveryService {
         updatedAt: now,
       };
 
-      await db
-        .collection(FIRESTORE_COLLECTIONS.DELIVERY_ASSIGNMENTS)
-        .doc(id)
-        .set(assignment);
+      await db.runTransaction(async (transaction) => {
+        const orderDoc = await transaction.get(orderRef);
 
-      // Create verification codes
-      const verificationId = uuid();
-      const verification: DeliveryVerification = {
-        id: verificationId,
-        deliveryAssignmentId: id,
-        customerCode: generateSecurityCode(),
-        riderCode: generateSecurityCode(),
-        codeExpiryAt: new Date(Date.now() + DELIVERY.SECURITY_CODE_EXPIRY_HOURS * 60 * 60 * 1000),
-        createdAt: now,
-        updatedAt: now,
-      };
+        if (!orderDoc.exists) {
+          throw new Error("Order not found");
+        }
 
-      await db
-        .collection(FIRESTORE_COLLECTIONS.DELIVERY_VERIFICATIONS)
-        .doc(verificationId)
-        .set(verification);
+        const orderData = orderDoc.data()!;
 
-      logger.info(`Delivery assignment created: ${id}`);
+        // Prevent double-assignment: if order already has a delivery assignment, abort
+        if (orderData.deliveryAssignmentId) {
+          throw new Error("Order already has a delivery assignment — another rider claimed it first");
+        }
+
+        // Atomically set the assignment on the order and create assignment + verification docs
+        transaction.update(orderRef, {
+          deliveryAssignmentId: id,
+          deliveryProviderId: data.deliveryProviderId,
+          status: OrderStatus.OUT_FOR_DELIVERY,
+          updatedAt: now,
+        });
+
+        transaction.set(assignmentRef, assignment);
+
+        const verification: DeliveryVerification = {
+          id: verificationId,
+          deliveryAssignmentId: id,
+          customerCode: generateSecurityCode(),
+          riderCode: generateSecurityCode(),
+          codeExpiryAt: new Date(Date.now() + DELIVERY.SECURITY_CODE_EXPIRY_HOURS * 60 * 60 * 1000),
+          attemptCount: 0,
+          createdAt: now,
+          updatedAt: now,
+        };
+
+        transaction.set(verificationRef, verification);
+      });
+
+      logger.info(`Delivery assignment created: ${id} (order: ${data.orderId})`);
       return assignment;
     } catch (error) {
       logger.error("Failed to create delivery assignment:", error);
@@ -342,7 +372,7 @@ export class DeliveryService {
   }
 
   /**
-   * Verify security code
+   * Verify security code — enforces max attempts to prevent brute-force
    */
   static async verifySecurityCode(
     assignmentId: string,
@@ -358,8 +388,18 @@ export class DeliveryService {
       }
 
       // Check expiry
-      if (new Date() > verification.codeExpiryAt) {
+      const expiryDate = verification.codeExpiryAt instanceof Date
+        ? verification.codeExpiryAt
+        : new Date((verification.codeExpiryAt as any)._seconds * 1000);
+
+      if (new Date() > expiryDate) {
         throw new Error("Code has expired");
+      }
+
+      // Enforce max attempts
+      const currentAttempts = verification.attemptCount || 0;
+      if (currentAttempts >= DELIVERY.SECURITY_CODE_MAX_ATTEMPTS) {
+        throw new Error("Maximum verification attempts exceeded. Please contact support.");
       }
 
       // Check code
@@ -368,7 +408,19 @@ export class DeliveryService {
         : verification.riderCode;
 
       if (code !== expectedCode) {
-        throw new Error("Invalid code");
+        // Increment attempt count on failure
+        await db
+          .collection(FIRESTORE_COLLECTIONS.DELIVERY_VERIFICATIONS)
+          .doc(verification.id)
+          .update({
+            attemptCount: FieldValue.increment(1),
+            updatedAt: new Date(),
+          });
+
+        const remainingAttempts = DELIVERY.SECURITY_CODE_MAX_ATTEMPTS - currentAttempts - 1;
+        throw new Error(
+          `Invalid code. ${remainingAttempts} attempt${remainingAttempts !== 1 ? "s" : ""} remaining.`
+        );
       }
 
       // Mark as verified
@@ -509,7 +561,7 @@ export class DeliveryService {
   }
 
   /**
-   * Get provider by ID
+   * Get provider by ID — decrypts PII fields before returning
    */
   static async getProvider(id: string): Promise<DeliveryProvider | null> {
     try {
@@ -523,7 +575,14 @@ export class DeliveryService {
         return null;
       }
 
-      return doc.data() as DeliveryProvider;
+      const provider = doc.data() as DeliveryProvider;
+
+      // Decrypt PII fields
+      return PiiEncryption.decryptFields(provider, [
+        "cacNumber",
+        "cacDocUrl",
+        "ownerIdDocUrl",
+      ]);
     } catch (error) {
       logger.error(`Failed to get provider ${id}:`, error);
       throw error;

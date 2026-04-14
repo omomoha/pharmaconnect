@@ -62,6 +62,20 @@ describe('Customer E2E Flow', () => {
     (getFirestore as jest.Mock).mockReturnValue(mockFirestore);
     (getAuth as jest.Mock).mockReturnValue(mockAuth);
 
+    // Pre-seed drug catalog docs for OTC enforcement in addProduct
+    const catalogItems = ['paracetamol-500mg', 'ibuprofen-400mg'];
+    for (const itemId of catalogItems) {
+      await mockFirestore.collection('drug_catalog').doc(itemId).set({
+        id: itemId,
+        commonName: itemId,
+        category: 'pain_relief',
+        isOTC: true,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    }
+
     // --- SEED: Create and approve a pharmacy with products ---
     const pharmacy = await PharmacyService.registerPharmacy('pharmacy-owner-1', {
       name: 'Lagos MedStore',

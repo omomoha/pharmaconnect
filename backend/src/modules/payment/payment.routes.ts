@@ -27,12 +27,19 @@ router.get(
   asyncHandler((req, res) => PaymentController.verifyPayment(req, res))
 );
 
-// POST /api/v1/payments/refund - Request refund
+// POST /api/v1/payments/refund - Refunds are handled through support only
 router.post(
   "/refund",
   authenticate,
-  strictRateLimiter,
-  asyncHandler((req, res) => PaymentController.refundPayment(req, res))
+  (_req, res) => {
+    res.status(400).json({
+      success: false,
+      error: {
+        code: "REFUND_NOT_SELF_SERVICE",
+        message: "Refunds are not available through self-service. Please contact our support team at support@pharmaconnect.ng to request a refund.",
+      },
+    });
+  }
 );
 
 // ─── Guest Payments ───────────────────────────────────────────────────────────
@@ -89,9 +96,10 @@ router.post(
 
 // ─── Webhook ──────────────────────────────────────────────────────────────────
 
-// POST /api/v1/payments/webhook - Paystack webhook (no auth, signature verified)
+// POST /api/v1/payments/webhook - Paystack webhook (no auth, signature verified, rate-limited)
 router.post(
   "/webhook",
+  strictRateLimiter,
   asyncHandler((req, res) => PaymentController.handleWebhook(req, res))
 );
 

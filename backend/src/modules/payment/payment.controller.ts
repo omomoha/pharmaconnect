@@ -4,7 +4,8 @@ import { PaymentService } from "./payment.service.js";
 import { apiResponse } from "../../utils/helpers.js";
 import logger from "../../utils/logger.js";
 import { z } from "zod";
-import { SubscriptionTier } from "@pharmaconnect/shared/dist/types/index.js";
+import { SubscriptionTier, PaymentStatus } from "@pharmaconnect/shared/dist/types/index.js";
+import { writeAuditLog, AuditAction } from "../../utils/auditLog.js";
 
 declare global {
   namespace Express {
@@ -140,7 +141,7 @@ export class PaymentController {
 
   /**
    * POST /refund
-   * Request refund
+   * Request refund — verifies that the requesting user owns the order
    */
   static async refundPayment(
     req: AuthenticatedRequest,
@@ -164,12 +165,57 @@ export class PaymentController {
 
       const validated = schema.parse(req.body);
 
+      // Authorization check: verify user owns this order or is an admin
+      const { OrderService } = await import("../order/order.service.js");
+      const order = await OrderService.getOrder(validated.orderId);
+
+      if (!order) {
+        res.status(404).json(
+          apiResponse(false, undefined, {
+            code: "ORDER_NOT_FOUND",
+            message: "Order not found",
+          })
+        );
+        return;
+      }
+
+      const user = req.user as any;
+      const isOwner = order.customerId === req.user.uid;
+      const isAdmin = user.role === "admin" || user.role === "super_admin";
+
+      if (!isOwner && !isAdmin) {
+        res.status(403).json(
+          apiResponse(false, undefined, {
+            code: "FORBIDDEN",
+            message: "You are not authorized to refund this order",
+          })
+        );
+        return;
+      }
+
+      // Verify order has a payment reference to refund against
+      if (!order.paymentReference) {
+        res.status(400).json(
+          apiResponse(false, undefined, {
+            code: "NO_PAYMENT_REFERENCE",
+            message: "Order has no payment reference to refund",
+          })
+        );
+        return;
+      }
+
       const refund = await PaymentService.refundPayment(
-        validated.orderId,
+        order.paymentReference,
         validated.reason
       );
 
-      logger.info(`Refund created for user ${req.user.uid}`);
+      // Update order payment status to REFUNDED
+      await OrderService.updatePaymentStatus(
+        validated.orderId,
+        PaymentStatus.REFUNDED
+      );
+
+      logger.info(`Refund created for user ${req.user.uid}, order ${validated.orderId}`);
 
       res.json(
         apiResponse(true, {
@@ -495,6 +541,20 @@ export class PaymentController {
         amount: validated.amount,
         recipientCode: validated.recipientCode,
         reason: validated.reason || "PharmaConnect pharmacy payout",
+      });
+
+      // Audit log for payout
+      writeAuditLog({
+        action: AuditAction.PAYOUT_INITIATED,
+        actorId: req.user.uid,
+        actorRole: (req.user as any)?.role,
+        targetType: "transfer",
+        targetId: transfer.transferCode,
+        details: {
+          amount: validated.amount,
+          recipientCode: validated.recipientCode,
+        },
+        ipAddress: req.ip,
       });
 
       logger.info(`Transfer initiated by user ${req.user.uid}`, {

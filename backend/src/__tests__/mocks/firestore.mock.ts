@@ -223,9 +223,24 @@ export const createFirestoreMock = () => {
     };
   };
 
+  // Transaction mock — provides the same doc/update/set interface
+  // but executed synchronously within the callback
+  const createTransactionMock = () => {
+    return {
+      get: jest.fn((ref: any) => ref.get()),
+      set: jest.fn((ref: any, data: any) => ref.set(data)),
+      update: jest.fn((ref: any, data: any) => ref.update(data)),
+      delete: jest.fn((ref: any) => ref.delete()),
+    };
+  };
+
   return {
     collection: jest.fn((collectionName: string) => mockCollectionRef(collectionName)),
     batch: jest.fn(() => createBatchMock()),
+    runTransaction: jest.fn(async (updateFunction: (transaction: any) => Promise<any>) => {
+      const transaction = createTransactionMock();
+      return await updateFunction(transaction);
+    }),
     getDocData: () => mockDocData,
     getCollectionData: () => mockCollectionData,
     reset: () => {

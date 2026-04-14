@@ -9,7 +9,7 @@ import {
   DrugCategory,
 } from "@pharmaconnect/shared/dist/types/index.js";
 import { FIRESTORE_COLLECTIONS, COMMISSION } from "@pharmaconnect/shared/dist/constants/index.js";
-import { PharmacyService } from "../pharmacy/pharmacy.service.js";
+import { FieldValue } from "firebase-admin/firestore";
 import { v4 as uuid } from "uuid";
 
 /**
@@ -39,92 +39,118 @@ export class OrderService {
       const orderId = uuid();
       const now = new Date();
 
-      // Server-side price verification — never trust client-sent prices
-      const verifiedItems = [];
-      for (const item of data.items) {
-        const product = await PharmacyService.getPharmacyProduct(item.pharmacyProductId);
-        if (!product) {
-          throw new Error(`Product not found: ${item.pharmacyProductId}`);
+      // Use a Firestore transaction to atomically verify stock, decrement it,
+      // and create the order + items — prevents overselling under concurrent orders.
+      const order = await db.runTransaction(async (transaction) => {
+        // Step 1: Read all product documents inside the transaction
+        const productRefs = data.items.map((item) =>
+          db.collection(FIRESTORE_COLLECTIONS.PHARMACY_PRODUCTS).doc(item.pharmacyProductId)
+        );
+        const productDocs = await Promise.all(
+          productRefs.map((ref) => transaction.get(ref))
+        );
+
+        // Step 2: Verify prices, stock, and active status
+        const verifiedItems = [];
+        for (let i = 0; i < data.items.length; i++) {
+          const item = data.items[i];
+          const doc = productDocs[i];
+
+          if (!doc.exists) {
+            throw new Error(`Product not found: ${item.pharmacyProductId}`);
+          }
+
+          const product = doc.data()!;
+          if (!product.isActive) {
+            throw new Error(`Product is no longer available: ${item.drugName}`);
+          }
+          if (product.pharmacyId !== data.pharmacyId) {
+            throw new Error(`Product does not belong to this pharmacy: ${item.drugName}`);
+          }
+          if (product.quantity < item.quantity) {
+            throw new Error(
+              `Insufficient stock for ${item.drugName}: requested ${item.quantity}, available ${product.quantity}`
+            );
+          }
+
+          // Use server-side price, applying discount if applicable
+          const serverPrice = product.discount
+            ? formatCurrency(product.price * (1 - product.discount / 100))
+            : product.price;
+
+          verifiedItems.push({
+            ...item,
+            unitPrice: serverPrice,
+          });
         }
-        if (!product.isActive) {
-          throw new Error(`Product is no longer available: ${item.drugName}`);
-        }
-        if (product.pharmacyId !== data.pharmacyId) {
-          throw new Error(`Product does not belong to this pharmacy: ${item.drugName}`);
-        }
-        if (product.quantity < item.quantity) {
-          throw new Error(`Insufficient stock for ${item.drugName}: requested ${item.quantity}, available ${product.quantity}`);
-        }
 
-        // Use server-side price, applying discount if applicable
-        const serverPrice = product.discount
-          ? formatCurrency(product.price * (1 - product.discount / 100))
-          : product.price;
+        // Step 3: Calculate totals from verified server-side prices
+        const subtotal = verifiedItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
+        const pharmacyCommission = formatCurrency(
+          subtotal * (COMMISSION.PHARMACY_COMMISSION_PERCENT / 100)
+        );
+        const serviceFee = formatCurrency(subtotal * (COMMISSION.SERVICE_FEE_PERCENT / 100));
+        const deliveryFee = 0;
+        const deliveryCommission = 0;
+        const total = formatCurrency(subtotal + serviceFee + deliveryFee);
 
-        verifiedItems.push({
-          ...item,
-          unitPrice: serverPrice,
-        });
-      }
-
-      // Calculate totals from verified server-side prices
-      const subtotal = verifiedItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
-      const pharmacyCommission = formatCurrency(
-        subtotal * (COMMISSION.PHARMACY_COMMISSION_PERCENT / 100)
-      );
-      const serviceFee = formatCurrency(subtotal * (COMMISSION.SERVICE_FEE_PERCENT / 100));
-      const deliveryFee = 0; // Will be set when delivery provider is assigned
-      const deliveryCommission = 0; // Will be calculated after delivery fee is set
-      const total = formatCurrency(subtotal + serviceFee + deliveryFee);
-
-      const order: Order = {
-        id: orderId,
-        customerId: data.customerId,
-        pharmacyId: data.pharmacyId,
-        status: OrderStatus.PENDING,
-        paymentStatus: PaymentStatus.PENDING,
-        subtotal,
-        pharmacyCommission,
-        deliveryFee,
-        deliveryCommission,
-        serviceFee,
-        total,
-        paymentMethod: "paystack",
-        deliveryAddress: data.deliveryAddress,
-        deliveryLatitude: data.deliveryLatitude,
-        deliveryLongitude: data.deliveryLongitude,
-        notes: data.notes,
-        createdAt: now,
-        updatedAt: now,
-      };
-
-      // Use batch write for atomicity — all or nothing
-      const batch = db.batch();
-
-      batch.set(db.collection(FIRESTORE_COLLECTIONS.ORDERS).doc(orderId), order);
-
-      for (const item of verifiedItems) {
-        const itemId = uuid();
-        const orderItem: OrderItem = {
-          id: itemId,
-          orderId,
-          pharmacyProductId: item.pharmacyProductId,
-          drugName: item.drugName,
-          category: item.category as DrugCategory,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          subtotal: item.unitPrice * item.quantity,
+        const newOrder: Order = {
+          id: orderId,
+          customerId: data.customerId,
+          pharmacyId: data.pharmacyId,
+          status: OrderStatus.PENDING,
+          paymentStatus: PaymentStatus.PENDING,
+          subtotal,
+          pharmacyCommission,
+          deliveryFee,
+          deliveryCommission,
+          serviceFee,
+          total,
+          paymentMethod: "paystack",
+          deliveryAddress: data.deliveryAddress,
+          deliveryLatitude: data.deliveryLatitude,
+          deliveryLongitude: data.deliveryLongitude,
+          notes: data.notes,
           createdAt: now,
           updatedAt: now,
         };
 
-        batch.set(
-          db.collection(FIRESTORE_COLLECTIONS.ORDER_ITEMS).doc(itemId),
-          orderItem
-        );
-      }
+        // Step 4: Atomically decrement stock and create order + items
+        for (let i = 0; i < data.items.length; i++) {
+          transaction.update(productRefs[i], {
+            quantity: FieldValue.increment(-data.items[i].quantity),
+            updatedAt: now,
+          });
+        }
 
-      await batch.commit();
+        transaction.set(
+          db.collection(FIRESTORE_COLLECTIONS.ORDERS).doc(orderId),
+          newOrder
+        );
+
+        for (const item of verifiedItems) {
+          const itemId = uuid();
+          const orderItem: OrderItem = {
+            id: itemId,
+            orderId,
+            pharmacyProductId: item.pharmacyProductId,
+            drugName: item.drugName,
+            category: item.category as DrugCategory,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            subtotal: item.unitPrice * item.quantity,
+            createdAt: now,
+            updatedAt: now,
+          };
+
+          transaction.set(
+            db.collection(FIRESTORE_COLLECTIONS.ORDER_ITEMS).doc(itemId),
+            orderItem
+          );
+        }
+
+        return newOrder;
+      });
 
       logger.info(`Order created: ${orderId}`);
       return order;
@@ -158,113 +184,129 @@ export class OrderService {
       const db = getFirestore();
       const orderId = uuid();
       const now = new Date();
-
-      // Server-side price verification for guest orders too
-      const verifiedItems = [];
-      for (const item of data.items) {
-        const product = await PharmacyService.getPharmacyProduct(item.pharmacyProductId);
-        if (!product) {
-          throw new Error(`Product not found: ${item.pharmacyProductId}`);
-        }
-        if (!product.isActive) {
-          throw new Error(`Product is no longer available: ${item.drugName}`);
-        }
-        if (product.pharmacyId !== data.pharmacyId) {
-          throw new Error(`Product does not belong to this pharmacy: ${item.drugName}`);
-        }
-        if (product.quantity < item.quantity) {
-          throw new Error(`Insufficient stock for ${item.drugName}: requested ${item.quantity}, available ${product.quantity}`);
-        }
-
-        const serverPrice = product.discount
-          ? formatCurrency(product.price * (1 - product.discount / 100))
-          : product.price;
-
-        verifiedItems.push({
-          ...item,
-          unitPrice: serverPrice,
-        });
-      }
-
-      const subtotal = verifiedItems.reduce(
-        (sum, item) => sum + item.unitPrice * item.quantity,
-        0
-      );
-      const pharmacyCommission = formatCurrency(
-        subtotal * (COMMISSION.PHARMACY_COMMISSION_PERCENT / 100)
-      );
-      const serviceFee = formatCurrency(
-        subtotal * (COMMISSION.SERVICE_FEE_PERCENT / 100)
-      );
-      const deliveryFee = 0;
-      const deliveryCommission = 0;
-      const total = formatCurrency(subtotal + serviceFee + deliveryFee);
-
-      // Use a guest customer ID prefix so we can distinguish guest orders
       const guestCustomerId = `guest_${orderId}`;
 
-      const order: Order = {
-        id: orderId,
-        customerId: guestCustomerId,
-        pharmacyId: data.pharmacyId,
-        status: OrderStatus.PENDING,
-        paymentStatus: PaymentStatus.PENDING,
-        subtotal,
-        pharmacyCommission,
-        deliveryFee,
-        deliveryCommission,
-        serviceFee,
-        total,
-        paymentMethod: "paystack",
-        deliveryAddress: data.deliveryAddress,
-        deliveryLatitude: data.deliveryLatitude,
-        deliveryLongitude: data.deliveryLongitude,
-        notes: data.notes,
-        createdAt: now,
-        updatedAt: now,
-      };
+      // Use a Firestore transaction for atomic stock verification + decrement
+      const order = await db.runTransaction(async (transaction) => {
+        // Read all product documents inside the transaction
+        const productRefs = data.items.map((item) =>
+          db.collection(FIRESTORE_COLLECTIONS.PHARMACY_PRODUCTS).doc(item.pharmacyProductId)
+        );
+        const productDocs = await Promise.all(
+          productRefs.map((ref) => transaction.get(ref))
+        );
 
-      // Use batch write for atomicity — all or nothing
-      const batch = db.batch();
+        const verifiedItems = [];
+        for (let i = 0; i < data.items.length; i++) {
+          const item = data.items[i];
+          const doc = productDocs[i];
 
-      batch.set(db.collection(FIRESTORE_COLLECTIONS.ORDERS).doc(orderId), order);
+          if (!doc.exists) {
+            throw new Error(`Product not found: ${item.pharmacyProductId}`);
+          }
 
-      // Store guest contact info in a subcollection
-      batch.set(
-        db.collection(FIRESTORE_COLLECTIONS.ORDERS)
-          .doc(orderId)
-          .collection("guest_info")
-          .doc("contact"),
-        {
-          email: data.guestEmail,
-          phone: data.guestPhone,
-          name: data.guestName,
-          createdAt: now,
+          const product = doc.data()!;
+          if (!product.isActive) {
+            throw new Error(`Product is no longer available: ${item.drugName}`);
+          }
+          if (product.pharmacyId !== data.pharmacyId) {
+            throw new Error(`Product does not belong to this pharmacy: ${item.drugName}`);
+          }
+          if (product.quantity < item.quantity) {
+            throw new Error(
+              `Insufficient stock for ${item.drugName}: requested ${item.quantity}, available ${product.quantity}`
+            );
+          }
+
+          const serverPrice = product.discount
+            ? formatCurrency(product.price * (1 - product.discount / 100))
+            : product.price;
+
+          verifiedItems.push({ ...item, unitPrice: serverPrice });
         }
-      );
 
-      for (const item of verifiedItems) {
-        const itemId = uuid();
-        const orderItem: OrderItem = {
-          id: itemId,
-          orderId,
-          pharmacyProductId: item.pharmacyProductId,
-          drugName: item.drugName,
-          category: item.category as DrugCategory,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          subtotal: item.unitPrice * item.quantity,
+        const subtotal = verifiedItems.reduce(
+          (sum, item) => sum + item.unitPrice * item.quantity, 0
+        );
+        const pharmacyCommission = formatCurrency(
+          subtotal * (COMMISSION.PHARMACY_COMMISSION_PERCENT / 100)
+        );
+        const serviceFee = formatCurrency(subtotal * (COMMISSION.SERVICE_FEE_PERCENT / 100));
+        const deliveryFee = 0;
+        const deliveryCommission = 0;
+        const total = formatCurrency(subtotal + serviceFee + deliveryFee);
+
+        const newOrder: Order = {
+          id: orderId,
+          customerId: guestCustomerId,
+          pharmacyId: data.pharmacyId,
+          status: OrderStatus.PENDING,
+          paymentStatus: PaymentStatus.PENDING,
+          subtotal,
+          pharmacyCommission,
+          deliveryFee,
+          deliveryCommission,
+          serviceFee,
+          total,
+          paymentMethod: "paystack",
+          deliveryAddress: data.deliveryAddress,
+          deliveryLatitude: data.deliveryLatitude,
+          deliveryLongitude: data.deliveryLongitude,
+          notes: data.notes,
           createdAt: now,
           updatedAt: now,
         };
 
-        batch.set(
-          db.collection(FIRESTORE_COLLECTIONS.ORDER_ITEMS).doc(itemId),
-          orderItem
-        );
-      }
+        // Atomically decrement stock
+        for (let i = 0; i < data.items.length; i++) {
+          transaction.update(productRefs[i], {
+            quantity: FieldValue.increment(-data.items[i].quantity),
+            updatedAt: now,
+          });
+        }
 
-      await batch.commit();
+        transaction.set(
+          db.collection(FIRESTORE_COLLECTIONS.ORDERS).doc(orderId),
+          newOrder
+        );
+
+        // Store guest contact info in a subcollection
+        transaction.set(
+          db.collection(FIRESTORE_COLLECTIONS.ORDERS)
+            .doc(orderId)
+            .collection("guest_info")
+            .doc("contact"),
+          {
+            email: data.guestEmail,
+            phone: data.guestPhone,
+            name: data.guestName,
+            createdAt: now,
+          }
+        );
+
+        for (const item of verifiedItems) {
+          const itemId = uuid();
+          const orderItem: OrderItem = {
+            id: itemId,
+            orderId,
+            pharmacyProductId: item.pharmacyProductId,
+            drugName: item.drugName,
+            category: item.category as DrugCategory,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            subtotal: item.unitPrice * item.quantity,
+            createdAt: now,
+            updatedAt: now,
+          };
+
+          transaction.set(
+            db.collection(FIRESTORE_COLLECTIONS.ORDER_ITEMS).doc(itemId),
+            orderItem
+          );
+        }
+
+        return newOrder;
+      });
 
       logger.info(`Guest order created: ${orderId} for ${data.guestEmail}`);
       return order;

@@ -3,6 +3,7 @@ import { AuthenticatedRequest } from "../../middleware/authenticate.js";
 import { AdminService } from "./admin.service.js";
 import { apiResponse } from "../../utils/helpers.js";
 import logger from "../../utils/logger.js";
+import { writeAuditLog, AuditAction } from "../../utils/auditLog.js";
 import { z } from "zod";
 import { FlagAction } from "@pharmaconnect/shared/dist/types/index.js";
 
@@ -51,6 +52,17 @@ export class AdminController {
 
       const pharmacy = await AdminService.approvePharmacy(pharmacyId);
 
+      // Audit log
+      writeAuditLog({
+        action: AuditAction.PHARMACY_APPROVED,
+        actorId: req.user?.uid || "unknown",
+        actorRole: (req.user as any)?.role,
+        targetType: "pharmacy",
+        targetId: pharmacyId,
+        details: { pharmacyName: pharmacy.name },
+        ipAddress: req.ip,
+      });
+
       logger.info(`Pharmacy approved by admin ${req.user?.uid}: ${pharmacyId}`);
 
       res.json(
@@ -86,6 +98,17 @@ export class AdminController {
       const validated = schema.parse(req.body);
 
       const pharmacy = await AdminService.rejectPharmacy(pharmacyId, validated.reason);
+
+      // Audit log
+      writeAuditLog({
+        action: AuditAction.PHARMACY_REJECTED,
+        actorId: req.user?.uid || "unknown",
+        actorRole: (req.user as any)?.role,
+        targetType: "pharmacy",
+        targetId: pharmacyId,
+        details: { pharmacyName: pharmacy.name, reason: validated.reason },
+        ipAddress: req.ip,
+      });
 
       logger.info(`Pharmacy rejected by admin ${req.user?.uid}: ${pharmacyId}`);
 
@@ -146,6 +169,17 @@ export class AdminController {
 
       const provider = await AdminService.approveProvider(providerId);
 
+      // Audit log
+      writeAuditLog({
+        action: AuditAction.DELIVERY_PROVIDER_APPROVED,
+        actorId: req.user?.uid || "unknown",
+        actorRole: (req.user as any)?.role,
+        targetType: "delivery_provider",
+        targetId: providerId,
+        details: { businessName: provider.businessName },
+        ipAddress: req.ip,
+      });
+
       logger.info(`Provider approved by admin ${req.user?.uid}: ${providerId}`);
 
       res.json(
@@ -181,6 +215,17 @@ export class AdminController {
       const validated = schema.parse(req.body);
 
       const provider = await AdminService.rejectProvider(providerId, validated.reason);
+
+      // Audit log
+      writeAuditLog({
+        action: AuditAction.DELIVERY_PROVIDER_REJECTED,
+        actorId: req.user?.uid || "unknown",
+        actorRole: (req.user as any)?.role,
+        targetType: "delivery_provider",
+        targetId: providerId,
+        details: { businessName: provider.businessName, reason: validated.reason },
+        ipAddress: req.ip,
+      });
 
       logger.info(`Provider rejected by admin ${req.user?.uid}: ${providerId}`);
 

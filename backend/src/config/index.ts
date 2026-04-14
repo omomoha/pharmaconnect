@@ -30,8 +30,16 @@ const envSchema = z.object({
   CLIENT_URL: z.string().url().default("http://localhost:3000"),
   ADMIN_URL: z.string().url().default("http://localhost:3001"),
 
-  // JWT
-  JWT_SECRET: z.string().default("your-jwt-secret-key-change-in-production"),
+  // JWT — REQUIRED in production (no insecure default)
+  JWT_SECRET: z.string().refine(
+    (val) => {
+      if (process.env.NODE_ENV === "production" && val === "your-jwt-secret-key-change-in-production") {
+        return false;
+      }
+      return true;
+    },
+    { message: "JWT_SECRET must be set to a secure value in production" }
+  ).default("dev-only-jwt-secret-not-for-production"),
 
   // Logging
   LOG_LEVEL: z.enum(["error", "warn", "info", "debug"]).default("info"),

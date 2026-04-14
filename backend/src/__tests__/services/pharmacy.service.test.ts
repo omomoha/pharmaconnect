@@ -39,10 +39,28 @@ const createOperatingHours = () => ({
 });
 
 describe('PharmacyService', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.clearAllMocks();
     mockFirestore.reset();
     (getFirestore as jest.Mock).mockReturnValue(mockFirestore);
+
+    // Pre-seed drug catalog docs for OTC enforcement in addProduct.
+    // addProduct now checks that the drug is in the catalog and marked isOTC.
+    const catalogItems = [
+      'aspirin-100mg', 'ibuprofen-200mg', 'paracetamol-500mg',
+      'drug-1', 'drug-2', 'drug-update', 'drug-qty', 'drug-delete',
+    ];
+    for (const itemId of catalogItems) {
+      await mockFirestore.collection('drug_catalog').doc(itemId).set({
+        id: itemId,
+        commonName: itemId,
+        category: 'pain_relief',
+        isOTC: true,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    }
   });
 
   describe('registerPharmacy', () => {

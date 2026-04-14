@@ -247,6 +247,7 @@ exports.FIRESTORE_COLLECTIONS = {
     PHARMACY_SUBSCRIPTIONS: "pharmacy_subscriptions",
     SUBSCRIPTION_INVOICES: "subscription_invoices",
     PAYOUT_REQUESTS: "payout_requests",
+    DELIVERY_LOCATION_HISTORY: "delivery_location_history",
 };
 // ===== VALIDATION RULES =====
 exports.VALIDATION = {

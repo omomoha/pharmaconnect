@@ -57,11 +57,57 @@ const defaultProviderData = {
 };
 
 describe('Delivery Provider E2E Flow', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.clearAllMocks();
     mockFirestore.reset();
     (getFirestore as jest.Mock).mockReturnValue(mockFirestore);
     (getAuth as jest.Mock).mockReturnValue(mockAuth);
+
+    // Pre-seed order docs for transaction-based createAssignment
+    const orderIds = [
+      'order-lifecycle-001', 'order-verify-001',
+      'order-e2e-001', 'order-e2e-002', 'order-e2e-003', 'order-e2e-004',
+    ];
+    for (const orderId of orderIds) {
+      await mockFirestore.collection('orders').doc(orderId).set({
+        id: orderId,
+        customerId: 'customer-e2e',
+        pharmacyId: 'pharmacy-e2e',
+        status: 'ready_for_pickup',
+        paymentStatus: 'paid',
+        subtotal: 1000,
+        total: 1100,
+        deliveryAddress: '20 Allen Avenue, Ikeja',
+        deliveryLatitude: 6.5944,
+        deliveryLongitude: 3.3467,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    }
+
+    // Pre-seed drug catalog for OTC enforcement (used in full e2e flow)
+    await mockFirestore.collection('drug_catalog').doc('drug-e2e').set({
+      id: 'drug-e2e',
+      commonName: 'Paracetamol',
+      category: 'pain_relief',
+      isOTC: true,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    // Pre-seed product doc for transaction-based createOrder (full e2e flow)
+    await mockFirestore.collection('pharmacy_products').doc('product-e2e').set({
+      id: 'product-e2e',
+      pharmacyId: 'pharmacy-e2e',
+      drugCatalogItemId: 'drug-e2e',
+      sku: 'E2E-001',
+      quantity: 100,
+      price: 500,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
   });
 
   // ─────────────────────────────────────────────────────────
@@ -113,12 +159,14 @@ describe('Delivery Provider E2E Flow', () => {
       expect(provider.totalReviews).toBe(0);
     });
 
-    it('should store all registration documents', async () => {
+    it('should store all registration documents (PII fields encrypted)', async () => {
       const provider = await DeliveryService.registerProvider('del-uid-001', defaultProviderData);
 
-      expect(provider.cacNumber).toBe('CAC-DEL-001');
-      expect(provider.cacDocUrl).toBe('https://storage.example.com/cac-delivery.pdf');
-      expect(provider.ownerIdDocUrl).toBe('https://storage.example.com/owner-id.pdf');
+      // PII fields are now encrypted at rest — verify they're NOT plaintext
+      expect(provider.cacNumber).not.toBe('CAC-DEL-001');
+      expect(provider.cacDocUrl).not.toBe('https://storage.example.com/cac-delivery.pdf');
+      expect(provider.ownerIdDocUrl).not.toBe('https://storage.example.com/owner-id.pdf');
+      // Non-PII fields remain unchanged
       expect(provider.vehicleDocUrl).toBe('https://storage.example.com/vehicle-docs.pdf');
     });
 

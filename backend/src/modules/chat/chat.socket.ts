@@ -1,9 +1,9 @@
 import { Socket, Server } from "socket.io";
 import logger from "../../utils/logger.js";
 import { ChatService } from "./chat.service.js";
-import { SOCKET_EVENTS } from "@pharmaconnect/shared/dist/constants/index.js";
+import { SOCKET_EVENTS, FIRESTORE_COLLECTIONS } from "@pharmaconnect/shared/dist/constants/index.js";
 import { UserRole } from "@pharmaconnect/shared/dist/types/index.js";
-import { getAuth } from "../../config/firebase.js";
+import { getAuth, getFirestore } from "../../config/firebase.js";
 
 interface SocketUser {
   uid: string;
@@ -194,10 +194,10 @@ export const initializeChatSocket = (io: Server): void => {
       }
     );
 
-    // Delivery location update
+    // Delivery location update — broadcast AND persist to Firestore for dispute resolution
     socket.on(
       SOCKET_EVENTS.DELIVERY_LOCATION_UPDATE,
-      (data: {
+      async (data: {
         assignmentId: string;
         latitude: number;
         longitude: number;
@@ -205,12 +205,31 @@ export const initializeChatSocket = (io: Server): void => {
       }) => {
         const { assignmentId } = data;
         const roomName = `delivery:${assignmentId}`;
+        const now = new Date();
 
+        // Broadcast to connected clients in real-time
         io.to(roomName).emit(SOCKET_EVENTS.DELIVERY_LOCATION_UPDATE, {
           latitude: data.latitude,
           longitude: data.longitude,
-          timestamp: new Date(),
+          timestamp: now,
         });
+
+        // Persist to Firestore for location history / dispute evidence
+        try {
+          const db = getFirestore();
+          await db
+            .collection(FIRESTORE_COLLECTIONS.DELIVERY_LOCATION_HISTORY)
+            .add({
+              assignmentId: data.assignmentId,
+              riderId: data.riderId,
+              latitude: data.latitude,
+              longitude: data.longitude,
+              timestamp: now,
+            });
+        } catch (err) {
+          // Don't fail the broadcast if persistence fails
+          logger.error(`Failed to persist GPS location for ${assignmentId}:`, err);
+        }
 
         logger.info(`Location updated for delivery ${assignmentId}`);
       }

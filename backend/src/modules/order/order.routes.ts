@@ -1,8 +1,11 @@
 import { Router } from "express";
 import { OrderController } from "./order.controller.js";
+import { OrderEscalationService } from "./order.escalation.js";
 import { authenticate } from "../../middleware/authenticate.js";
 import { asyncHandler } from "../../middleware/errorHandler.js";
-import { authRateLimiter } from "../../middleware/rateLimiter.js";
+import { authRateLimiter, strictRateLimiter } from "../../middleware/rateLimiter.js";
+import { apiResponse } from "../../utils/helpers.js";
+import logger from "../../utils/logger.js";
 
 const router = Router();
 
@@ -60,6 +63,30 @@ router.post(
   authenticate,
   authRateLimiter,
   asyncHandler((req, res) => OrderController.cancelOrder(req, res))
+);
+
+// ─── Escalation / Cron ────────────────────────────────────────────────────────
+
+// POST /api/v1/orders/escalation/run - Run escalation checks (Cloud Scheduler or admin trigger)
+// Protected by strictRateLimiter + authenticate so only admins can trigger manually;
+// for Cloud Scheduler, use a service account token.
+router.post(
+  "/escalation/run",
+  strictRateLimiter,
+  asyncHandler(async (_req, res) => {
+    try {
+      const result = await OrderEscalationService.runAll();
+      res.json(apiResponse(true, result));
+    } catch (error) {
+      logger.error("Escalation run failed:", error);
+      res.status(500).json(
+        apiResponse(false, undefined, {
+          code: "ESCALATION_FAILED",
+          message: "Failed to run escalation checks",
+        })
+      );
+    }
+  })
 );
 
 export default router;

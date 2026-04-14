@@ -17,10 +17,28 @@ jest.mock('../../utils/logger');
 const mockFirestore = createFirestoreMock();
 
 describe('DeliveryService', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.clearAllMocks();
     mockFirestore.reset();
     (getFirestore as jest.Mock).mockReturnValue(mockFirestore);
+
+    // Pre-seed order doc for transaction-based createAssignment.
+    // The transactional createAssignment reads the order doc from Firestore
+    // to check it exists and has no existing deliveryAssignmentId.
+    await mockFirestore.collection('orders').doc('order-123').set({
+      id: 'order-123',
+      customerId: 'customer-123',
+      pharmacyId: 'pharmacy-456',
+      status: 'ready_for_pickup',
+      paymentStatus: 'paid',
+      subtotal: 1000,
+      total: 1100,
+      deliveryAddress: '123 Main St',
+      deliveryLatitude: 6.524,
+      deliveryLongitude: 3.379,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
   });
 
   describe('registerProvider', () => {

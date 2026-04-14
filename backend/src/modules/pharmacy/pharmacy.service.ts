@@ -249,6 +249,7 @@ export class PharmacyService {
         .collection(FIRESTORE_COLLECTIONS.PHARMACY_PRODUCTS)
         .where("pharmacyId", "==", pharmacyId)
         .where("isActive", "==", true)
+        .where("quantity", ">", 0)
         .get();
 
       const products = snapshot.docs.map((doc) => doc.data() as PharmacyProduct);
@@ -316,6 +317,25 @@ export class PharmacyService {
       const db = getFirestore();
       const id = uuid();
       const now = new Date();
+
+      // OTC enforcement: verify the drug is in the catalog and approved for OTC sale
+      const catalogDoc = await db
+        .collection(FIRESTORE_COLLECTIONS.DRUG_CATALOG)
+        .doc(data.drugCatalogItemId)
+        .get();
+
+      if (!catalogDoc.exists) {
+        throw new Error(
+          "Drug not found in the approved catalog. Only drugs from the PharmaConnect catalog can be listed."
+        );
+      }
+
+      const catalogItem = catalogDoc.data()!;
+      if (!catalogItem.isOTC) {
+        throw new Error(
+          `"${catalogItem.commonName || data.drugCatalogItemId}" is a prescription-only drug and cannot be sold on PharmaConnect. Only OTC drugs are permitted.`
+        );
+      }
 
       const product: PharmacyProduct = {
         id,

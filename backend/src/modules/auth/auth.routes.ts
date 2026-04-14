@@ -2,6 +2,7 @@ import { Router } from "express";
 import { AuthController } from "./auth.controller.js";
 import { authenticate } from "../../middleware/authenticate.js";
 import { asyncHandler } from "../../middleware/errorHandler.js";
+import { strictRateLimiter, authRateLimiter } from "../../middleware/rateLimiter.js";
 
 const router = Router();
 
@@ -13,6 +14,7 @@ const router = Router();
 router.post(
   "/setup-profile",
   authenticate,
+  strictRateLimiter,
   asyncHandler((req, res) => AuthController.setupProfile(req, res))
 );
 
@@ -27,6 +29,7 @@ router.get(
 router.put(
   "/me",
   authenticate,
+  authRateLimiter,
   asyncHandler((req, res) => AuthController.updateProfile(req, res))
 );
 

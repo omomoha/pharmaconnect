@@ -7,19 +7,27 @@ export const FIRESTORE_COLLECTIONS = {
   USERS: 'users',
   PHARMACIES: 'pharmacies',
   PHARMACY_PRODUCTS: 'pharmacy_products',
+  DRUG_CATALOG: 'drug_catalog',
   ORDERS: 'orders',
   ORDER_ITEMS: 'order_items',
   PAYMENTS: 'payments',
   DELIVERY_PROVIDERS: 'delivery_providers',
+  DELIVERY_RIDERS: 'delivery_riders',
   DELIVERY_ASSIGNMENTS: 'delivery_assignments',
   DELIVERY_VERIFICATIONS: 'delivery_verifications',
+  DELIVERY_LOCATION_HISTORY: 'delivery_location_history',
   CHATS: 'chats',
   CONVERSATIONS: 'conversations',
   MESSAGES: 'messages',
   REVIEWS: 'reviews',
+  NOTIFICATIONS: 'notifications',
   MODERATION_FLAGS: 'moderation_flags',
   ADMIN_NOTIFICATIONS: 'admin_notifications',
   FLAGGED_ALERTS: 'flagged_alerts',
+  AUDIT_LOGS: 'audit_logs',
+  PHARMACY_SUBSCRIPTIONS: 'pharmacy_subscriptions',
+  SUBSCRIPTION_INVOICES: 'subscription_invoices',
+  PAYOUT_REQUESTS: 'payout_requests',
 };
 
 export const COMMISSION = {
@@ -28,7 +36,12 @@ export const COMMISSION = {
 };
 
 export const DELIVERY = {
-  SECURITY_CODE_EXPIRY_HOURS: 24,
+  SECURITY_CODE_LENGTH: 6,
+  SECURITY_CODE_MAX_ATTEMPTS: 3,
+  SECURITY_CODE_EXPIRY_HOURS: 2,
+  GPS_UPDATE_INTERVAL_SECONDS: 10,
+  MAX_DELIVERY_TIME_HOURS: 4,
+  INITIAL_ASSIGNMENT_TIMEOUT_MINUTES: 5,
 };
 
 // Enums
@@ -204,6 +217,7 @@ export interface DeliveryVerification {
   customerCode: string;
   riderCode: string;
   codeExpiryAt: Date;
+  attemptCount?: number;
   createdAt: Date;
   updatedAt: Date;
   customerVerifiedAt?: Date;
