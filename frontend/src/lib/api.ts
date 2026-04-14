@@ -68,7 +68,8 @@ export async function get(url: string, options?: FetchOptions) {
 /**
  * POST request with auth
  */
-export async function post(url: string, data?: Record<string, unknown>, options?: FetchOptions) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function post(url: string, data?: Record<string, any>, options?: FetchOptions) {
   const response = await fetchWithAuth(url, {
     ...options,
     method: 'POST',
@@ -85,7 +86,8 @@ export async function post(url: string, data?: Record<string, unknown>, options?
 /**
  * PUT request with auth
  */
-export async function put(url: string, data?: Record<string, unknown>, options?: FetchOptions) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function put(url: string, data?: Record<string, any>, options?: FetchOptions) {
   const response = await fetchWithAuth(url, {
     ...options,
     method: 'PUT',
@@ -102,7 +104,8 @@ export async function put(url: string, data?: Record<string, unknown>, options?:
 /**
  * PATCH request with auth
  */
-export async function patch(url: string, data?: Record<string, unknown>, options?: FetchOptions) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function patch(url: string, data?: Record<string, any>, options?: FetchOptions) {
   const response = await fetchWithAuth(url, {
     ...options,
     method: 'PATCH',
