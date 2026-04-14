@@ -203,13 +203,9 @@ export class PharmacyController {
     res: Response
   ): Promise<void> {
     try {
-      const schema = z.object({
-        q: z.string().optional().default(""),
-      });
+      const query = typeof req.query.q === "string" ? req.query.q.trim() : "";
 
-      const validated = schema.parse(req.query);
-
-      const pharmacies = await PharmacyService.searchPharmacies(validated.q);
+      const pharmacies = await PharmacyService.searchPharmacies(query);
 
       res.json(
         apiResponse(true, {
