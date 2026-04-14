@@ -98,9 +98,9 @@ export const createFirestoreMock = () => {
         return createQueryChain(collectionName, refiltered);
       }),
       orderBy: jest.fn(orderByChain),
-      limit: jest.fn((limit: number) => ({
+      limit: jest.fn((limitNum: number) => ({
         get: jest.fn(() => {
-          const sliced = filtered.slice(0, limit);
+          const sliced = filtered.slice(0, limitNum);
           return Promise.resolve({
             empty: sliced.length === 0,
             size: sliced.length,
@@ -109,6 +109,15 @@ export const createFirestoreMock = () => {
               exists: true,
               data: () => doc,
             })),
+            forEach: (callback: any) => {
+              sliced.forEach((doc) => {
+                callback({
+                  id: doc.id,
+                  exists: true,
+                  data: () => doc,
+                });
+              });
+            },
           });
         }),
       })),
@@ -184,8 +193,39 @@ export const createFirestoreMock = () => {
     };
   };
 
+  // Batch write support
+  const createBatchMock = () => {
+    const ops: Array<{ type: string; ref: any; data?: any }> = [];
+
+    return {
+      set: jest.fn((ref: any, data: any) => {
+        ops.push({ type: 'set', ref, data });
+      }),
+      update: jest.fn((ref: any, data: any) => {
+        ops.push({ type: 'update', ref, data });
+      }),
+      delete: jest.fn((ref: any) => {
+        ops.push({ type: 'delete', ref });
+      }),
+      commit: jest.fn(async () => {
+        // Execute all batched operations
+        for (const op of ops) {
+          if (op.type === 'set') {
+            await op.ref.set(op.data);
+          } else if (op.type === 'update') {
+            await op.ref.update(op.data);
+          } else if (op.type === 'delete') {
+            await op.ref.delete();
+          }
+        }
+        return Promise.resolve();
+      }),
+    };
+  };
+
   return {
     collection: jest.fn((collectionName: string) => mockCollectionRef(collectionName)),
+    batch: jest.fn(() => createBatchMock()),
     getDocData: () => mockDocData,
     getCollectionData: () => mockCollectionData,
     reset: () => {

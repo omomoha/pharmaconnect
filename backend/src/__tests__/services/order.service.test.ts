@@ -4,20 +4,50 @@
  */
 
 import { OrderService } from '../../modules/order/order.service';
+import { PharmacyService } from '../../modules/pharmacy/pharmacy.service';
 import { getFirestore } from '../../config/firebase';
 import { createFirestoreMock } from '../mocks/firestore.mock';
 import { OrderStatus, PaymentStatus } from '@pharmaconnect/shared/dist/types/index';
 
 jest.mock('../../config/firebase');
 jest.mock('../../utils/logger');
+jest.mock('../../modules/pharmacy/pharmacy.service');
 
 const mockFirestore = createFirestoreMock();
+
+// Default mock: return a valid product for any productId
+const mockGetPharmacyProduct = PharmacyService.getPharmacyProduct as jest.Mock;
 
 describe('OrderService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockFirestore.reset();
     (getFirestore as jest.Mock).mockReturnValue(mockFirestore);
+
+    // Mock PharmacyService.getPharmacyProduct — returns a valid product
+    // belonging to 'pharmacy-456' (the standard test pharmacyId).
+    // Price matches what tests expect from client-side unitPrice.
+    const productPrices: Record<string, number> = {
+      'product-1': 500,
+      'product-2': 1200,
+    };
+
+    mockGetPharmacyProduct.mockImplementation((productId: string) => {
+      if (productId.startsWith('product-')) {
+        return Promise.resolve({
+          id: productId,
+          pharmacyId: 'pharmacy-456',
+          drugCatalogItemId: 'drug-1',
+          sku: 'MOCK-001',
+          quantity: 100,
+          price: productPrices[productId] || 500,
+          isActive: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+      return Promise.resolve(null);
+    });
   });
 
   describe('createOrder', () => {
@@ -182,7 +212,7 @@ describe('OrderService', () => {
 
       const orderData2 = {
         ...orderData1,
-        pharmacyId: 'pharmacy-789',
+        pharmacyId: 'pharmacy-456', // Same pharmacy — product mock returns pharmacy-456
       };
 
       await OrderService.createOrder(orderData1);
@@ -199,7 +229,7 @@ describe('OrderService', () => {
       for (let i = 0; i < 5; i++) {
         await OrderService.createOrder({
           customerId,
-          pharmacyId: `pharmacy-${i}`,
+          pharmacyId: 'pharmacy-456',
           deliveryAddress: '123 Main St',
           deliveryLatitude: 6.5244,
           deliveryLongitude: 3.3792,

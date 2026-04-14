@@ -263,7 +263,7 @@ export class SubscriptionService {
     if (!subscription) return false;
 
     const plan = this.getPlanDetails(subscription.tier);
-    return plan.features.includes(feature);
+    return (plan.features as readonly string[]).includes(feature);
   }
 
   /**

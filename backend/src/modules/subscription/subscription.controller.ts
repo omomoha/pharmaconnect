@@ -12,7 +12,7 @@ export class SubscriptionController {
    * GET /api/v1/subscriptions/plans
    * Get all available subscription plans (public)
    */
-  static async getPlans(_req: Request, res: Response) {
+  static async getPlans(_req: Request, res: Response): Promise<void> {
     const plans = SubscriptionService.getAllPlans();
     res.status(HTTP_STATUS.OK).json({
       success: true,
@@ -24,14 +24,15 @@ export class SubscriptionController {
    * GET /api/v1/subscriptions/current
    * Get current pharmacy's active subscription
    */
-  static async getCurrentSubscription(req: Request, res: Response) {
+  static async getCurrentSubscription(req: Request, res: Response): Promise<void> {
     try {
       const user = (req as any).user;
       if (!user?.pharmacyId) {
-        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        res.status(HTTP_STATUS.BAD_REQUEST).json({
           success: false,
           error: { message: "No pharmacy associated with this account" },
         });
+        return;
       }
 
       const subscription = await SubscriptionService.getActiveSubscription(
@@ -39,10 +40,11 @@ export class SubscriptionController {
       );
 
       if (!subscription) {
-        return res.status(HTTP_STATUS.NOT_FOUND).json({
+        res.status(HTTP_STATUS.NOT_FOUND).json({
           success: false,
           error: { message: "No active subscription found" },
         });
+        return;
       }
 
       const plan = SubscriptionService.getPlanDetails(subscription.tier);
@@ -64,14 +66,15 @@ export class SubscriptionController {
    * POST /api/v1/subscriptions/change-tier
    * Change subscription tier (upgrade/downgrade)
    */
-  static async changeTier(req: Request, res: Response) {
+  static async changeTier(req: Request, res: Response): Promise<void> {
     try {
       const user = (req as any).user;
       if (!user?.pharmacyId) {
-        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        res.status(HTTP_STATUS.BAD_REQUEST).json({
           success: false,
           error: { message: "No pharmacy associated with this account" },
         });
+        return;
       }
 
       const { tier, paystackSubscriptionCode } = req.body;
@@ -80,12 +83,13 @@ export class SubscriptionController {
         !tier ||
         !Object.values(SubscriptionTier).includes(tier as SubscriptionTier)
       ) {
-        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        res.status(HTTP_STATUS.BAD_REQUEST).json({
           success: false,
           error: {
             message: `Invalid tier. Must be one of: ${Object.values(SubscriptionTier).join(", ")}`,
           },
         });
+        return;
       }
 
       const subscription = await SubscriptionService.changeTier(
@@ -114,14 +118,15 @@ export class SubscriptionController {
    * POST /api/v1/subscriptions/cancel
    * Cancel current subscription (effective at period end)
    */
-  static async cancelSubscription(req: Request, res: Response) {
+  static async cancelSubscription(req: Request, res: Response): Promise<void> {
     try {
       const user = (req as any).user;
       if (!user?.pharmacyId) {
-        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        res.status(HTTP_STATUS.BAD_REQUEST).json({
           success: false,
           error: { message: "No pharmacy associated with this account" },
         });
+        return;
       }
 
       const subscription = await SubscriptionService.cancelSubscription(
@@ -129,10 +134,11 @@ export class SubscriptionController {
       );
 
       if (!subscription) {
-        return res.status(HTTP_STATUS.NOT_FOUND).json({
+        res.status(HTTP_STATUS.NOT_FOUND).json({
           success: false,
           error: { message: "No active subscription to cancel" },
         });
+        return;
       }
 
       res.status(HTTP_STATUS.OK).json({
@@ -154,14 +160,15 @@ export class SubscriptionController {
    * GET /api/v1/subscriptions/check-feature/:feature
    * Check if current pharmacy has a specific feature
    */
-  static async checkFeature(req: Request, res: Response) {
+  static async checkFeature(req: Request, res: Response): Promise<void> {
     try {
       const user = (req as any).user;
       if (!user?.pharmacyId) {
-        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        res.status(HTTP_STATUS.BAD_REQUEST).json({
           success: false,
           error: { message: "No pharmacy associated with this account" },
         });
+        return;
       }
 
       const { feature } = req.params;
