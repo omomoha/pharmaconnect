@@ -2,6 +2,42 @@ import { io, Socket } from 'socket.io-client';
 import type { UserRole } from '@/shared/types';
 import { SOCKET_EVENTS } from '@/shared/constants';
 
+/** Socket event payload types */
+export interface ChatMessagePayload {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  content: string;
+  imageUrl?: string;
+  createdAt: string;
+}
+
+export interface TypingPayload {
+  conversationId: string;
+  userId: string;
+}
+
+export interface DeliveryLocationPayload {
+  assignmentId: string;
+  latitude: number;
+  longitude: number;
+  timestamp: string;
+}
+
+export interface DeliveryStatusPayload {
+  assignmentId: string;
+  status: string;
+  timestamp: string;
+}
+
+export interface NotificationPayload {
+  id: string;
+  title: string;
+  message: string;
+  type: string;
+  createdAt: string;
+}
+
 let socket: Socket | null = null;
 
 /**
@@ -148,7 +184,7 @@ export function sendChatMessage(
  * @param callback - Function to call when message is received
  */
 export function onChatMessageReceive(
-  callback: (data: any) => void
+  callback: (data: ChatMessagePayload) => void
 ): () => void {
   const socketInstance = getSocket();
   socketInstance.on(SOCKET_EVENTS.CHAT_MESSAGE_RECEIVE, callback);
@@ -185,7 +221,7 @@ export function emitStoppedTyping(conversationId: string): void {
  * Listen for typing indicators
  * @param callback - Function to call when someone is typing
  */
-export function onTyping(callback: (data: any) => void): () => void {
+export function onTyping(callback: (data: TypingPayload) => void): () => void {
   const socketInstance = getSocket();
   socketInstance.on(SOCKET_EVENTS.CHAT_TYPING, callback);
 
@@ -222,7 +258,7 @@ export function updateDeliveryLocation(
  * @param callback - Function to call when location is updated
  */
 export function onDeliveryLocationUpdate(
-  callback: (data: any) => void
+  callback: (data: DeliveryLocationPayload) => void
 ): () => void {
   const socketInstance = getSocket();
   socketInstance.on(SOCKET_EVENTS.DELIVERY_LOCATION_UPDATE, callback);
@@ -236,7 +272,7 @@ export function onDeliveryLocationUpdate(
  * @param callback - Function to call when delivery status changes
  */
 export function onDeliveryStatusChange(
-  callback: (data: any) => void
+  callback: (data: DeliveryStatusPayload) => void
 ): () => void {
   const socketInstance = getSocket();
   socketInstance.on(SOCKET_EVENTS.DELIVERY_STATUS_CHANGE, callback);
@@ -250,7 +286,7 @@ export function onDeliveryStatusChange(
  * @param callback - Function to call when notification is received
  */
 export function onNotificationReceived(
-  callback: (data: any) => void
+  callback: (data: NotificationPayload) => void
 ): () => void {
   const socketInstance = getSocket();
   socketInstance.on(SOCKET_EVENTS.NOTIFICATION_RECEIVED, callback);

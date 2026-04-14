@@ -1,18 +1,32 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/layout/Navbar';
 import Button from '@/components/ui/Button';
 import Footer from '@/components/layout/Footer';
 import { useSmartSearch } from '@/hooks/useSmartSearch';
+import { useDropdownKeyboard } from '@/hooks/useDropdownKeyboard';
 
 export default function HomePage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const { symptoms, drugNames, categories, loading: searchLoading } = useSmartSearch(searchQuery);
+
+  const allDropdownItems = useMemo(
+    () => [...drugNames.slice(0, 3), ...symptoms.slice(0, 3), ...categories.slice(0, 3)],
+    [drugNames, symptoms, categories]
+  );
+
+  const { activeIndex, handleKeyDown: handleDropdownKeyDown, resetIndex } = useDropdownKeyboard(
+    showDropdown ? allDropdownItems : [],
+    (item) => { setSearchQuery(item); setShowDropdown(false); },
+    () => setShowDropdown(false),
+    searchInputRef
+  );
 
   const handleSearch = () => {
     if (searchQuery.trim()) {
@@ -61,14 +75,27 @@ export default function HomePage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                   <input
+                    ref={searchInputRef}
                     type="text"
                     placeholder="Search medications, symptoms, or pharmacies..."
                     value={searchQuery}
-                    onChange={(e) => { setSearchQuery(e.target.value); setShowDropdown(true); }}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                    onChange={(e) => { setSearchQuery(e.target.value); setShowDropdown(true); resetIndex(); }}
+                    onKeyDown={(e) => {
+                      if (showDropdown && allDropdownItems.length > 0) {
+                        handleDropdownKeyDown(e);
+                      }
+                      if (e.key === 'Enter' && activeIndex < 0) handleSearch();
+                    }}
                     onFocus={() => searchQuery && setShowDropdown(true)}
                     onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
                     className="w-full pl-10 pr-4 py-2.5 bg-transparent text-sm focus:outline-none placeholder:text-gray-400"
+                    role="combobox"
+                    aria-expanded={showDropdown && allDropdownItems.length > 0}
+                    aria-haspopup="listbox"
+                    aria-controls="search-dropdown"
+                    aria-activedescendant={activeIndex >= 0 ? `search-item-${activeIndex}` : undefined}
+                    aria-label="Search medications, symptoms, or pharmacies"
+                    autoComplete="off"
                   />
                 </div>
                 <Button size="sm" variant="primary" onClick={handleSearch}>
@@ -78,7 +105,7 @@ export default function HomePage() {
 
               {/* Smart Search Dropdown */}
               {showDropdown && searchQuery && (drugNames.length > 0 || symptoms.length > 0 || categories.length > 0 || searchLoading) && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-xl shadow-soft-lg z-20 p-2 animate-fade-in-down">
+                <div id="search-dropdown" role="listbox" aria-label="Search suggestions" className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-xl shadow-soft-lg z-20 p-2 animate-fade-in-down">
                   {searchLoading && (
                     <div className="flex items-center gap-2 px-3 py-2 text-xs text-gray-400">
                       <div className="animate-spin w-3 h-3 border-2 border-gray-300 border-t-primary-600 rounded-full" />
@@ -88,43 +115,61 @@ export default function HomePage() {
                   {drugNames.length > 0 && (
                     <div className="mb-1">
                       <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-1">Medications</p>
-                      {drugNames.slice(0, 3).map((drug, idx) => (
-                        <button
-                          key={idx}
-                          className="w-full text-left px-3 py-2 hover:bg-primary-50 rounded-lg transition-colors text-sm text-gray-800 flex items-center gap-2"
-                          onMouseDown={() => { setSearchQuery(drug); setShowDropdown(false); }}
-                        >
-                          <span className="text-primary-500">💊</span> {drug}
-                        </button>
-                      ))}
+                      {drugNames.slice(0, 3).map((drug, idx) => {
+                        const globalIdx = idx;
+                        return (
+                          <button
+                            key={idx}
+                            id={`search-item-${globalIdx}`}
+                            role="option"
+                            aria-selected={activeIndex === globalIdx}
+                            className={`w-full text-left px-3 py-2 rounded-lg transition-colors text-sm text-gray-800 flex items-center gap-2 ${activeIndex === globalIdx ? 'bg-primary-50' : 'hover:bg-primary-50'}`}
+                            onMouseDown={() => { setSearchQuery(drug); setShowDropdown(false); }}
+                          >
+                            <span className="text-primary-500" aria-hidden="true">💊</span> {drug}
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                   {symptoms.length > 0 && (
                     <div className="mb-1">
                       <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-1">Symptoms</p>
-                      {symptoms.slice(0, 3).map((symptom, idx) => (
-                        <button
-                          key={idx}
-                          className="w-full text-left px-3 py-2 hover:bg-blue-50 rounded-lg transition-colors text-sm text-gray-800 flex items-center gap-2"
-                          onMouseDown={() => { setSearchQuery(symptom); setShowDropdown(false); }}
-                        >
-                          <span className="text-secondary-500">🔍</span> {symptom}
-                        </button>
-                      ))}
+                      {symptoms.slice(0, 3).map((symptom, idx) => {
+                        const globalIdx = drugNames.slice(0, 3).length + idx;
+                        return (
+                          <button
+                            key={idx}
+                            id={`search-item-${globalIdx}`}
+                            role="option"
+                            aria-selected={activeIndex === globalIdx}
+                            className={`w-full text-left px-3 py-2 rounded-lg transition-colors text-sm text-gray-800 flex items-center gap-2 ${activeIndex === globalIdx ? 'bg-blue-50' : 'hover:bg-blue-50'}`}
+                            onMouseDown={() => { setSearchQuery(symptom); setShowDropdown(false); }}
+                          >
+                            <span className="text-secondary-500" aria-hidden="true">🔍</span> {symptom}
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                   {categories.length > 0 && (
                     <div>
                       <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-1">Categories</p>
-                      {categories.slice(0, 3).map((cat, idx) => (
-                        <button
-                          key={idx}
-                          className="w-full text-left px-3 py-2 hover:bg-green-50 rounded-lg transition-colors text-sm text-gray-800 flex items-center gap-2"
-                          onMouseDown={() => { setSearchQuery(cat); setShowDropdown(false); }}
-                        >
-                          <span className="text-green-500">📂</span> {cat}
-                        </button>
-                      ))}
+                      {categories.slice(0, 3).map((cat, idx) => {
+                        const globalIdx = drugNames.slice(0, 3).length + symptoms.slice(0, 3).length + idx;
+                        return (
+                          <button
+                            key={idx}
+                            id={`search-item-${globalIdx}`}
+                            role="option"
+                            aria-selected={activeIndex === globalIdx}
+                            className={`w-full text-left px-3 py-2 rounded-lg transition-colors text-sm text-gray-800 flex items-center gap-2 ${activeIndex === globalIdx ? 'bg-green-50' : 'hover:bg-green-50'}`}
+                            onMouseDown={() => { setSearchQuery(cat); setShowDropdown(false); }}
+                          >
+                            <span className="text-green-500" aria-hidden="true">📂</span> {cat}
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                 </div>

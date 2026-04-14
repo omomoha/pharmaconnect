@@ -1,7 +1,10 @@
 'use client';
 
+import { lazy, Suspense } from 'react';
 import PageHeader from '@/components/ui/PageHeader';
-import DrugInteractionChecker from '@/components/ai/DrugInteractionChecker';
+import LoadingState from '@/components/ui/LoadingState';
+
+const DrugInteractionChecker = lazy(() => import('@/components/ai/DrugInteractionChecker'));
 
 export default function DrugInteractionsPage() {
   return (
@@ -24,7 +27,9 @@ export default function DrugInteractionsPage() {
           </p>
         </div>
 
-        <DrugInteractionChecker />
+        <Suspense fallback={<LoadingState message="Loading interaction checker..." />}>
+          <DrugInteractionChecker />
+        </Suspense>
       </div>
     </div>
   );

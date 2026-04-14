@@ -68,7 +68,7 @@ export async function get(url: string, options?: FetchOptions) {
 /**
  * POST request with auth
  */
-export async function post(url: string, data?: any, options?: FetchOptions) {
+export async function post(url: string, data?: Record<string, unknown>, options?: FetchOptions) {
   const response = await fetchWithAuth(url, {
     ...options,
     method: 'POST',
@@ -85,7 +85,7 @@ export async function post(url: string, data?: any, options?: FetchOptions) {
 /**
  * PUT request with auth
  */
-export async function put(url: string, data?: any, options?: FetchOptions) {
+export async function put(url: string, data?: Record<string, unknown>, options?: FetchOptions) {
   const response = await fetchWithAuth(url, {
     ...options,
     method: 'PUT',
@@ -102,7 +102,7 @@ export async function put(url: string, data?: any, options?: FetchOptions) {
 /**
  * PATCH request with auth
  */
-export async function patch(url: string, data?: any, options?: FetchOptions) {
+export async function patch(url: string, data?: Record<string, unknown>, options?: FetchOptions) {
   const response = await fetchWithAuth(url, {
     ...options,
     method: 'PATCH',

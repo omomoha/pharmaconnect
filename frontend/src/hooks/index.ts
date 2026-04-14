@@ -13,3 +13,5 @@ export { usePaystack } from './usePaystack';
 export { useSocket } from './useSocket';
 export { useGeolocation } from './useGeolocation';
 export { useSmartSearch } from './useSmartSearch';
+export { useDropdownKeyboard } from './useDropdownKeyboard';
+export { useAsyncData } from './useAsyncData';
