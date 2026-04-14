@@ -19,6 +19,13 @@ router.post(
   asyncHandler((req, res) => PharmacyController.registerPharmacy(req, res))
 );
 
+// GET /api/v1/pharmacies/mine - Get current user's pharmacy
+router.get(
+  "/mine",
+  authenticate,
+  asyncHandler((req, res) => PharmacyController.getMyPharmacy(req, res))
+);
+
 // GET /api/v1/pharmacies/nearby - Get nearby pharmacies
 router.get(
   "/nearby",

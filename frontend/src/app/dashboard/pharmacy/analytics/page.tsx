@@ -1,117 +1,126 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import PageHeader from '@/components/ui/PageHeader';
 import StatsCard from '@/components/ui/StatsCard';
+import { useAuth } from '@/contexts/AuthContext';
+import toast from 'react-hot-toast';
 
-interface TopProduct {
-  rank: number;
-  name: string;
-  unitsSold: number;
-  revenue: string;
-}
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 
-interface Review {
+interface Order {
   id: string;
-  customerName: string;
-  rating: number;
-  comment: string;
-  date: string;
+  total: number;
+  status: string;
+  createdAt: string;
 }
-
-const TOP_PRODUCTS: TopProduct[] = [
-  { rank: 1, name: 'Paracetamol 500mg', unitsSold: 450, revenue: '₦225,000' },
-  { rank: 2, name: 'Vitamin C 1000mg', unitsSold: 380, revenue: '₦456,000' },
-  { rank: 3, name: 'Ibuprofen 400mg', unitsSold: 320, revenue: '₦208,000' },
-  { rank: 4, name: 'Multivitamin', unitsSold: 245, revenue: '₦857,500' },
-  { rank: 5, name: 'Antacid Tablets', unitsSold: 210, revenue: '₦189,000' },
-];
-
-const SAMPLE_REVIEWS: Review[] = [
-  {
-    id: '1',
-    customerName: 'John Doe',
-    rating: 5,
-    comment: 'Excellent quality products and very fast delivery!',
-    date: '2026-03-26 14:20',
-  },
-  {
-    id: '2',
-    customerName: 'Jane Smith',
-    rating: 4,
-    comment: 'Good selection but wish for more payment options.',
-    date: '2026-03-26 12:35',
-  },
-  {
-    id: '3',
-    customerName: 'Mike Johnson',
-    rating: 5,
-    comment: 'Professional service and authentic products. Highly recommend!',
-    date: '2026-03-26 10:15',
-  },
-  {
-    id: '4',
-    customerName: 'Sarah Williams',
-    rating: 4,
-    comment: 'Products arrived in good condition. Packaging could be better.',
-    date: '2026-03-25 16:45',
-  },
-  {
-    id: '5',
-    customerName: 'David Brown',
-    rating: 5,
-    comment: 'Best pharmacy online! Everything is authentic and affordable.',
-    date: '2026-03-25 14:10',
-  },
-];
 
 export default function AnalyticsPage() {
+  const { user } = useAuth();
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [pharmacyRating, setPharmacyRating] = useState(0);
+  const [totalReviews, setTotalReviews] = useState(0);
+  const [loading, setLoading] = useState(true);
   const [timePeriod, setTimePeriod] = useState('month');
 
-  const getMetrics = (period: string) => {
-    const multipliers: Record<string, number> = {
-      today: 1,
-      week: 7,
-      month: 30,
-      year: 365,
-    };
-    const mult = multipliers[period] || 30;
+  const getAuthHeaders = useCallback(async () => {
+    if (!user) return {};
+    const token = await user.getIdToken();
+    return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+  }, [user]);
 
-    return {
-      revenue: `₦${(2850000 * (mult / 30)).toLocaleString()}`,
-      orders: Math.floor(156 * (mult / 30)),
-      avgOrderValue: '₦18,270',
-      rating: '4.7',
-    };
+  useEffect(() => {
+    async function loadAnalytics() {
+      if (!user) return;
+      setLoading(true);
+      try {
+        const headers = await getAuthHeaders();
+
+        const pharmacyRes = await fetch(`${API_URL}/pharmacies/mine`, { headers });
+        const pharmacyResult = await pharmacyRes.json();
+
+        if (!pharmacyResult.success || !pharmacyResult.data?.pharmacy) {
+          setLoading(false);
+          return;
+        }
+
+        const pharmacy = pharmacyResult.data.pharmacy;
+        setPharmacyRating(pharmacy.rating || 0);
+        setTotalReviews(pharmacy.totalReviews || 0);
+
+        const ordersRes = await fetch(`${API_URL}/orders/pharmacy/${pharmacy.id}`, { headers });
+        const ordersResult = await ordersRes.json();
+
+        if (ordersResult.success && ordersResult.data?.orders) {
+          setOrders(ordersResult.data.orders);
+        }
+      } catch {
+        toast.error('Failed to load analytics');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadAnalytics();
+  }, [user, getAuthHeaders]);
+
+  // Filter orders by time period
+  const getFilteredOrders = (period: string): Order[] => {
+    const now = new Date();
+    return orders.filter((o) => {
+      const created = new Date(o.createdAt);
+      switch (period) {
+        case 'today':
+          return created.toDateString() === now.toDateString();
+        case 'week': {
+          const weekAgo = new Date(now);
+          weekAgo.setDate(weekAgo.getDate() - 7);
+          return created >= weekAgo;
+        }
+        case 'month': {
+          const monthAgo = new Date(now);
+          monthAgo.setMonth(monthAgo.getMonth() - 1);
+          return created >= monthAgo;
+        }
+        case 'year': {
+          const yearAgo = new Date(now);
+          yearAgo.setFullYear(yearAgo.getFullYear() - 1);
+          return created >= yearAgo;
+        }
+        default:
+          return true;
+      }
+    });
   };
 
-  const metrics = getMetrics(timePeriod);
+  const filteredOrders = getFilteredOrders(timePeriod);
+  const totalRevenue = filteredOrders
+    .filter(o => o.status !== 'cancelled' && o.status !== 'refunded')
+    .reduce((sum, o) => sum + (o.total || 0), 0);
+  const orderCount = filteredOrders.length;
+  const avgOrderValue = orderCount > 0 ? totalRevenue / orderCount : 0;
 
-  const renderStarRating = (rating: number) => {
+  const periodLabel = timePeriod === 'today' ? 'Today'
+    : timePeriod === 'week' ? 'This Week'
+    : timePeriod === 'year' ? 'This Year'
+    : 'This Month';
+
+  if (loading) {
     return (
-      <div className="flex gap-1">
-        {[...Array(5)].map((_, i) => (
-          <svg
-            key={i}
-            className={`w-4 h-4 ${i < rating ? 'text-yellow-400 fill-current' : 'text-gray-300'}`}
-            viewBox="0 0 20 20"
-          >
-            <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" />
-          </svg>
-        ))}
+      <div className="space-y-6">
+        <PageHeader title="Analytics & Reports" description="View your pharmacy's performance metrics and insights" />
+        <div className="flex items-center justify-center py-16">
+          <div className="w-10 h-10 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
+        </div>
       </div>
     );
-  };
+  }
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Analytics & Reports"
-        description="View your pharmacy's performance metrics and insights"
-      />
+      <PageHeader title="Analytics & Reports" description="View your pharmacy's performance metrics and insights" />
 
-      {/* Time Period Selector */}
       <Card>
         <CardContent className="pt-6">
           <div className="flex flex-wrap gap-2">
@@ -137,146 +146,104 @@ export default function AnalyticsPage() {
         </CardContent>
       </Card>
 
-      {/* Key Metrics */}
       <div className="grid md:grid-cols-4 gap-6">
-        <StatsCard
-          label="Total Revenue"
-          value={metrics.revenue}
-          change={`${timePeriod === 'today' ? 'Today' : timePeriod === 'week' ? 'This Week' : timePeriod === 'year' ? 'This Year' : 'This Month'}`}
-          icon="₦"
-        />
-        <StatsCard
-          label="Total Orders"
-          value={String(metrics.orders)}
-          change={`${timePeriod === 'today' ? 'Today' : timePeriod === 'week' ? 'This Week' : timePeriod === 'year' ? 'This Year' : 'This Month'}`}
-          trend="up"
-        />
-        <StatsCard
-          label="Avg. Order Value"
-          value={metrics.avgOrderValue}
-          change="Per order"
-          icon="₦"
-        />
-        <StatsCard
-          label="Avg. Rating"
-          value={metrics.rating}
-          change="From 89 reviews"
-          icon="★"
-        />
+        <StatsCard label="Total Revenue" value={`₦${totalRevenue.toLocaleString()}`} change={periodLabel} icon="₦" />
+        <StatsCard label="Total Orders" value={String(orderCount)} change={periodLabel} trend="up" />
+        <StatsCard label="Avg. Order Value" value={`₦${Math.round(avgOrderValue).toLocaleString()}`} change="Per order" icon="₦" />
+        <StatsCard label="Avg. Rating" value={pharmacyRating.toFixed(1)} change={`From ${totalReviews} reviews`} icon="★" />
       </div>
 
-      {/* Revenue Chart */}
+      {/* Revenue Chart (derived from actual order data) */}
       <Card>
         <CardHeader>
           <h2 className="text-lg font-bold text-gray-900">Revenue Trend</h2>
         </CardHeader>
         <CardContent>
-          <div className="h-64 flex items-flex-end justify-around gap-2 bg-gray-50 p-6 rounded-lg">
-            {timePeriod === 'today' ? (
-              [65, 72, 55, 78, 68, 80, 72].map((value, i) => (
-                <div key={i} className="flex flex-col items-center flex-1">
-                  <div
-                    className="w-full bg-gradient-to-t from-primary-600 to-primary-400 rounded-t transition-all"
-                    style={{ height: `${(value / 100) * 100}px` }}
-                  />
-                  <p className="text-xs text-gray-600 mt-2">Hour {i * 3}</p>
-                </div>
-              ))
-            ) : timePeriod === 'week' ? (
-              ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => {
-                const values = [42, 65, 58, 72, 68, 88, 76];
-                return (
+          {filteredOrders.length === 0 ? (
+            <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
+              <p className="text-gray-500">No order data for this period</p>
+            </div>
+          ) : (
+            <div className="h-64 flex items-end justify-around gap-2 bg-gray-50 p-6 rounded-lg">
+              {(() => {
+                // Group orders into buckets based on time period
+                const buckets: { label: string; total: number }[] = [];
+                const completedOrders = filteredOrders.filter(o => o.status !== 'cancelled' && o.status !== 'refunded');
+
+                if (timePeriod === 'week') {
+                  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                  for (let i = 0; i < 7; i++) {
+                    const dayOrders = completedOrders.filter(o => new Date(o.createdAt).getDay() === i);
+                    buckets.push({ label: days[i], total: dayOrders.reduce((s, o) => s + o.total, 0) });
+                  }
+                } else if (timePeriod === 'month') {
+                  for (let w = 1; w <= 4; w++) {
+                    const weekOrders = completedOrders.filter(o => {
+                      const d = new Date(o.createdAt).getDate();
+                      return d >= (w - 1) * 7 + 1 && d <= w * 7;
+                    });
+                    buckets.push({ label: `Week ${w}`, total: weekOrders.reduce((s, o) => s + o.total, 0) });
+                  }
+                } else if (timePeriod === 'year') {
+                  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                  for (let m = 0; m < 12; m++) {
+                    const monthOrders = completedOrders.filter(o => new Date(o.createdAt).getMonth() === m);
+                    buckets.push({ label: months[m], total: monthOrders.reduce((s, o) => s + o.total, 0) });
+                  }
+                } else {
+                  // Today: group by 4-hour blocks
+                  for (let h = 0; h < 24; h += 4) {
+                    const blockOrders = completedOrders.filter(o => {
+                      const hour = new Date(o.createdAt).getHours();
+                      return hour >= h && hour < h + 4;
+                    });
+                    buckets.push({ label: `${h}:00`, total: blockOrders.reduce((s, o) => s + o.total, 0) });
+                  }
+                }
+
+                const maxTotal = Math.max(...buckets.map(b => b.total), 1);
+
+                return buckets.map((bucket, i) => (
                   <div key={i} className="flex flex-col items-center flex-1">
                     <div
-                      className="w-full bg-gradient-to-t from-primary-600 to-primary-400 rounded-t transition-all"
-                      style={{ height: `${(values[i] / 100) * 100}px` }}
+                      className="w-full bg-gradient-to-t from-primary-600 to-primary-400 rounded-t transition-all min-h-[4px]"
+                      style={{ height: `${Math.max((bucket.total / maxTotal) * 180, 4)}px` }}
                     />
-                    <p className="text-xs text-gray-600 mt-2">{day}</p>
+                    <p className="text-xs text-gray-600 mt-2">{bucket.label}</p>
                   </div>
-                );
-              })
-            ) : timePeriod === 'month' ? (
-              [...Array(12)].map((_, i) => {
-                const values = [42, 65, 58, 72, 68, 88, 76, 55, 82, 70, 78, 95];
-                return (
-                  <div key={i} className="flex flex-col items-center flex-1">
-                    <div
-                      className="w-full bg-gradient-to-t from-primary-600 to-primary-400 rounded-t transition-all"
-                      style={{ height: `${(values[i] / 100) * 100}px` }}
-                    />
-                    <p className="text-xs text-gray-600 mt-2">Week {i + 1}</p>
-                  </div>
-                );
-              })
-            ) : (
-              ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((month, i) => {
-                const values = [42, 65, 58, 72, 68, 88, 76, 55, 82, 70, 78, 95];
-                return (
-                  <div key={i} className="flex flex-col items-center flex-1">
-                    <div
-                      className="w-full bg-gradient-to-t from-primary-600 to-primary-400 rounded-t transition-all"
-                      style={{ height: `${(values[i] / 100) * 100}px` }}
-                    />
-                    <p className="text-xs text-gray-600 mt-2">{month}</p>
-                  </div>
-                );
-              })
-            )}
-          </div>
+                ));
+              })()}
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Top Selling Products */}
-        <Card>
-          <CardHeader>
-            <h2 className="text-lg font-bold text-gray-900">Top Selling Products</h2>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {TOP_PRODUCTS.map(product => (
-                <div key={product.rank} className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center font-bold text-sm flex-shrink-0">
-                    {product.rank}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900 truncate">{product.name}</p>
-                    <p className="text-xs text-gray-600">{product.unitsSold} units sold</p>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="font-semibold text-gray-900">{product.revenue}</p>
-                  </div>
+      {/* Order Status Breakdown */}
+      <Card>
+        <CardHeader>
+          <h2 className="text-lg font-bold text-gray-900">Order Status Breakdown</h2>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {['pending', 'confirmed', 'preparing', 'delivered', 'cancelled'].map(status => {
+              const count = filteredOrders.filter(o => o.status === status).length;
+              const colors: Record<string, string> = {
+                pending: 'bg-yellow-100 text-yellow-700',
+                confirmed: 'bg-blue-100 text-blue-700',
+                preparing: 'bg-purple-100 text-purple-700',
+                delivered: 'bg-green-100 text-green-700',
+                cancelled: 'bg-red-100 text-red-700',
+              };
+              return (
+                <div key={status} className={`p-4 rounded-lg ${colors[status] || 'bg-gray-100 text-gray-700'}`}>
+                  <p className="text-2xl font-bold">{count}</p>
+                  <p className="text-sm capitalize">{status.replace('_', ' ')}</p>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Recent Reviews */}
-        <Card>
-          <CardHeader>
-            <h2 className="text-lg font-bold text-gray-900">Recent Reviews</h2>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4 max-h-96 overflow-y-auto">
-              {SAMPLE_REVIEWS.map(review => (
-                <div key={review.id} className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="flex items-start justify-between gap-3 mb-2">
-                    <div>
-                      <p className="font-medium text-gray-900">{review.customerName}</p>
-                      <p className="text-xs text-gray-600">{review.date}</p>
-                    </div>
-                    <div className="flex-shrink-0">
-                      {renderStarRating(review.rating)}
-                    </div>
-                  </div>
-                  <p className="text-sm text-gray-700 leading-relaxed">{review.comment}</p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

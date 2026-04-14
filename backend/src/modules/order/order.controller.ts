@@ -216,6 +216,52 @@ export class OrderController {
   }
 
   /**
+   * GET /pharmacy/:pharmacyId
+   * Get orders for a specific pharmacy
+   */
+  static async getPharmacyOrders(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json(
+          apiResponse(false, undefined, {
+            code: "UNAUTHORIZED",
+            message: "User not authenticated",
+          })
+        );
+        return;
+      }
+
+      const { pharmacyId } = req.params;
+
+      const schema = z.object({
+        limit: z.coerce.number().optional().default(100),
+      });
+
+      const validated = schema.parse(req.query);
+
+      const orders = await OrderService.getPharmacyOrders(pharmacyId, validated.limit);
+
+      res.json(
+        apiResponse(true, {
+          orders,
+          count: orders.length,
+        })
+      );
+    } catch (error) {
+      logger.error("Get pharmacy orders error:", error);
+      res.status(500).json(
+        apiResponse(false, undefined, {
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to retrieve pharmacy orders",
+        })
+      );
+    }
+  }
+
+  /**
    * PATCH /:orderId/status
    * Update order status
    */

@@ -121,9 +121,41 @@ export default function GuestCheckoutPage() {
     setError(null);
 
     try {
-      const orderId = `GUEST-${Date.now()}`;
+      // Step 1: Create the guest order in Firestore first
+      const orderRes = await fetch(`${API_URL}/orders/guest`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          guestEmail,
+          guestPhone,
+          guestName,
+          pharmacyId: cartItems[0]?.pharmacyId || 'unknown',
+          deliveryAddress: `${address.street}, ${address.city}, ${address.state}`,
+          deliveryLatitude: 0,
+          deliveryLongitude: 0,
+          items: cartItems.map((item) => ({
+            pharmacyProductId: item.productId,
+            drugName: item.productName,
+            category: 'OTC',
+            quantity: item.quantity,
+            unitPrice: item.price,
+          })),
+          notes: address.notes || undefined,
+        }),
+      });
 
-      const response = await fetch(`${API_URL}/payments/guest/initialize`, {
+      const orderResult = await orderRes.json();
+
+      if (!orderResult.success || !orderResult.data?.order?.id) {
+        setError(orderResult.error?.message || 'Failed to create order. Please try again.');
+        setIsProcessing(false);
+        return;
+      }
+
+      const orderId = orderResult.data.order.id;
+
+      // Step 2: Initialize Paystack payment with real order ID
+      const payRes = await fetch(`${API_URL}/payments/guest/initialize`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -134,26 +166,23 @@ export default function GuestCheckoutPage() {
         }),
       });
 
-      const result = await response.json();
+      const payResult = await payRes.json();
 
-      if (result.success && result.data?.payment?.authorizationUrl) {
-        // Save guest order info for post-payment
+      if (payResult.success && payResult.data?.payment?.authorizationUrl) {
+        // Save order info for the callback page
         localStorage.setItem(
           'guestOrder',
           JSON.stringify({
             orderId,
             email: guestEmail,
-            phone: guestPhone,
-            name: guestName,
-            address,
             createAccount,
-            items: cartItems,
           })
         );
 
-        window.location.href = result.data.payment.authorizationUrl;
+        // Redirect to Paystack
+        window.location.href = payResult.data.payment.authorizationUrl;
       } else {
-        setError(result.error?.message || 'Failed to initialize payment. Please try again.');
+        setError(payResult.error?.message || 'Failed to initialize payment. Please try again.');
         setIsProcessing(false);
       }
     } catch {

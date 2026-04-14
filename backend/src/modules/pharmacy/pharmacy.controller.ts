@@ -75,6 +75,49 @@ export class PharmacyController {
   }
 
   /**
+   * GET /mine
+   * Get current user's pharmacy
+   */
+  static async getMyPharmacy(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json(
+          apiResponse(false, undefined, {
+            code: "UNAUTHORIZED",
+            message: "User not authenticated",
+          })
+        );
+        return;
+      }
+
+      const pharmacy = await PharmacyService.getPharmacyByUserId(req.user.uid);
+
+      if (!pharmacy) {
+        res.status(404).json(
+          apiResponse(false, undefined, {
+            code: "PHARMACY_NOT_FOUND",
+            message: "No pharmacy found for this user",
+          })
+        );
+        return;
+      }
+
+      res.json(apiResponse(true, { pharmacy }));
+    } catch (error) {
+      logger.error("Get my pharmacy error:", error);
+      res.status(500).json(
+        apiResponse(false, undefined, {
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to retrieve pharmacy",
+        })
+      );
+    }
+  }
+
+  /**
    * GET /:pharmacyId
    * Get pharmacy by ID
    */
@@ -161,7 +204,7 @@ export class PharmacyController {
   ): Promise<void> {
     try {
       const schema = z.object({
-        q: z.string().min(1),
+        q: z.string().optional().default(""),
       });
 
       const validated = schema.parse(req.query);

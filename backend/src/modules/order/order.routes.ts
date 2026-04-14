@@ -32,6 +32,13 @@ router.get(
   asyncHandler((req, res) => OrderController.getUserOrders(req, res))
 );
 
+// GET /api/v1/orders/pharmacy/:pharmacyId - Get pharmacy's orders
+router.get(
+  "/pharmacy/:pharmacyId",
+  authenticate,
+  asyncHandler((req, res) => OrderController.getPharmacyOrders(req, res))
+);
+
 // GET /api/v1/orders/:orderId - Get order details
 router.get(
   "/:orderId",

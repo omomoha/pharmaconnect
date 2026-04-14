@@ -1,29 +1,47 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import { Card, CardContent } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Tabs from '@/components/ui/Tabs';
-import { useAuth } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
 
-interface Product {
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+
+interface PharmacyData {
   id: string;
   name: string;
-  price: number;
-  description: string;
-  image: string;
+  address: string;
+  email: string;
+  phoneNumber: string;
+  rating: number;
+  totalReviews: number;
+  approvalStatus: string;
+  isActive: boolean;
+  operatingHours?: Record<string, { open: string; close: string; closed: boolean }>;
 }
 
-interface Review {
+interface PharmacyProduct {
   id: string;
-  customerName: string;
-  rating: number;
-  comment: string;
-  date: string;
+  pharmacyId: string;
+  drugCatalogItemId: string;
+  sku: string;
+  quantity: number;
+  price: number;
+  discount?: number;
+  expiryDate: string;
+  batchNumber: string;
+  isActive: boolean;
+  // Populated from drug catalog if available
+  drugName?: string;
+  description?: string;
+  category?: string;
+  strength?: string;
+  form?: string;
 }
 
 interface CartItem {
@@ -34,210 +52,197 @@ interface CartItem {
   price: number;
 }
 
-// Dummy pharmacy data
-const pharmacyData = {
-  id: '1',
-  name: 'HealthCare Plus Pharmacy',
-  location: 'Lekki, Lagos',
-  rating: 4.8,
-  reviews: 342,
-  verified: true,
-  description: 'Your trusted healthcare partner for over 15 years. We provide quality medications and health products delivered to your doorstep.',
-  operatingHours: '9:00 AM - 9:00 PM',
-  address: '123 Lekki Expressway, Lekki, Lagos',
-  phone: '+234 (0)705 1234 567',
-  email: 'hello@healthcarepluspharmacy.com',
-  image: '💊',
-};
+export default function PharmacyDetailPage() {
+  const params = useParams();
+  const pharmacyId = params?.pharmacyId as string;
 
-const dummyProducts: Product[] = [
-  {
-    id: 'p1',
-    name: 'Paracetamol 500mg',
-    price: 500,
-    description: 'Relief for fever and pain',
-    image: '💊',
-  },
-  {
-    id: 'p2',
-    name: 'Vitamin C 1000mg',
-    price: 2500,
-    description: 'Immune system booster',
-    image: '🟡',
-  },
-  {
-    id: 'p3',
-    name: 'Cough Syrup',
-    price: 1800,
-    description: 'Effective cough relief',
-    image: '🧪',
-  },
-  {
-    id: 'p4',
-    name: 'Antacid Tablets',
-    price: 1200,
-    description: 'Stomach acid relief',
-    image: '💊',
-  },
-  {
-    id: 'p5',
-    name: 'First Aid Kit',
-    price: 5500,
-    description: 'Complete home first aid kit',
-    image: '🩹',
-  },
-  {
-    id: 'p6',
-    name: 'Digital Thermometer',
-    price: 3500,
-    description: 'Fast and accurate temperature reading',
-    image: '🌡️',
-  },
-  {
-    id: 'p7',
-    name: 'Hand Sanitizer 500ml',
-    price: 800,
-    description: 'Kills 99.9% germs',
-    image: '🧴',
-  },
-  {
-    id: 'p8',
-    name: 'Blood Pressure Monitor',
-    price: 8500,
-    description: 'Digital BP measurement device',
-    image: '📊',
-  },
-];
-
-const dummyReviews: Review[] = [
-  {
-    id: 'r1',
-    customerName: 'John Okafor',
-    rating: 5,
-    comment: 'Excellent service and fast delivery. Highly recommended!',
-    date: '2026-03-20',
-  },
-  {
-    id: 'r2',
-    customerName: 'Chioma Adeyemi',
-    rating: 4,
-    comment: 'Great pharmacy with quality products. Delivery was quick.',
-    date: '2026-03-18',
-  },
-  {
-    id: 'r3',
-    customerName: 'Ahmed Hassan',
-    rating: 5,
-    comment: 'Outstanding customer service. Very professional.',
-    date: '2026-03-15',
-  },
-  {
-    id: 'r4',
-    customerName: 'Grace Okoro',
-    rating: 4,
-    comment: 'Good selection of products. Prices are reasonable.',
-    date: '2026-03-12',
-  },
-  {
-    id: 'r5',
-    customerName: 'Tunde Balogun',
-    rating: 5,
-    comment: 'Always my first choice for medications. Never disappointed.',
-    date: '2026-03-10',
-  },
-];
-
-export default function PharmacyDetailPage({
-  params: _params,
-}: {
-  params: { pharmacyId: string };
-}) {
-  useAuth();
+  const [pharmacy, setPharmacy] = useState<PharmacyData | null>(null);
+  const [products, setProducts] = useState<PharmacyProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('products');
-  const [productQuantities, setProductQuantities] = useState<
-    Record<string, number>
-  >({});
+  const [productQuantities, setProductQuantities] = useState<Record<string, number>>({});
   const [cartCount, setCartCount] = useState(0);
 
+  // Load initial cart count
+  useEffect(() => {
+    try {
+      const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+      setCartCount(cart.length);
+    } catch {
+      setCartCount(0);
+    }
+  }, []);
+
+  const fetchPharmacyData = useCallback(async () => {
+    if (!pharmacyId) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const [pharmacyRes, productsRes] = await Promise.all([
+        fetch(`${API_URL}/pharmacies/${pharmacyId}`),
+        fetch(`${API_URL}/pharmacies/${pharmacyId}/products`),
+      ]);
+
+      const pharmacyResult = await pharmacyRes.json();
+      const productsResult = await productsRes.json();
+
+      if (pharmacyResult.success && pharmacyResult.data?.pharmacy) {
+        setPharmacy(pharmacyResult.data.pharmacy);
+      } else {
+        setError('Pharmacy not found.');
+        return;
+      }
+
+      if (productsResult.success && productsResult.data?.products) {
+        setProducts(productsResult.data.products);
+      }
+    } catch {
+      setError('Unable to load pharmacy details. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [pharmacyId]);
+
+  useEffect(() => {
+    fetchPharmacyData();
+  }, [fetchPharmacyData]);
+
   const tabs = [
-    { id: 'products', label: 'Products', count: dummyProducts.length },
+    { id: 'products', label: 'Products', count: products.length },
     { id: 'about', label: 'About' },
-    { id: 'reviews', label: 'Reviews', count: dummyReviews.length },
   ];
 
-  const handleAddToCart = (product: Product) => {
-
+  const handleAddToCart = (product: PharmacyProduct) => {
+    if (!pharmacy) return;
     const quantity = productQuantities[product.id] || 1;
-    const cart: CartItem = {
-      pharmacyId: pharmacyData.id,
+    const displayName = product.drugName || product.sku || `Product ${product.id.slice(0, 6)}`;
+
+    const cartItem: CartItem = {
+      pharmacyId: pharmacy.id,
       productId: product.id,
-      productName: product.name,
+      productName: displayName,
       quantity,
       price: product.price,
     };
 
-    // Store in localStorage (in real app, would be in state management)
-    const existingCart = JSON.parse(localStorage.getItem('cart') || '[]');
-    const existingItem = existingCart.find(
-      (item: CartItem) => item.productId === product.id
-    );
+    const existingCart: CartItem[] = JSON.parse(localStorage.getItem('cart') || '[]');
+    const existingItem = existingCart.find((item) => item.productId === product.id);
 
     if (existingItem) {
       existingItem.quantity += quantity;
     } else {
-      existingCart.push(cart);
+      existingCart.push(cartItem);
     }
 
     localStorage.setItem('cart', JSON.stringify(existingCart));
     setCartCount(existingCart.length);
     setProductQuantities({ ...productQuantities, [product.id]: 1 });
 
-    toast.success(`${product.name} added to cart!`);
+    toast.success(`${displayName} added to cart!`);
   };
 
   const handleQuantityChange = (productId: string, change: number) => {
     const current = productQuantities[productId] || 1;
     const newQuantity = Math.max(1, current + change);
-    setProductQuantities({
-      ...productQuantities,
-      [productId]: newQuantity,
-    });
+    setProductQuantities({ ...productQuantities, [productId]: newQuantity });
   };
 
   const getCartTotal = () => {
-    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-    return cart.reduce((sum: number, item: CartItem) => {
-      return sum + item.price * item.quantity;
-    }, 0);
+    try {
+      const cart: CartItem[] = JSON.parse(localStorage.getItem('cart') || '[]');
+      return cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    } catch {
+      return 0;
+    }
   };
 
-  const renderStars = (rating: number) => {
-    return (
-      <div className="flex items-center gap-1">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <span
-            key={i}
-            className={i < Math.floor(rating) ? 'text-yellow-400' : 'text-gray-300'}
-          >
-            ★
-          </span>
-        ))}
-      </div>
-    );
+  const renderStars = (rating: number) => (
+    <div className="flex items-center gap-1">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <span key={i} className={i < Math.floor(rating) ? 'text-yellow-400' : 'text-gray-300'}>
+          ★
+        </span>
+      ))}
+    </div>
+  );
+
+  const getProductEmoji = (product: PharmacyProduct): string => {
+    const form = product.form?.toLowerCase() || '';
+    if (form.includes('tablet') || form.includes('capsule')) return '💊';
+    if (form.includes('liquid') || form.includes('syrup')) return '🧪';
+    if (form.includes('cream') || form.includes('ointment')) return '🧴';
+    if (form.includes('injection')) return '💉';
+    // Fallback: deterministic from SKU
+    const emojis = ['💊', '🧪', '🧴', '🩹', '🌡️', '📊'];
+    const code = (product.sku || product.id).charCodeAt(0) || 0;
+    return emojis[code % emojis.length];
   };
+
+  const formatOperatingHours = (hours: Record<string, { open: string; close: string; closed: boolean }>) => {
+    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    return days.map((day) => {
+      const h = hours[day];
+      if (!h) return { day, display: 'Not available' };
+      return {
+        day,
+        display: h.closed ? 'Closed' : `${h.open} - ${h.close}`,
+      };
+    });
+  };
+
+  // Loading state
+  if (loading) {
+    return (
+      <>
+        <Navbar />
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-gray-600">Loading pharmacy details...</p>
+          </div>
+        </div>
+        <Footer />
+      </>
+    );
+  }
+
+  // Error state
+  if (error || !pharmacy) {
+    return (
+      <>
+        <Navbar />
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <div className="text-center max-w-md space-y-4">
+            <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto">
+              <span className="text-2xl">⚠️</span>
+            </div>
+            <h2 className="text-xl font-bold text-gray-900">{error || 'Pharmacy not found'}</h2>
+            <div className="space-y-2">
+              <Button variant="primary" size="sm" onClick={fetchPharmacyData}>Retry</Button>
+              <Link href="/browse" className="block">
+                <Button variant="ghost" size="sm">Back to Browse</Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+        <Footer />
+      </>
+    );
+  }
 
   return (
     <>
       <Navbar />
 
       {/* Pharmacy Header */}
-      <section className="bg-white border-b border-gray-200 sticky top-16 z-40">
+      <section className="bg-white border-b border-gray-200">
         <div className="container-custom py-8">
           <div className="flex flex-col md:flex-row gap-8">
-            {/* Pharmacy Icon/Image */}
+            {/* Pharmacy Icon */}
             <div className="flex-shrink-0">
               <div className="w-24 h-24 bg-gradient-to-br from-primary-100 to-secondary-100 rounded-lg flex items-center justify-center">
-                <span className="text-5xl">{pharmacyData.image}</span>
+                <span className="text-5xl">💊</span>
               </div>
             </div>
 
@@ -245,10 +250,8 @@ export default function PharmacyDetailPage({
             <div className="flex-1 space-y-3">
               <div className="flex items-start gap-3">
                 <div>
-                  <h1 className="text-3xl font-bold text-gray-900">
-                    {pharmacyData.name}
-                  </h1>
-                  {pharmacyData.verified && (
+                  <h1 className="text-3xl font-bold text-gray-900">{pharmacy.name}</h1>
+                  {pharmacy.approvalStatus === 'approved' && (
                     <div className="inline-flex items-center gap-1 mt-2 px-3 py-1 bg-green-50 text-green-700 text-sm font-medium rounded-full">
                       <span>✓</span>
                       <span>Verified Pharmacy</span>
@@ -258,21 +261,14 @@ export default function PharmacyDetailPage({
               </div>
 
               <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
-                {/* Rating */}
                 <div className="flex items-center gap-2">
-                  {renderStars(pharmacyData.rating)}
-                  <span className="font-bold text-gray-900">
-                    {pharmacyData.rating}
-                  </span>
-                  <span className="text-gray-600">
-                    ({pharmacyData.reviews} reviews)
-                  </span>
+                  {renderStars(pharmacy.rating || 0)}
+                  <span className="font-bold text-gray-900">{pharmacy.rating?.toFixed(1) || '0.0'}</span>
+                  <span className="text-gray-600">({pharmacy.totalReviews || 0} reviews)</span>
                 </div>
-
-                {/* Location */}
                 <div className="flex items-center gap-2 text-gray-600">
                   <span>📍</span>
-                  <span>{pharmacyData.location}</span>
+                  <span>{pharmacy.address}</span>
                 </div>
               </div>
             </div>
@@ -285,9 +281,7 @@ export default function PharmacyDetailPage({
                   {cartCount} items - ₦{getCartTotal().toLocaleString()}
                 </div>
                 <Link href="/cart">
-                  <Button size="sm" variant="primary" className="w-full">
-                    View Cart
-                  </Button>
+                  <Button size="sm" variant="primary" className="w-full">View Cart</Button>
                 </Link>
               </div>
             )}
@@ -296,7 +290,7 @@ export default function PharmacyDetailPage({
       </section>
 
       {/* Tabs Section */}
-      <section className="bg-white border-b border-gray-200 sticky top-40 z-30">
+      <section className="bg-white border-b border-gray-200 sticky top-14 z-30">
         <div className="container-custom">
           <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
         </div>
@@ -309,65 +303,97 @@ export default function PharmacyDetailPage({
           {activeTab === 'products' && (
             <div>
               <h2 className="text-2xl font-bold text-gray-900 mb-8">
-                Featured Products
+                Products ({products.length})
               </h2>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {dummyProducts.map((product) => (
-                  <Card key={product.id}>
-                    <CardContent className="p-0">
-                      {/* Product Image */}
-                      <div className="h-32 bg-gradient-to-br from-gray-100 to-gray-50 flex items-center justify-center border-b border-gray-200">
-                        <span className="text-5xl">{product.image}</span>
-                      </div>
+              {products.length > 0 ? (
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {products.map((product) => {
+                    const displayName = product.drugName || product.sku || `Product ${product.id.slice(0, 6)}`;
+                    const displayDesc = product.description || (product.strength ? `${product.form || 'Medicine'} - ${product.strength}` : product.form || '');
+                    const discountedPrice = product.discount
+                      ? product.price * (1 - product.discount / 100)
+                      : product.price;
 
-                      {/* Product Info */}
-                      <div className="p-4 space-y-3">
-                        <div>
-                          <h3 className="font-bold text-gray-900 line-clamp-2">
-                            {product.name}
-                          </h3>
-                          <p className="text-sm text-gray-600 mt-1">
-                            {product.description}
-                          </p>
-                        </div>
+                    return (
+                      <Card key={product.id}>
+                        <CardContent className="p-0">
+                          <div className="h-32 bg-gradient-to-br from-gray-100 to-gray-50 flex items-center justify-center border-b border-gray-200">
+                            <span className="text-5xl">{getProductEmoji(product)}</span>
+                          </div>
+                          <div className="p-4 space-y-3">
+                            <div>
+                              <h3 className="font-bold text-gray-900 line-clamp-2">{displayName}</h3>
+                              {displayDesc && (
+                                <p className="text-sm text-gray-600 mt-1">{displayDesc}</p>
+                              )}
+                              {product.quantity <= 5 && product.quantity > 0 && (
+                                <p className="text-xs text-orange-600 mt-1">Only {product.quantity} left in stock</p>
+                              )}
+                              {product.quantity === 0 && (
+                                <p className="text-xs text-red-600 mt-1">Out of stock</p>
+                              )}
+                            </div>
 
-                        {/* Price */}
-                        <div className="text-2xl font-bold text-primary-600">
-                          ₦{product.price.toLocaleString()}
-                        </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-2xl font-bold text-primary-600">
+                                ₦{discountedPrice.toLocaleString()}
+                              </span>
+                              {product.discount ? (
+                                <span className="text-sm text-gray-400 line-through">
+                                  ₦{product.price.toLocaleString()}
+                                </span>
+                              ) : null}
+                              {product.discount ? (
+                                <span className="text-xs bg-red-50 text-red-600 px-1.5 py-0.5 rounded">
+                                  -{product.discount}%
+                                </span>
+                              ) : null}
+                            </div>
 
-                        {/* Quantity Selector */}
-                        <div className="flex items-center gap-2 bg-gray-50 w-fit rounded-lg p-1">
-                          <button
-                            onClick={() => handleQuantityChange(product.id, -1)}
-                            className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-200 transition-colors"
-                          >
-                            −
-                          </button>
-                          <span className="w-6 text-center font-medium">
-                            {productQuantities[product.id] || 1}
-                          </span>
-                          <button
-                            onClick={() => handleQuantityChange(product.id, 1)}
-                            className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-200 transition-colors"
-                          >
-                            +
-                          </button>
-                        </div>
+                            {/* Quantity Selector */}
+                            <div className="flex items-center gap-2 bg-gray-50 w-fit rounded-lg p-1">
+                              <button
+                                onClick={() => handleQuantityChange(product.id, -1)}
+                                className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-200 transition-colors"
+                              >
+                                −
+                              </button>
+                              <span className="w-6 text-center font-medium">
+                                {productQuantities[product.id] || 1}
+                              </span>
+                              <button
+                                onClick={() => handleQuantityChange(product.id, 1)}
+                                className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-200 transition-colors"
+                              >
+                                +
+                              </button>
+                            </div>
 
-                        {/* Add to Cart Button */}
-                        <Button
-                          variant="primary"
-                          className="w-full"
-                          onClick={() => handleAddToCart(product)}
-                        >
-                          Add to Cart
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                            <Button
+                              variant="primary"
+                              className="w-full"
+                              onClick={() => handleAddToCart(product)}
+                              disabled={product.quantity === 0}
+                            >
+                              {product.quantity === 0 ? 'Out of Stock' : 'Add to Cart'}
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-12 space-y-3">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto">
+                    <span className="text-2xl">📦</span>
+                  </div>
+                  <p className="text-gray-600">This pharmacy hasn&apos;t listed any products yet.</p>
+                  <Link href="/browse">
+                    <Button variant="outline" size="sm">Browse Other Pharmacies</Button>
+                  </Link>
+                </div>
+              )}
             </div>
           )}
 
@@ -376,32 +402,39 @@ export default function PharmacyDetailPage({
             <div className="max-w-3xl space-y-8">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                  About {pharmacyData.name}
+                  About {pharmacy.name}
                 </h2>
-                <p className="text-gray-600 leading-relaxed">
-                  {pharmacyData.description}
-                </p>
               </div>
 
               <div className="grid md:grid-cols-2 gap-8">
                 {/* Operating Hours */}
-                <div className="space-y-2">
-                  <h3 className="font-bold text-gray-900">Operating Hours</h3>
-                  <p className="text-gray-600">{pharmacyData.operatingHours}</p>
-                </div>
+                {pharmacy.operatingHours && (
+                  <div className="space-y-3">
+                    <h3 className="font-bold text-gray-900">Operating Hours</h3>
+                    <div className="space-y-1.5">
+                      {formatOperatingHours(pharmacy.operatingHours).map(({ day, display }) => (
+                        <div key={day} className="flex justify-between text-sm">
+                          <span className="capitalize text-gray-600">{day}</span>
+                          <span className={display === 'Closed' ? 'text-red-500' : 'text-gray-900'}>
+                            {display}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Contact */}
                 <div className="space-y-4">
                   <div>
                     <h3 className="font-bold text-gray-900 mb-2">Address</h3>
-                    <p className="text-gray-600">{pharmacyData.address}</p>
+                    <p className="text-gray-600">{pharmacy.address}</p>
                   </div>
-
                   <div>
                     <h3 className="font-bold text-gray-900 mb-2">Contact</h3>
                     <div className="space-y-1 text-gray-600">
-                      <p>Phone: {pharmacyData.phone}</p>
-                      <p>Email: {pharmacyData.email}</p>
+                      {pharmacy.phoneNumber && <p>Phone: {pharmacy.phoneNumber}</p>}
+                      {pharmacy.email && <p>Email: {pharmacy.email}</p>}
                     </div>
                   </div>
                 </div>
@@ -428,57 +461,6 @@ export default function PharmacyDetailPage({
                     <span>Professional customer support</span>
                   </li>
                 </ul>
-              </div>
-            </div>
-          )}
-
-          {/* Reviews Tab */}
-          {activeTab === 'reviews' && (
-            <div className="max-w-3xl space-y-6">
-              <div className="flex items-center justify-between mb-8">
-                <h2 className="text-2xl font-bold text-gray-900">
-                  Customer Reviews
-                </h2>
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-primary-600">
-                    {pharmacyData.rating}
-                  </div>
-                  <div className="flex justify-center gap-1">
-                    {renderStars(pharmacyData.rating)}
-                  </div>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {pharmacyData.reviews} reviews
-                  </p>
-                </div>
-              </div>
-
-              {/* Reviews List */}
-              <div className="space-y-4">
-                {dummyReviews.map((review) => (
-                  <Card key={review.id}>
-                    <CardContent className="space-y-3">
-                      {/* Review Header */}
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h4 className="font-bold text-gray-900">
-                            {review.customerName}
-                          </h4>
-                          <p className="text-sm text-gray-500">
-                            {new Date(review.date).toLocaleDateString('en-US', {
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric',
-                            })}
-                          </p>
-                        </div>
-                        <div>{renderStars(review.rating)}</div>
-                      </div>
-
-                      {/* Review Comment */}
-                      <p className="text-gray-600">{review.comment}</p>
-                    </CardContent>
-                  </Card>
-                ))}
               </div>
             </div>
           )}

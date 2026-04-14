@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/layout/Navbar';
@@ -9,31 +9,26 @@ import Footer from '@/components/layout/Footer';
 import { useSmartSearch } from '@/hooks/useSmartSearch';
 import { useDropdownKeyboard } from '@/hooks/useDropdownKeyboard';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+
 interface Pharmacy {
   id: string;
   name: string;
-  location: string;
+  address: string;
   rating: number;
-  reviews: number;
-  category: string;
-  image: string;
+  totalReviews: number;
+  approvalStatus: string;
+  isActive: boolean;
+  operatingHours?: Record<string, { open: string; close: string; closed: boolean }>;
 }
-
-const dummyPharmacies: Pharmacy[] = [
-  { id: '1', name: 'HealthCare Plus Pharmacy', location: 'Lekki, Lagos', rating: 4.8, reviews: 342, category: 'Full-Service', image: '💊' },
-  { id: '2', name: 'MediCare Solutions', location: 'Victoria Island, Lagos', rating: 4.6, reviews: 218, category: 'Premium', image: '⚕️' },
-  { id: '3', name: 'WellnessHub Pharmacy', location: 'Ikoyi, Lagos', rating: 4.7, reviews: 295, category: 'Full-Service', image: '🏥' },
-  { id: '4', name: 'Quick Meds Pharmacy', location: 'Yaba, Lagos', rating: 4.5, reviews: 156, category: 'Express', image: '🚀' },
-  { id: '5', name: 'Family Care Pharmacy', location: 'Surulere, Lagos', rating: 4.9, reviews: 421, category: 'Full-Service', image: '❤️' },
-  { id: '6', name: 'ProHealth Pharmacy', location: 'Ikeja, Lagos', rating: 4.4, reviews: 189, category: 'Budget-Friendly', image: '💚' },
-];
 
 export default function BrowsePharmaciesPage() {
   const searchParams = useSearchParams();
   const [searchQuery, setSearchQuery] = useState(searchParams?.get('q') || '');
-  const [location, setLocation] = useState('');
-  const [category, setCategory] = useState('');
-  const [pharmacies, setPharmacies] = useState(dummyPharmacies);
+  const [locationFilter, setLocationFilter] = useState('');
+  const [pharmacies, setPharmacies] = useState<Pharmacy[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
 
   const browseSearchRef = useRef<HTMLInputElement>(null);
@@ -51,28 +46,61 @@ export default function BrowsePharmaciesPage() {
     browseSearchRef
   );
 
-  // Populate search from URL params
-  useEffect(() => {
-    const q = searchParams?.get('q');
-    if (q) setSearchQuery(q);
-  }, [searchParams]);
+  // Fetch pharmacies from API
+  const fetchPharmacies = useCallback(async (query: string, location: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams();
+      if (query.trim()) params.set('q', query.trim());
 
-  const handleFilter = () => {
-    let filtered = dummyPharmacies;
-    if (location) {
-      filtered = filtered.filter((p) => p.location.toLowerCase().includes(location.toLowerCase()));
+      const res = await fetch(`${API_URL}/pharmacies/search?${params.toString()}`);
+      const result = await res.json();
+
+      if (result.success && result.data?.pharmacies) {
+        let filtered = result.data.pharmacies as Pharmacy[];
+
+        // Client-side location filter (API searches name/address, this adds user-typed location)
+        if (location.trim()) {
+          filtered = filtered.filter((p) =>
+            p.address.toLowerCase().includes(location.toLowerCase())
+          );
+        }
+
+        setPharmacies(filtered);
+      } else {
+        setPharmacies([]);
+      }
+    } catch {
+      setError('Unable to load pharmacies. Please try again.');
+      setPharmacies([]);
+    } finally {
+      setLoading(false);
     }
-    if (category) {
-      filtered = filtered.filter((p) => p.category === category);
-    }
-    setPharmacies(filtered);
+  }, []);
+
+  // Initial load and URL param handling
+  useEffect(() => {
+    const q = searchParams?.get('q') || '';
+    if (q) setSearchQuery(q);
+    fetchPharmacies(q, '');
+  }, [searchParams, fetchPharmacies]);
+
+  const handleSearch = () => {
+    fetchPharmacies(searchQuery, locationFilter);
   };
 
   const handleReset = () => {
-    setLocation('');
-    setCategory('');
+    setLocationFilter('');
     setSearchQuery('');
-    setPharmacies(dummyPharmacies);
+    fetchPharmacies('', '');
+  };
+
+  // Derive a display emoji from pharmacy name (deterministic based on first char)
+  const getPharmacyEmoji = (name: string): string => {
+    const emojis = ['💊', '⚕️', '🏥', '🚀', '❤️', '💚', '🩺', '🧪'];
+    const charCode = name.charCodeAt(0) || 0;
+    return emojis[charCode % emojis.length];
   };
 
   return (
@@ -105,6 +133,11 @@ export default function BrowsePharmaciesPage() {
                     value={searchQuery}
                     onChange={(e) => { setSearchQuery(e.target.value); setShowSearchDropdown(true); resetBrowseIdx(); }}
                     onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        setShowSearchDropdown(false);
+                        handleSearch();
+                        return;
+                      }
                       if (showSearchDropdown && browseDropdownItems.length > 0) {
                         handleBrowseKeyDown(e);
                       }
@@ -122,7 +155,7 @@ export default function BrowsePharmaciesPage() {
                 {searchLoading && (
                   <div className="animate-spin w-4 h-4 border-2 border-gray-300 border-t-primary-600 rounded-full mr-1" />
                 )}
-                <Button size="sm" variant="primary" onClick={handleFilter}>
+                <Button size="sm" variant="primary" onClick={handleSearch}>
                   Search
                 </Button>
               </div>
@@ -178,27 +211,17 @@ export default function BrowsePharmaciesPage() {
           <div className="flex flex-wrap items-center gap-3">
             <input
               type="text"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
+              value={locationFilter}
+              onChange={(e) => setLocationFilter(e.target.value)}
               placeholder="Filter by location..."
               className="input-modern max-w-[200px] !py-2"
               aria-label="Filter by location"
             />
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="input-modern max-w-[180px] !py-2"
-              aria-label="Filter by category"
-            >
-              <option value="">All Categories</option>
-              <option value="Full-Service">Full-Service</option>
-              <option value="Premium">Premium</option>
-              <option value="Express">Express</option>
-              <option value="Budget-Friendly">Budget-Friendly</option>
-            </select>
-            <Button size="sm" variant="primary" onClick={handleFilter}>Filter</Button>
+            <Button size="sm" variant="primary" onClick={handleSearch}>Filter</Button>
             <Button size="sm" variant="ghost" onClick={handleReset}>Reset</Button>
-            <span className="text-xs text-gray-400 ml-auto">{pharmacies.length} pharmacies</span>
+            <span className="text-xs text-gray-400 ml-auto">
+              {loading ? 'Loading...' : `${pharmacies.length} pharmacies`}
+            </span>
           </div>
         </div>
       </section>
@@ -206,20 +229,56 @@ export default function BrowsePharmaciesPage() {
       {/* Pharmacy Grid */}
       <section className="py-12 md:py-16 bg-gray-50/50">
         <div className="container-custom">
-          {pharmacies.length > 0 ? (
+          {/* Loading State */}
+          {loading && (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="bg-white rounded-xl overflow-hidden shadow-sm animate-pulse">
+                  <div className="h-32 bg-gray-200" />
+                  <div className="p-5 space-y-3">
+                    <div className="h-5 bg-gray-200 rounded w-3/4" />
+                    <div className="h-4 bg-gray-100 rounded w-1/2" />
+                    <div className="h-4 bg-gray-100 rounded w-2/3" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Error State */}
+          {!loading && error && (
+            <div className="text-center py-16 space-y-4">
+              <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto">
+                <span className="text-2xl">⚠️</span>
+              </div>
+              <p className="text-gray-600">{error}</p>
+              <Button variant="primary" size="sm" onClick={() => fetchPharmacies(searchQuery, locationFilter)}>
+                Retry
+              </Button>
+            </div>
+          )}
+
+          {/* Results */}
+          {!loading && !error && pharmacies.length > 0 && (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {pharmacies.map((pharmacy) => (
                 <div key={pharmacy.id} className="card-hover overflow-hidden group">
                   <div className="h-32 bg-gradient-to-br from-primary-50 to-secondary-50 flex items-center justify-center group-hover:from-primary-100 group-hover:to-secondary-100 transition-all duration-300">
-                    <span className="text-5xl group-hover:scale-110 transition-transform duration-300">{pharmacy.image}</span>
+                    <span className="text-5xl group-hover:scale-110 transition-transform duration-300">
+                      {getPharmacyEmoji(pharmacy.name)}
+                    </span>
                   </div>
                   <div className="p-5 space-y-3">
                     <div>
                       <h3 className="font-bold text-gray-900">{pharmacy.name}</h3>
                       <div className="flex items-center gap-2 mt-1.5 text-sm">
                         <span className="text-yellow-500">★</span>
-                        <span className="font-semibold text-gray-900">{pharmacy.rating}</span>
-                        <span className="text-gray-400">({pharmacy.reviews})</span>
+                        <span className="font-semibold text-gray-900">
+                          {pharmacy.rating?.toFixed(1) || '0.0'}
+                        </span>
+                        <span className="text-gray-400">
+                          ({pharmacy.totalReviews || 0})
+                        </span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-gray-500">
@@ -227,10 +286,10 @@ export default function BrowsePharmaciesPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
-                      {pharmacy.location}
+                      {pharmacy.address}
                     </div>
                     <div className="flex items-center justify-between pt-2">
-                      <span className="badge-green">{pharmacy.category}</span>
+                      <span className="badge-green">Verified</span>
                       <Link href={`/pharmacy/${pharmacy.id}`}>
                         <Button variant="primary" size="xs">View Details</Button>
                       </Link>
@@ -239,12 +298,15 @@ export default function BrowsePharmaciesPage() {
                 </div>
               ))}
             </div>
-          ) : (
+          )}
+
+          {/* Empty State */}
+          {!loading && !error && pharmacies.length === 0 && (
             <div className="text-center py-16 space-y-4">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto">
                 <span className="text-2xl">🔍</span>
               </div>
-              <p className="text-gray-600">No pharmacies found matching your filters.</p>
+              <p className="text-gray-600">No pharmacies found matching your search.</p>
               <Button variant="outline" size="sm" onClick={handleReset}>Clear Filters</Button>
             </div>
           )}
