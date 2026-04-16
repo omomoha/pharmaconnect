@@ -355,9 +355,12 @@ describe('ChatService', () => {
 
       const messages = await ChatService.getMessages(conversation.id);
 
-      expect(messages.length).toBeGreaterThanOrEqual(2);
-      expect(messages[0].content).toBe('First');
-      expect(messages[messages.length - 1].content).toBe('Second');
+      // createConversation adds a system disclosure message first,
+      // so user messages start at index 1
+      expect(messages.length).toBeGreaterThanOrEqual(3);
+      const userMessages = messages.filter(m => m.senderId !== 'system');
+      expect(userMessages[0].content).toBe('First');
+      expect(userMessages[userMessages.length - 1].content).toBe('Second');
     });
 
     it('should respect limit parameter', async () => {
