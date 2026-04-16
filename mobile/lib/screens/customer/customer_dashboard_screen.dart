@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:pharmaconnect/config/theme.dart';
 import 'package:pharmaconnect/config/constants.dart';
 import 'package:pharmaconnect/models/conversation_model.dart';
 import 'package:pharmaconnect/providers/auth_provider.dart';
 import 'package:pharmaconnect/services/api_service.dart';
 import 'package:pharmaconnect/services/chat_service.dart';
-import 'package:pharmaconnect/services/notification_service.dart';
 import 'package:pharmaconnect/widgets/common/index.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';

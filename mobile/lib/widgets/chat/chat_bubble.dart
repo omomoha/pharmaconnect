@@ -88,7 +88,7 @@ class ChatBubble extends StatelessWidget {
                           _formatTime(message.createdAt),
                           style: TextStyle(
                             color: isMine
-                                ? AppColors.neutralWhite.withValues(alpha: 0.7)
+                                ? AppColors.neutralWhite.withOpacity(0.7)
                                 : AppColors.neutral500,
                             fontSize: 11,
                           ),
@@ -102,7 +102,7 @@ class ChatBubble extends StatelessWidget {
                             size: 14,
                             color: message.isRead
                                 ? Colors.lightBlueAccent
-                                : AppColors.neutralWhite.withValues(alpha: 0.7),
+                                : AppColors.neutralWhite.withOpacity(0.7),
                           ),
                         ],
                       ],

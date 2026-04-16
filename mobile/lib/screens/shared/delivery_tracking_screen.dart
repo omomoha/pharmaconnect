@@ -201,7 +201,7 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
               border: Border.all(color: Colors.white, width: 3),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.primary600.withValues(alpha: 0.4),
+                  color: AppColors.primary600.withOpacity(0.4),
                   blurRadius: 12,
                   spreadRadius: 2,
                 ),
@@ -279,7 +279,7 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
+            color: Colors.black.withOpacity(0.1),
             blurRadius: 20,
             offset: const Offset(0, -4),
           ),

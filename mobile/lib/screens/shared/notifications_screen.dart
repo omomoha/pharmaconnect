@@ -119,7 +119,7 @@ class _NotificationTile extends StatelessWidget {
           const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       leading: CircleAvatar(
         radius: 22,
-        backgroundColor: _bgColor.withValues(alpha: 0.15),
+        backgroundColor: _bgColor.withOpacity(0.15),
         child: Icon(_icon, color: _bgColor, size: 22),
       ),
       title: Text(
