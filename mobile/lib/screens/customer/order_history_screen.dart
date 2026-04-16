@@ -32,9 +32,8 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
   }
 
   Future<void> _refreshOrders() async {
-    // Trigger refresh in provider
     if (mounted) {
-      context.read<OrderService>().refreshMyOrders();
+      setState(() {});
     }
   }
 
@@ -46,10 +45,10 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
         backgroundColor: AppColors.neutralWhite,
         title: Text(
           'My Orders',
-          style: AppTheme.titleMedium.copyWith(
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
             color: AppColors.neutral900,
             fontWeight: FontWeight.w600,
-          ),
+          ) ?? const TextStyle(),
         ),
         centerTitle: false,
         bottom: PreferredSize(
@@ -92,8 +91,8 @@ class _ActiveOrdersList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<OrderModel>>(
-      future: context.read<OrderService>().getMyOrders(),
+    return FutureBuilder<Map<String, dynamic>>(
+      future: OrderService(apiService: context.read<ApiService>()).getMyOrders(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return _LoadingOrdersList();
@@ -102,13 +101,13 @@ class _ActiveOrdersList extends StatelessWidget {
         if (snapshot.hasError) {
           return _ErrorState(
             onRetry: () {
-              // Trigger refresh
-              (context as Element).reassemble();
+              (context as Element).markNeedsBuild();
             },
           );
         }
 
-        final orders = snapshot.data ?? [];
+        final result = snapshot.data ?? {};
+        final orders = (result['orders'] as List<dynamic>?)?.cast<OrderModel>() ?? [];
         final activeOrders = orders.where((order) {
           return [
             OrderStatus.pending,
@@ -144,8 +143,8 @@ class _CompletedOrdersList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<OrderModel>>(
-      future: context.read<OrderService>().getMyOrders(),
+    return FutureBuilder<Map<String, dynamic>>(
+      future: OrderService(apiService: context.read<ApiService>()).getMyOrders(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return _LoadingOrdersList();
@@ -154,12 +153,13 @@ class _CompletedOrdersList extends StatelessWidget {
         if (snapshot.hasError) {
           return _ErrorState(
             onRetry: () {
-              (context as Element).reassemble();
+              (context as Element).markNeedsBuild();
             },
           );
         }
 
-        final orders = snapshot.data ?? [];
+        final result = snapshot.data ?? {};
+        final orders = (result['orders'] as List<dynamic>?)?.cast<OrderModel>() ?? [];
         final completedOrders = orders
             .where((order) => order.status == OrderStatus.delivered)
             .toList();
@@ -189,8 +189,8 @@ class _CancelledOrdersList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<OrderModel>>(
-      future: context.read<OrderService>().getMyOrders(),
+    return FutureBuilder<Map<String, dynamic>>(
+      future: OrderService(apiService: context.read<ApiService>()).getMyOrders(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return _LoadingOrdersList();
@@ -199,12 +199,13 @@ class _CancelledOrdersList extends StatelessWidget {
         if (snapshot.hasError) {
           return _ErrorState(
             onRetry: () {
-              (context as Element).reassemble();
+              (context as Element).markNeedsBuild();
             },
           );
         }
 
-        final orders = snapshot.data ?? [];
+        final result = snapshot.data ?? {};
+        final orders = (result['orders'] as List<dynamic>?)?.cast<OrderModel>() ?? [];
         final cancelledOrders =
             orders.where((order) => order.status == OrderStatus.cancelled).toList();
 
@@ -297,16 +298,16 @@ class _OrderCard extends StatelessWidget {
                 children: [
                   Text(
                     'Order #${order.id.substring(0, 8).toUpperCase()}',
-                    style: AppTheme.labelMedium.copyWith(
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
                       color: AppColors.neutral900,
                       fontWeight: FontWeight.w600,
-                    ),
+                    ) ?? const TextStyle(),
                   ),
                   Text(
                     _formatDate(order.createdAt),
-                    style: AppTheme.labelSmall.copyWith(
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: AppColors.neutral600,
-                    ),
+                    ) ?? const TextStyle(),
                   ),
                 ],
               ),
@@ -314,10 +315,10 @@ class _OrderCard extends StatelessWidget {
               // Pharmacy name
               Text(
                 order.pharmacyName,
-                style: AppTheme.bodySmall.copyWith(
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: AppColors.neutral700,
                   fontWeight: FontWeight.w500,
-                ),
+                ) ?? const TextStyle(),
               ),
               const SizedBox(height: 12),
               // Items count and price
@@ -326,16 +327,16 @@ class _OrderCard extends StatelessWidget {
                 children: [
                   Text(
                     '${order.items.length} item${order.items.length != 1 ? 's' : ''}',
-                    style: AppTheme.bodySmall.copyWith(
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: AppColors.neutral600,
-                    ),
+                    ) ?? const TextStyle(),
                   ),
                   Text(
-                    '₦${order.totalPrice.toStringAsFixed(2)}',
-                    style: AppTheme.bodySmall.copyWith(
+                    '₦${order.total.toStringAsFixed(2)}',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: AppColors.neutral900,
                       fontWeight: FontWeight.w600,
-                    ),
+                    ) ?? const TextStyle(),
                   ),
                 ],
               ),
@@ -349,10 +350,10 @@ class _OrderCard extends StatelessWidget {
                 ),
                 child: Text(
                   _getStatusLabel(order.status),
-                  style: AppTheme.labelSmall.copyWith(
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     color: _getStatusColor(order.status),
                     fontWeight: FontWeight.w600,
-                  ),
+                  ) ?? const TextStyle(),
                 ),
               ),
             ],
@@ -412,18 +413,18 @@ class _EmptyState extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               title,
-              style: AppTheme.titleSmall.copyWith(
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
                 color: AppColors.neutral700,
                 fontWeight: FontWeight.w600,
-              ),
+              ) ?? const TextStyle(),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
               message,
-              style: AppTheme.bodySmall.copyWith(
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: AppColors.neutral600,
-              ),
+              ) ?? const TextStyle(),
               textAlign: TextAlign.center,
             ),
           ],
@@ -454,18 +455,18 @@ class _ErrorState extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               'Unable to Load Orders',
-              style: AppTheme.titleSmall.copyWith(
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
                 color: AppColors.neutral900,
                 fontWeight: FontWeight.w600,
-              ),
+              ) ?? const TextStyle(),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
               'Something went wrong. Please try again.',
-              style: AppTheme.bodySmall.copyWith(
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: AppColors.neutral600,
-              ),
+              ) ?? const TextStyle(),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
@@ -483,10 +484,10 @@ class _ErrorState extends StatelessWidget {
               ),
               child: Text(
                 'Retry',
-                style: AppTheme.labelMedium.copyWith(
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
                   color: AppColors.neutralWhite,
                   fontWeight: FontWeight.w600,
-                ),
+                ) ?? const TextStyle(),
               ),
             ),
           ],

@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 import 'package:pharmaconnect/config/theme.dart';
 import 'package:pharmaconnect/models/order_model.dart';
-import 'package:pharmaconnect/services/order_service.dart';
 import 'package:pharmaconnect/services/api_service.dart';
+import 'package:pharmaconnect/services/order_service.dart';
 
 class OrderDetailScreen extends StatefulWidget {
   final String orderId;
@@ -20,16 +19,20 @@ class OrderDetailScreen extends StatefulWidget {
 
 class _OrderDetailScreenState extends State<OrderDetailScreen> {
   late Future<OrderModel> _orderFuture;
+  late OrderService _orderService;
 
   @override
   void initState() {
     super.initState();
-    _orderFuture = context.read<OrderService>().getOrderById(widget.orderId);
+    // Create OrderService inline
+    final apiService = ApiService();
+    _orderService = OrderService(apiService: apiService);
+    _orderFuture = _orderService.getOrderById(widget.orderId);
   }
 
   Future<void> _refreshOrder() async {
     setState(() {
-      _orderFuture = context.read<OrderService>().getOrderById(widget.orderId);
+      _orderFuture = _orderService.getOrderById(widget.orderId);
     });
   }
 
@@ -51,7 +54,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 : 'Order Details';
             return Text(
               title,
-              style: AppTheme.titleMedium.copyWith(
+              style: Theme.of(context).textTheme.titleMedium!.copyWith(
                 color: AppColors.neutral900,
                 fontWeight: FontWeight.w600,
               ),
@@ -92,9 +95,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   const SizedBox(height: 24),
 
                   // Delivery Info (if applicable)
-                  if (order.deliveryInfo != null)
-                    _DeliveryInfo(deliveryInfo: order.deliveryInfo!),
-                  if (order.deliveryInfo != null) const SizedBox(height: 24),
+                  if (order.trackingInfo != null)
+                    _DeliveryInfo(trackingInfo: order.trackingInfo!),
+                  if (order.trackingInfo != null) const SizedBox(height: 24),
 
                   // Items Section
                   _ItemsSection(order: order),
@@ -200,17 +203,17 @@ class _StatusBanner extends StatelessWidget {
               children: [
                 Text(
                   _getStatusLabel(order.status),
-                  style: AppTheme.labelMedium.copyWith(
+                  style: Theme.of(context).textTheme.labelMedium!.copyWith(
                     color: statusColor,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  order.statusUpdatedAt != null
-                      ? 'Updated ${_formatDateTime(order.statusUpdatedAt!)}'
+                  order.updatedAt != null
+                      ? 'Updated ${_formatDateTime(order.updatedAt!)}'
                       : 'No updates yet',
-                  style: AppTheme.labelSmall.copyWith(
+                  style: Theme.of(context).textTheme.labelSmall!.copyWith(
                     color: AppColors.neutral600,
                   ),
                 ),
@@ -274,7 +277,7 @@ class _OrderTimeline extends StatelessWidget {
       children: [
         Text(
           'Order Timeline',
-          style: AppTheme.titleSmall.copyWith(
+          style: Theme.of(context).textTheme.titleSmall!.copyWith(
             color: AppColors.neutral900,
             fontWeight: FontWeight.w600,
           ),
@@ -366,7 +369,7 @@ class _TimelineStep extends StatelessWidget {
             Expanded(
               child: Text(
                 label,
-                style: AppTheme.bodySmall.copyWith(
+                style: Theme.of(context).textTheme.bodySmall!.copyWith(
                   color: isCurrent ? AppColors.warning : AppColors.neutral700,
                   fontWeight: isCurrent ? FontWeight.w600 : FontWeight.w500,
                 ),
@@ -380,9 +383,9 @@ class _TimelineStep extends StatelessWidget {
 }
 
 class _DeliveryInfo extends StatelessWidget {
-  final OrderDeliveryInfo deliveryInfo;
+  final TrackingInfo trackingInfo;
 
-  const _DeliveryInfo({required this.deliveryInfo});
+  const _DeliveryInfo({required this.trackingInfo});
 
   @override
   Widget build(BuildContext context) {
@@ -391,7 +394,7 @@ class _DeliveryInfo extends StatelessWidget {
       children: [
         Text(
           'Delivery Information',
-          style: AppTheme.titleSmall.copyWith(
+          style: Theme.of(context).textTheme.titleSmall!.copyWith(
             color: AppColors.neutral900,
             fontWeight: FontWeight.w600,
           ),
@@ -415,13 +418,13 @@ class _DeliveryInfo extends StatelessWidget {
                   children: [
                     Text(
                       'Rider',
-                      style: AppTheme.labelSmall.copyWith(
+                      style: Theme.of(context).textTheme.labelSmall!.copyWith(
                         color: AppColors.neutral600,
                       ),
                     ),
                     Text(
-                      deliveryInfo.riderName,
-                      style: AppTheme.bodySmall.copyWith(
+                      trackingInfo.deliveryRiderName,
+                      style: Theme.of(context).textTheme.bodySmall!.copyWith(
                         color: AppColors.neutral900,
                         fontWeight: FontWeight.w600,
                       ),
@@ -436,7 +439,7 @@ class _DeliveryInfo extends StatelessWidget {
                   children: [
                     Text(
                       'Phone',
-                      style: AppTheme.labelSmall.copyWith(
+                      style: Theme.of(context).textTheme.labelSmall!.copyWith(
                         color: AppColors.neutral600,
                       ),
                     ),
@@ -445,14 +448,14 @@ class _DeliveryInfo extends StatelessWidget {
                         // TODO: Implement phone call functionality
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('Call ${deliveryInfo.riderPhone}'),
+                            content: Text('Call ${trackingInfo.deliveryRiderPhone}'),
                             duration: const Duration(seconds: 2),
                           ),
                         );
                       },
                       child: Text(
-                        deliveryInfo.riderPhone,
-                        style: AppTheme.bodySmall.copyWith(
+                        trackingInfo.deliveryRiderPhone,
+                        style: Theme.of(context).textTheme.bodySmall!.copyWith(
                           color: AppColors.primary600,
                           fontWeight: FontWeight.w600,
                           decoration: TextDecoration.underline,
@@ -464,7 +467,7 @@ class _DeliveryInfo extends StatelessWidget {
                 const SizedBox(height: 12),
 
                 // Vehicle Info
-                if (deliveryInfo.vehicleInfo != null)
+                if (trackingInfo.vehicleInfo != null)
                   Column(
                     children: [
                       Row(
@@ -472,13 +475,13 @@ class _DeliveryInfo extends StatelessWidget {
                         children: [
                           Text(
                             'Vehicle',
-                            style: AppTheme.labelSmall.copyWith(
+                            style: Theme.of(context).textTheme.labelSmall!.copyWith(
                               color: AppColors.neutral600,
                             ),
                           ),
                           Text(
-                            deliveryInfo.vehicleInfo!,
-                            style: AppTheme.bodySmall.copyWith(
+                            trackingInfo.vehicleInfo!,
+                            style: Theme.of(context).textTheme.bodySmall!.copyWith(
                               color: AppColors.neutral900,
                               fontWeight: FontWeight.w600,
                             ),
@@ -490,19 +493,19 @@ class _DeliveryInfo extends StatelessWidget {
                   ),
 
                 // Estimated Delivery Time
-                if (deliveryInfo.estimatedDeliveryTime != null)
+                if (trackingInfo.estimatedDeliveryTime != null)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
                         'Est. Delivery',
-                        style: AppTheme.labelSmall.copyWith(
+                        style: Theme.of(context).textTheme.labelSmall!.copyWith(
                           color: AppColors.neutral600,
                         ),
                       ),
                       Text(
-                        _formatEstimatedTime(deliveryInfo.estimatedDeliveryTime!),
-                        style: AppTheme.bodySmall.copyWith(
+                        _formatEstimatedTime(trackingInfo.estimatedDeliveryTime!),
+                        style: Theme.of(context).textTheme.bodySmall!.copyWith(
                           color: AppColors.neutral900,
                           fontWeight: FontWeight.w600,
                         ),
@@ -534,7 +537,7 @@ class _ItemsSection extends StatelessWidget {
       children: [
         Text(
           'Items',
-          style: AppTheme.titleSmall.copyWith(
+          style: Theme.of(context).textTheme.titleSmall!.copyWith(
             color: AppColors.neutral900,
             fontWeight: FontWeight.w600,
           ),
@@ -557,7 +560,7 @@ class _ItemsSection extends StatelessWidget {
                       children: [
                         Text(
                           item.productName,
-                          style: AppTheme.bodySmall.copyWith(
+                          style: Theme.of(context).textTheme.bodySmall!.copyWith(
                             color: AppColors.neutral900,
                             fontWeight: FontWeight.w500,
                           ),
@@ -565,7 +568,7 @@ class _ItemsSection extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text(
                           'Qty: ${item.quantity}',
-                          style: AppTheme.labelSmall.copyWith(
+                          style: Theme.of(context).textTheme.labelSmall!.copyWith(
                             color: AppColors.neutral600,
                           ),
                         ),
@@ -574,7 +577,7 @@ class _ItemsSection extends StatelessWidget {
                   ),
                   Text(
                     '₦${item.price.toStringAsFixed(2)}',
-                    style: AppTheme.bodySmall.copyWith(
+                    style: Theme.of(context).textTheme.bodySmall!.copyWith(
                       color: AppColors.neutral900,
                       fontWeight: FontWeight.w600,
                     ),
@@ -601,7 +604,7 @@ class _PaymentSummary extends StatelessWidget {
       children: [
         Text(
           'Payment Summary',
-          style: AppTheme.titleSmall.copyWith(
+          style: Theme.of(context).textTheme.titleSmall!.copyWith(
             color: AppColors.neutral900,
             fontWeight: FontWeight.w600,
           ),
@@ -648,7 +651,7 @@ class _PaymentSummary extends StatelessWidget {
                 // Total
                 _SummaryRow(
                   label: 'Total',
-                  value: '₦${order.totalPrice.toStringAsFixed(2)}',
+                  value: '₦${order.total.toStringAsFixed(2)}',
                   isBold: true,
                 ),
               ],
@@ -678,14 +681,14 @@ class _SummaryRow extends StatelessWidget {
       children: [
         Text(
           label,
-          style: AppTheme.bodySmall.copyWith(
+          style: Theme.of(context).textTheme.bodySmall!.copyWith(
             color: AppColors.neutral700,
             fontWeight: isBold ? FontWeight.w600 : FontWeight.w500,
           ),
         ),
         Text(
           value,
-          style: AppTheme.bodySmall.copyWith(
+          style: Theme.of(context).textTheme.bodySmall!.copyWith(
             color: AppColors.neutral900,
             fontWeight: isBold ? FontWeight.w700 : FontWeight.w600,
           ),
@@ -726,7 +729,7 @@ class _ActionsSection extends StatelessWidget {
             ),
             child: Text(
               'Cancel Order',
-              style: AppTheme.labelMedium.copyWith(
+              style: Theme.of(context).textTheme.labelMedium!.copyWith(
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -750,7 +753,7 @@ class _ActionsSection extends StatelessWidget {
           ),
           child: Text(
             'Contact Pharmacy',
-            style: AppTheme.labelMedium.copyWith(
+            style: Theme.of(context).textTheme.labelMedium!.copyWith(
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -777,7 +780,7 @@ class _ActionsSection extends StatelessWidget {
           ),
           child: Text(
             'Reorder',
-            style: AppTheme.labelMedium.copyWith(
+            style: Theme.of(context).textTheme.labelMedium!.copyWith(
               color: AppColors.neutralWhite,
               fontWeight: FontWeight.w600,
             ),
@@ -793,14 +796,14 @@ class _ActionsSection extends StatelessWidget {
       builder: (context) => AlertDialog(
         title: Text(
           'Cancel Order?',
-          style: AppTheme.titleSmall.copyWith(
+          style: Theme.of(context).textTheme.titleSmall!.copyWith(
             color: AppColors.neutral900,
             fontWeight: FontWeight.w600,
           ),
         ),
         content: Text(
           'Are you sure you want to cancel this order? This action cannot be undone.',
-          style: AppTheme.bodySmall.copyWith(
+          style: Theme.of(context).textTheme.bodySmall!.copyWith(
             color: AppColors.neutral700,
           ),
         ),
@@ -809,7 +812,7 @@ class _ActionsSection extends StatelessWidget {
             onPressed: () => context.pop(),
             child: Text(
               'Keep Order',
-              style: AppTheme.labelMedium.copyWith(
+              style: Theme.of(context).textTheme.labelMedium!.copyWith(
                 color: AppColors.primary600,
                 fontWeight: FontWeight.w600,
               ),
@@ -828,7 +831,7 @@ class _ActionsSection extends StatelessWidget {
             },
             child: Text(
               'Cancel Order',
-              style: AppTheme.labelMedium.copyWith(
+              style: Theme.of(context).textTheme.labelMedium!.copyWith(
                 color: AppColors.error,
                 fontWeight: FontWeight.w600,
               ),
@@ -892,7 +895,7 @@ class _ErrorState extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               'Unable to Load Order',
-              style: AppTheme.titleSmall.copyWith(
+              style: Theme.of(context).textTheme.titleSmall!.copyWith(
                 color: AppColors.neutral900,
                 fontWeight: FontWeight.w600,
               ),
@@ -901,7 +904,7 @@ class _ErrorState extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               'Something went wrong. Please try again.',
-              style: AppTheme.bodySmall.copyWith(
+              style: Theme.of(context).textTheme.bodySmall!.copyWith(
                 color: AppColors.neutral600,
               ),
               textAlign: TextAlign.center,
@@ -921,7 +924,7 @@ class _ErrorState extends StatelessWidget {
               ),
               child: Text(
                 'Retry',
-                style: AppTheme.labelMedium.copyWith(
+                style: Theme.of(context).textTheme.labelMedium!.copyWith(
                   color: AppColors.neutralWhite,
                   fontWeight: FontWeight.w600,
                 ),

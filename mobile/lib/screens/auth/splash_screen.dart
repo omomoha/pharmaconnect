@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:pharmaconnect/config/constants.dart';
 import 'package:pharmaconnect/config/theme.dart';
 import 'package:pharmaconnect/providers/auth_provider.dart';
 import 'package:provider/provider.dart';

@@ -1,7 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:pharmaconnect/app.dart';
-import 'package:pharmaconnect/config/constants.dart';
 import 'package:pharmaconnect/providers/auth_provider.dart';
 import 'package:pharmaconnect/providers/cart_provider.dart';
 import 'package:pharmaconnect/services/api_service.dart';

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:pharmaconnect/config/theme.dart';
 import 'package:pharmaconnect/providers/cart_provider.dart';
+import 'package:pharmaconnect/models/cart_model.dart';
 import 'package:pharmaconnect/providers/auth_provider.dart';
 import 'package:pharmaconnect/services/order_service.dart';
 import 'package:pharmaconnect/services/api_service.dart';
@@ -98,7 +99,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   double _calculateSubtotal(List<CartItem> items) {
     return items.fold<double>(0, (sum, item) {
-      return sum + (item.price * item.quantity);
+      return sum + (item.product.price * item.quantity);
     });
   }
 
@@ -136,15 +137,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
       // Create order payload
       final orderData = {
-        'customerId': authProvider.user?.uid ?? '',
+        'customerId': authProvider.user?.id ?? '',
         'customerEmail': authProvider.user?.email ?? '',
         'items': cartProvider.items
             .map((item) => {
-                  'productId': item.productId,
-                  'productName': item.name,
+                  'productId': item.product.id,
+                  'productName': item.product.name,
                   'quantity': item.quantity,
-                  'price': item.price,
-                  'subtotal': item.price * item.quantity,
+                  'price': item.product.price,
+                  'subtotal': item.product.price * item.quantity,
                 })
             .toList(),
         'deliveryAddress': {
@@ -167,11 +168,20 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       };
 
       // Place order via API
-      await orderService.createOrder(orderData);
+      await orderService.createOrder(
+        items: cartProvider.items.map((item) => {
+          'productId': item.product.id,
+          'quantity': item.quantity,
+        }).toList(),
+        pharmacyId: cartProvider.pharmacyId,
+        deliveryAddress: '${_streetAddressController.text}, ${_cityController.text}, ${_stateController.text}',
+        paymentMethod: _selectedPaymentMethod,
+        specialInstructions: _instructionsController.text.isNotEmpty ? _instructionsController.text : null,
+      );
 
       // Clear cart
       if (mounted) {
-        context.read<CartProvider>().clear();
+        context.read<CartProvider>().clearCart();
       }
 
       // Navigate to orders page and show success message
@@ -338,7 +348,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                               width: isSelected ? 2 : 1,
                             ),
                             borderRadius: BorderRadius.circular(12),
-                            backgroundColor: isSelected
+                            color: isSelected
                                 ? AppColors.primary600.withOpacity(0.05)
                                 : AppColors.neutralWhite,
                           ),
@@ -447,7 +457,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                               width: isSelected ? 2 : 1,
                             ),
                             borderRadius: BorderRadius.circular(12),
-                            backgroundColor: isSelected
+                            color: isSelected
                                 ? AppColors.primary600.withOpacity(0.05)
                                 : AppColors.neutralWhite,
                           ),
@@ -520,7 +530,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         children: [
                           Expanded(
                             child: Text(
-                              '${item.name} × ${item.quantity}',
+                              '${item.product.name} × ${item.quantity}',
                               style: const TextStyle(
                                 color: AppColors.neutral700,
                                 fontSize: 14,
@@ -528,7 +538,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             ),
                           ),
                           Text(
-                            '₦${(item.price * item.quantity).toStringAsFixed(0)}',
+                            '₦${(item.product.price * item.quantity).toStringAsFixed(0)}',
                             style: const TextStyle(
                               color: AppColors.neutral900,
                               fontSize: 14,

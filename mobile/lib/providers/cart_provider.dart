@@ -3,32 +3,29 @@ import 'package:pharmaconnect/models/cart_model.dart';
 import 'package:pharmaconnect/models/product_model.dart';
 
 class CartProvider extends ChangeNotifier {
-  Cart _cart = Cart(items: [], pharmacyId: '');
+  Cart _cart = Cart(items: []);
+  String _pharmacyId = '';
   String _checkoutError = '';
   bool _differentPharmacyWarning = false;
 
   // Getters
   Cart get cart => _cart;
   List<CartItem> get items => _cart.items;
-  int get itemCount => _cart.items.length;
-  String get pharmacyId => _cart.pharmacyId;
-  bool get isEmpty => _cart.items.isEmpty;
-  bool get isNotEmpty => _cart.items.isNotEmpty;
+  int get itemCount => _cart.itemCount;
+  String get pharmacyId => _pharmacyId;
+  bool get isEmpty => _cart.isEmpty;
+  bool get isNotEmpty => _cart.isNotEmpty;
   String get checkoutError => _checkoutError;
   bool get differentPharmacyWarning => _differentPharmacyWarning;
 
-  /// Calculate subtotal (sum of all items' price × quantity)
-  double get subtotal {
-    return _cart.items.fold<double>(0.0, (sum, item) {
-      return sum + (item.product.price * item.quantity);
-    });
-  }
+  /// Calculate subtotal (delegated to Cart model)
+  double get subtotal => _cart.subtotal;
 
-  /// Calculate total (for now, same as subtotal; can add delivery/tax later)
-  double get total => subtotal;
+  /// Calculate total (delegated to Cart model)
+  double get total => _cart.total;
 
-  /// Check if cart can proceed to checkout (not empty and no errors)
-  bool get canCheckout => isNotEmpty && _checkoutError.isEmpty;
+  /// Check if cart can proceed to checkout (delegated to Cart model)
+  bool get canCheckout => _cart.canCheckout() && _checkoutError.isEmpty;
 
   /// Add a product to cart
   /// If product is from a different pharmacy, set warning flag
@@ -39,8 +36,7 @@ class CartProvider extends ChangeNotifier {
     _clearCheckoutError();
 
     // Check if cart already has items from a different pharmacy
-    if (_cart.pharmacyId.isNotEmpty &&
-        _cart.pharmacyId != product.pharmacyId) {
+    if (_pharmacyId.isNotEmpty && _pharmacyId != product.pharmacyId) {
       _differentPharmacyWarning = true;
       notifyListeners();
       return;
@@ -55,15 +51,18 @@ class CartProvider extends ChangeNotifier {
       final updatedItem = _cart.items[existingIndex].copyWith(
         quantity: _cart.items[existingIndex].quantity + quantity,
       );
-      _cart.items[existingIndex] = updatedItem;
+      // Remove old item and add updated one
+      _cart = _cart.removeItem(product.id);
+      _cart = _cart.addItem(updatedItem);
     } else {
       // Add new item
       final cartItem = CartItem(
         product: product,
         quantity: quantity,
       );
-      _cart.items.add(cartItem);
-      _cart.pharmacyId = product.pharmacyId;
+      _cart = _cart.addItem(cartItem);
+      // Track the pharmacy ID
+      _pharmacyId = product.pharmacyId;
     }
 
     notifyListeners();
@@ -71,11 +70,11 @@ class CartProvider extends ChangeNotifier {
 
   /// Remove a product from cart by productId
   void removeFromCart(String productId) {
-    _cart.items.removeWhere((item) => item.product.id == productId);
+    _cart = _cart.removeItem(productId);
 
     // If cart is empty, clear pharmacy ID
-    if (_cart.items.isEmpty) {
-      _cart.pharmacyId = '';
+    if (_cart.isEmpty) {
+      _pharmacyId = '';
     }
 
     notifyListeners();
@@ -91,15 +90,8 @@ class CartProvider extends ChangeNotifier {
       return;
     }
 
-    final itemIndex =
-        _cart.items.indexWhere((item) => item.product.id == productId);
-
-    if (itemIndex >= 0) {
-      _cart.items[itemIndex] = _cart.items[itemIndex].copyWith(
-        quantity: quantity,
-      );
-      notifyListeners();
-    }
+    _cart = _cart.updateItemQuantity(productId, quantity);
+    notifyListeners();
   }
 
   /// Increment quantity by 1
@@ -125,7 +117,8 @@ class CartProvider extends ChangeNotifier {
 
   /// Clear the entire cart
   void clearCart() {
-    _cart = Cart(items: [], pharmacyId: '');
+    _cart = Cart(items: []);
+    _pharmacyId = '';
     _clearCheckoutError();
     _differentPharmacyWarning = false;
     notifyListeners();
@@ -137,7 +130,8 @@ class CartProvider extends ChangeNotifier {
     ProductModel product, {
     int quantity = 1,
   }) {
-    _cart = Cart(items: [], pharmacyId: product.pharmacyId);
+    _cart = Cart(items: []);
+    _pharmacyId = product.pharmacyId;
     _differentPharmacyWarning = false;
     _clearCheckoutError();
 
@@ -145,7 +139,7 @@ class CartProvider extends ChangeNotifier {
       product: product,
       quantity: quantity,
     );
-    _cart.items.add(cartItem);
+    _cart = _cart.addItem(cartItem);
 
     notifyListeners();
   }
