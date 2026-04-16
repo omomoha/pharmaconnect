@@ -322,9 +322,15 @@ class AppTheme {
 }
 
 class _CustomColors extends ThemeExtension<_CustomColors> {
-  final Color borderColor = AppColors.neutral300;
-  final Color shadowColor = const Color(0x1F000000);
-  final Color hoverColor = AppColors.neutral100;
+  final Color borderColor;
+  final Color shadowColor;
+  final Color hoverColor;
+
+  _CustomColors({
+    this.borderColor = const Color(0xFFD1D5DB), // AppColors.neutral300
+    this.shadowColor = const Color(0x1F000000),
+    this.hoverColor = const Color(0xFFF3F4F6), // AppColors.neutral100
+  });
 
   @override
   ThemeExtension<_CustomColors> copyWith({
@@ -332,10 +338,11 @@ class _CustomColors extends ThemeExtension<_CustomColors> {
     Color? shadowColor,
     Color? hoverColor,
   }) {
-    return _CustomColors()
-      ..borderColor == (borderColor ?? this.borderColor)
-      ..shadowColor == (shadowColor ?? this.shadowColor)
-      ..hoverColor == (hoverColor ?? this.hoverColor);
+    return _CustomColors(
+      borderColor: borderColor ?? this.borderColor,
+      shadowColor: shadowColor ?? this.shadowColor,
+      hoverColor: hoverColor ?? this.hoverColor,
+    );
   }
 
   @override
@@ -346,6 +353,10 @@ class _CustomColors extends ThemeExtension<_CustomColors> {
     if (other is! _CustomColors) {
       return this;
     }
-    return _CustomColors();
+    return _CustomColors(
+      borderColor: Color.lerp(borderColor, other.borderColor, t) ?? borderColor,
+      shadowColor: Color.lerp(shadowColor, other.shadowColor, t) ?? shadowColor,
+      hoverColor: Color.lerp(hoverColor, other.hoverColor, t) ?? hoverColor,
+    );
   }
 }

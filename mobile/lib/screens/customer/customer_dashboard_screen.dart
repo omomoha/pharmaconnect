@@ -226,17 +226,10 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
             const SizedBox(height: UIConstants.paddingMedium),
             if (snapshot.connectionState == ConnectionState.waiting)
               ShimmerLoading(
-                child: Container(
-                  height: 100,
-                  decoration: BoxDecoration(
-                    color: AppColors.neutral200,
-                    borderRadius:
-                        BorderRadius.circular(UIConstants.borderRadiusLarge),
-                  ),
-                ),
+                variant: ShimmerVariant.card,
               )
             else if (snapshot.hasError)
-              ErrorStateWidget(
+              AppErrorWidget(
                 message: 'Failed to load orders',
                 onRetry: () => setState(() {}),
               )
@@ -407,26 +400,10 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
             const SizedBox(height: UIConstants.paddingMedium),
             if (snapshot.connectionState == ConnectionState.waiting)
               ShimmerLoading(
-                child: SizedBox(
-                  height: 180,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: 3,
-                    itemBuilder: (_, __) => Container(
-                      width: 160,
-                      margin:
-                          const EdgeInsets.only(right: UIConstants.paddingMedium),
-                      decoration: BoxDecoration(
-                        color: AppColors.neutral200,
-                        borderRadius: BorderRadius.circular(
-                            UIConstants.borderRadiusLarge),
-                      ),
-                    ),
-                  ),
-                ),
+                variant: ShimmerVariant.card,
               )
             else if (snapshot.hasError)
-              ErrorStateWidget(
+              AppErrorWidget(
                 message: 'Failed to load pharmacies',
                 onRetry: () => setState(() {}),
               )
@@ -576,30 +553,11 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
             const SizedBox(height: UIConstants.paddingMedium),
             if (snapshot.connectionState == ConnectionState.waiting)
               ShimmerLoading(
-                child: SizedBox(
-                  height: 200,
-                  child: GridView.builder(
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: UIConstants.paddingMedium,
-                      mainAxisSpacing: UIConstants.paddingMedium,
-                      childAspectRatio: 0.75,
-                    ),
-                    itemCount: 4,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemBuilder: (_, __) => Container(
-                      decoration: BoxDecoration(
-                        color: AppColors.neutral200,
-                        borderRadius: BorderRadius.circular(
-                            UIConstants.borderRadiusLarge),
-                      ),
-                    ),
-                  ),
-                ),
+                variant: ShimmerVariant.grid,
+                itemCount: 4,
               )
             else if (snapshot.hasError)
-              ErrorStateWidget(
+              AppErrorWidget(
                 message: 'Failed to load recommendations',
                 onRetry: () => setState(() {}),
               )
@@ -659,7 +617,6 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
   Widget _buildProductCard(dynamic product) {
     final name = product is Map ? product['name'] ?? 'Product' : 'Product';
     final price = product is Map ? product['price'] ?? 0 : 0;
-    final image = product is Map ? product['image'] : null;
 
     return PharmaCard(
       padding: const EdgeInsets.all(UIConstants.paddingMedium),
@@ -740,33 +697,14 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
               future: _apiService.get('/pharmacies/nearby'),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return SingleChildScrollView(
-                    padding:
-                        const EdgeInsets.all(UIConstants.paddingMedium),
-                    child: Column(
-                      children: List.generate(
-                        5,
-                        (index) => Padding(
-                          padding: const EdgeInsets.only(
-                              bottom: UIConstants.paddingMedium),
-                          child: ShimmerLoading(
-                            child: Container(
-                              height: 100,
-                              decoration: BoxDecoration(
-                                color: AppColors.neutral200,
-                                borderRadius: BorderRadius.circular(
-                                    UIConstants.borderRadiusLarge),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
+                  return ShimmerLoading(
+                    variant: ShimmerVariant.list,
+                    itemCount: 5,
                   );
                 }
 
                 if (snapshot.hasError) {
-                  return ErrorStateWidget(
+                  return AppErrorWidget(
                     message: 'Failed to load pharmacies',
                     onRetry: () => setState(() {}),
                   );
@@ -935,32 +873,14 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
         future: _apiService.get('/customer/orders?limit=50$queryStatus'),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(UIConstants.paddingMedium),
-              child: Column(
-                children: List.generate(
-                  5,
-                  (index) => Padding(
-                    padding: const EdgeInsets.only(
-                        bottom: UIConstants.paddingMedium),
-                    child: ShimmerLoading(
-                      child: Container(
-                        height: 100,
-                        decoration: BoxDecoration(
-                          color: AppColors.neutral200,
-                          borderRadius: BorderRadius.circular(
-                              UIConstants.borderRadiusLarge),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+            return ShimmerLoading(
+              variant: ShimmerVariant.list,
+              itemCount: 5,
             );
           }
 
           if (snapshot.hasError) {
-            return ErrorStateWidget(
+            return AppErrorWidget(
               message: 'Failed to load orders',
               onRetry: () => setState(() {}),
             );
@@ -1032,33 +952,14 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
               future: _apiService.get('/customer/chats'),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return SingleChildScrollView(
-                    padding:
-                        const EdgeInsets.all(UIConstants.paddingMedium),
-                    child: Column(
-                      children: List.generate(
-                        5,
-                        (index) => Padding(
-                          padding: const EdgeInsets.only(
-                              bottom: UIConstants.paddingMedium),
-                          child: ShimmerLoading(
-                            child: Container(
-                              height: 80,
-                              decoration: BoxDecoration(
-                                color: AppColors.neutral200,
-                                borderRadius: BorderRadius.circular(
-                                    UIConstants.borderRadiusLarge),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
+                  return ShimmerLoading(
+                    variant: ShimmerVariant.list,
+                    itemCount: 5,
                   );
                 }
 
                 if (snapshot.hasError) {
-                  return ErrorStateWidget(
+                  return AppErrorWidget(
                     message: 'Failed to load messages',
                     onRetry: () => setState(() {}),
                   );
@@ -1274,7 +1175,7 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
                     title: 'Shopping',
                     items: [
                       _buildProfileMenuItem(
-                        icon: Icons.location_on_outline,
+                        icon: Icons.location_on_outlined,
                         label: 'Saved Addresses',
                         onTap: () {},
                       ),
@@ -1291,7 +1192,7 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
                     title: 'App',
                     items: [
                       _buildProfileMenuItem(
-                        icon: Icons.notifications_outline,
+                        icon: Icons.notifications_outlined,
                         label: 'Notifications',
                         onTap: () {},
                       ),

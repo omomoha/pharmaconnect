@@ -968,9 +968,9 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
                 context.go('/login');
               }
             },
-            variant: ButtonVariant.destructive,
+            variant: ButtonVariant.danger,
             size: ButtonSize.large,
-            isFullWidth: true,
+            fullWidth: true,
           ),
         ],
       ),

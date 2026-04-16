@@ -389,26 +389,14 @@ class _PharmacyDashboardScreenState extends State<PharmacyDashboardScreen> {
         const SizedBox(height: UIConstants.paddingMedium),
         if (_isLoading)
           ShimmerLoading(
-            child: ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: 3,
-              itemBuilder: (context, index) => Container(
-                height: 100,
-                margin: const EdgeInsets.only(bottom: UIConstants.paddingSmall),
-                decoration: BoxDecoration(
-                  color: AppColors.neutral200,
-                  borderRadius:
-                      BorderRadius.circular(UIConstants.borderRadiusMedium),
-                ),
-              ),
-            ),
+            variant: ShimmerVariant.card,
+            itemCount: 3,
           )
         else if (_recentOrders.isEmpty)
           EmptyState(
             icon: Icons.receipt_outlined,
             title: 'No Orders Yet',
-            description: 'Orders from customers will appear here',
+            subtitle: 'Orders from customers will appear here',
             actionLabel: 'Add Product',
             onAction: () {},
           )
@@ -624,7 +612,7 @@ class _PharmacyDashboardScreenState extends State<PharmacyDashboardScreen> {
           EmptyState(
             icon: Icons.inventory_2_outlined,
             title: 'All Stock Levels Good',
-            description: 'No products are running low on inventory',
+            subtitle: 'No products are running low on inventory',
           )
         else
           ListView.builder(
@@ -795,24 +783,8 @@ class _PharmacyDashboardScreenState extends State<PharmacyDashboardScreen> {
             color: AppColors.primary600,
             child: _isLoading
                 ? ShimmerLoading(
-                    child: ListView.builder(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: UIConstants.paddingMedium,
-                      ),
-                      itemCount: 5,
-                      itemBuilder: (context, index) => Container(
-                        height: 100,
-                        margin: const EdgeInsets.only(
-                          bottom: UIConstants.paddingSmall,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.neutral200,
-                          borderRadius: BorderRadius.circular(
-                            UIConstants.borderRadiusMedium,
-                          ),
-                        ),
-                      ),
-                    ),
+                    variant: ShimmerVariant.card,
+                    itemCount: 5,
                   )
                 : filteredOrders.isEmpty
                     ? ListView(
@@ -823,7 +795,7 @@ class _PharmacyDashboardScreenState extends State<PharmacyDashboardScreen> {
                             child: EmptyState(
                               icon: Icons.receipt_outlined,
                               title: 'No Orders',
-                              description:
+                              subtitle:
                                   'No orders found in this category',
                               actionLabel: 'Add Product',
                               onAction: () {},
