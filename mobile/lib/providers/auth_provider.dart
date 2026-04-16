@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:pharmaconnect/models/user_model.dart';
 import 'package:pharmaconnect/services/auth_service.dart';
-import 'package:pharmaconnect/services/validation_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthService authService;
