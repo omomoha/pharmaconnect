@@ -38,12 +38,18 @@ jobs:
 
       - name: Analyze code
         run: |
+          set +e
           flutter analyze --no-fatal-infos --no-fatal-warnings 2>&1 | tee /tmp/analyze_output.txt
           EXIT_CODE=${PIPESTATUS[0]}
-          echo "--- ERROR-LEVEL ISSUES ---"
-          grep -i "error •" /tmp/analyze_output.txt || echo "No error-level issues found"
-          echo "--- SUMMARY ---"
-          tail -5 /tmp/analyze_output.txt
+          echo ""
+          echo "========== EXIT CODE: $EXIT_CODE =========="
+          echo "========== ERROR-LEVEL ISSUES =========="
+          grep -i "error •\|error:" /tmp/analyze_output.txt || echo "No error-level issues found in output"
+          echo "========== LAST 10 LINES =========="
+          tail -10 /tmp/analyze_output.txt
+          echo "========== WARNINGS =========="
+          grep -i "warning •" /tmp/analyze_output.txt || echo "No warnings found"
+          echo "========== END DEBUG =========="
           exit $EXIT_CODE
 
       - name: Run tests
