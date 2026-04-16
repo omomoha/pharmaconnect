@@ -4,6 +4,10 @@
 -keep class io.flutter.** { *; }
 -dontwarn io.flutter.embedding.**
 
+# Google Play Core (required by Flutter for split APK support)
+-keep class com.google.android.play.core.** { *; }
+-dontwarn com.google.android.play.core.**
+
 # Firebase
 # Keep Firebase classes to ensure runtime dependency injection works
 -keep class com.google.firebase.** { *; }
