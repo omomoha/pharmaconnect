@@ -202,7 +202,7 @@ class _DeliveryNavigationScreenState extends State<DeliveryNavigationScreen> {
   Widget build(BuildContext context) {
     return PopScope(
       canPop: false,
-      onPopInvokedWithRoute: (didPop, route) {
+      onPopInvoked: (didPop) {
         if (!didPop) {
           context.go('/dashboard/delivery');
         }
