@@ -22,6 +22,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   UserRole _selectedRole = UserRole.customer;
+  bool _registerOnMalPay = false;
 
   @override
   void dispose() {
@@ -43,6 +44,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           displayName: _nameController.text,
           phoneNumber: _phoneController.text,
           role: _selectedRole,
+          registerOnMalPay: _registerOnMalPay,
         );
         if (mounted) {
           context.go(authProvider.getDashboardRoute());
@@ -234,6 +236,52 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           setState(() => _selectedRole = value);
                         }
                       },
+                    ),
+                    const SizedBox(height: 16),
+                    // MalPay Registration Checkbox
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.blue.shade200),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            height: 24,
+                            width: 24,
+                            child: Checkbox(
+                              value: _registerOnMalPay,
+                              onChanged: (value) {
+                                setState(() => _registerOnMalPay = value ?? false);
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Also register on MalPay',
+                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Get a free MalPay wallet for easy payments. You\'ll receive an email to set your MalPay password.',
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: AppColors.neutral600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 24),
                     Consumer<AuthProvider>(

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:pharmaconnect/models/user_model.dart';
 import 'package:pharmaconnect/services/auth_service.dart';
+import 'package:pharmaconnect/services/malpay_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthService authService;
@@ -92,6 +93,7 @@ class AuthProvider extends ChangeNotifier {
     required String displayName,
     required String phoneNumber,
     required UserRole role,
+    bool registerOnMalPay = false,
   }) async {
     _isLoading = true;
     _error = null;
@@ -106,6 +108,16 @@ class AuthProvider extends ChangeNotifier {
         role: role,
       );
       await _loadUserProfile();
+
+      // Register on MalPay if opted in (fire-and-forget)
+      if (registerOnMalPay) {
+        try {
+          final malpayService = MalPayService();
+          await malpayService.registerOnMalPay();
+        } catch (e) {
+          debugPrint('MalPay registration failed (non-blocking): $e');
+        }
+      }
     } catch (e) {
       _error = _sanitizeErrorMessage(e);
       _user = null;

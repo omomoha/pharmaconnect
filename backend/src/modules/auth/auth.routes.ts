@@ -34,6 +34,14 @@ router.put(
   asyncHandler((req, res) => AuthController.updateProfile(req, res))
 );
 
+// POST /api/v1/auth/register-malpay - Register current user on MalPay
+router.post(
+  "/register-malpay",
+  authenticate,
+  strictRateLimiter,
+  asyncHandler((req, res) => AuthController.registerOnMalPay(req, res))
+);
+
 /**
  * GDPR Routes
  */

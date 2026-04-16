@@ -33,6 +33,7 @@ function RegisterContent() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [registerOnMalPay, setRegisterOnMalPay] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,7 +58,7 @@ function RegisterContent() {
     setIsLoading(true);
 
     try {
-      await signUp(email, password, name, role);
+      await signUp(email, password, name, role, registerOnMalPay);
 
       // Redirect based on role
       const dashboardMap: Record<UserRole, string> = {
@@ -211,6 +212,24 @@ function RegisterContent() {
             />
             <label htmlFor="marketing" className="text-sm text-gray-600">
               Send me updates about new pharmacies, promotions, and health tips via email and SMS
+            </label>
+          </div>
+
+          {/* MalPay Registration */}
+          <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <input
+              type="checkbox"
+              id="malpay"
+              className="mt-1"
+              checked={registerOnMalPay}
+              onChange={(e) => setRegisterOnMalPay(e.target.checked)}
+            />
+            <label htmlFor="malpay" className="text-sm text-gray-700">
+              <span className="font-medium">Also register on MalPay</span>
+              <br />
+              <span className="text-gray-500 text-xs">
+                Get a free MalPay wallet for easy payments. We&apos;ll use the same email and phone number. You&apos;ll receive an email to set your MalPay password.
+              </span>
             </label>
           </div>
 

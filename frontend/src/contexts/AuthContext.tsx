@@ -36,7 +36,8 @@ interface AuthContextType {
     email: string,
     password: string,
     name: string,
-    role: 'customer' | 'pharmacy' | 'delivery_provider'
+    role: 'customer' | 'pharmacy' | 'delivery_provider',
+    registerOnMalPay?: boolean
   ) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -89,7 +90,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     email: string,
     password: string,
     name: string,
-    role: 'customer' | 'pharmacy' | 'delivery_provider'
+    role: 'customer' | 'pharmacy' | 'delivery_provider',
+    registerOnMalPay?: boolean
   ) => {
     try {
       setError(null);
@@ -122,6 +124,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (backendError) {
         console.error('Backend profile setup failed:', backendError);
         toast.error('Profile setup failed on backend. Please contact support.');
+      }
+
+      // Register on MalPay if opted in (fire-and-forget)
+      if (registerOnMalPay) {
+        try {
+          const malpayResult = await apiClient.post('/auth/register-malpay');
+          if (malpayResult?.data?.isExisting) {
+            toast.success('You already have a MalPay account!');
+          } else if (malpayResult?.data?.malpayRegistered !== false) {
+            toast.success('MalPay account created! Check your email to set your password.');
+          }
+        } catch (malpayError) {
+          console.error('MalPay registration failed:', malpayError);
+          // Silent failure — don't block PharmaConnect registration
+        }
       }
 
       setProfile(profileData);
