@@ -82,8 +82,8 @@ app.use(errorHandler);
 export const api = onRequest(
   {
     region: 'us-central1',
-    timeoutSeconds: 60,
-    memory: '256MiB',
+    timeoutSeconds: 120,
+    memory: '512MiB',
     invoker: 'public',
   },
   app

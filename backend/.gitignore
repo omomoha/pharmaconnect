@@ -5,6 +5,7 @@ yarn.lock
 # Compiled TypeScript
 dist/
 *.js
+!jest.setup.js
 *.js.map
 *.d.ts
 *.d.ts.map
