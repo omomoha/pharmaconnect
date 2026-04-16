@@ -21,6 +21,11 @@ import 'package:pharmaconnect/screens/pharmacy/pharmacy_products_screen.dart';
 import 'package:pharmaconnect/screens/pharmacy/pharmacy_orders_screen.dart';
 import 'package:pharmaconnect/screens/pharmacy/pharmacy_approval_screen.dart';
 import 'package:pharmaconnect/screens/delivery/delivery_dashboard_screen.dart';
+import 'package:pharmaconnect/screens/delivery/delivery_registration_screen.dart';
+import 'package:pharmaconnect/screens/delivery/delivery_assignments_screen.dart';
+import 'package:pharmaconnect/screens/delivery/delivery_navigation_screen.dart';
+import 'package:pharmaconnect/screens/delivery/delivery_verification_screen.dart';
+import 'package:pharmaconnect/screens/delivery/delivery_earnings_screen.dart';
 import 'package:pharmaconnect/screens/admin/admin_dashboard_screen.dart';
 
 class AppRouter {
@@ -183,6 +188,36 @@ class AppRouter {
           name: 'pharmacyApproval',
           builder: (context, state) => const PharmacyApprovalScreen(),
         ),
+        // Delivery provider routes
+        GoRoute(
+          path: '/delivery/register',
+          name: 'deliveryRegistration',
+          builder: (context, state) => const DeliveryRegistrationScreen(),
+        ),
+        GoRoute(
+          path: '/delivery/assignments',
+          name: 'deliveryAssignments',
+          builder: (context, state) => const DeliveryAssignmentsScreen(),
+        ),
+        GoRoute(
+          path: '/delivery/navigate/:id',
+          name: 'deliveryNavigation',
+          builder: (context, state) => DeliveryNavigationScreen(
+            orderId: state.pathParameters['id']!,
+          ),
+        ),
+        GoRoute(
+          path: '/delivery/verify-code/:id',
+          name: 'deliveryVerification',
+          builder: (context, state) => DeliveryVerificationScreen(
+            orderId: state.pathParameters['id']!,
+          ),
+        ),
+        GoRoute(
+          path: '/delivery/earnings',
+          name: 'deliveryEarnings',
+          builder: (context, state) => const DeliveryEarningsScreen(),
+        ),
       ],
       errorBuilder: (context, state) => Scaffold(
         appBar: AppBar(title: const Text('Error')),
@@ -227,4 +262,8 @@ class RouteNames {
   static const String addProduct = '/pharmacy/products/add';
   static const String pharmacyOrders = '/pharmacy/orders';
   static const String pharmacyApproval = '/pharmacy/approval';
+  // Delivery routes
+  static const String deliveryRegistration = '/delivery/register';
+  static const String deliveryAssignments = '/delivery/assignments';
+  static const String deliveryEarnings = '/delivery/earnings';
 }

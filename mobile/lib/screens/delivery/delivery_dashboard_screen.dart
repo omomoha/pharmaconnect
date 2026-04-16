@@ -926,6 +926,16 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
             onTap: () {},
           ),
           _buildProfileMenuItem(
+            icon: Icons.app_registration_outlined,
+            title: 'Registration',
+            onTap: () => context.push('/delivery/register'),
+          ),
+          _buildProfileMenuItem(
+            icon: Icons.assignment_outlined,
+            title: 'Assignments',
+            onTap: () => context.push('/delivery/assignments'),
+          ),
+          _buildProfileMenuItem(
             icon: Icons.directions_car_outlined,
             title: 'Vehicle Information',
             onTap: () {},
@@ -933,7 +943,12 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
           _buildProfileMenuItem(
             icon: Icons.description_outlined,
             title: 'Documents',
-            onTap: () {},
+            onTap: () => context.push('/delivery/register'),
+          ),
+          _buildProfileMenuItem(
+            icon: Icons.account_balance_wallet_outlined,
+            title: 'Earnings',
+            onTap: () => context.push('/delivery/earnings'),
           ),
           const SizedBox(height: UIConstants.paddingLarge),
 
