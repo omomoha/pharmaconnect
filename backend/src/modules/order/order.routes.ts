@@ -2,8 +2,10 @@ import { Router } from "express";
 import { OrderController } from "./order.controller.js";
 import { OrderEscalationService } from "./order.escalation.js";
 import { authenticate } from "../../middleware/authenticate.js";
+import { authorize } from "../../middleware/authorize.js";
 import { asyncHandler } from "../../middleware/errorHandler.js";
 import { authRateLimiter, strictRateLimiter } from "../../middleware/rateLimiter.js";
+import { UserRole } from "@pharmaconnect/shared/dist/types/index.js";
 import { apiResponse } from "../../utils/helpers.js";
 import logger from "../../utils/logger.js";
 
@@ -68,10 +70,12 @@ router.post(
 // ─── Escalation / Cron ────────────────────────────────────────────────────────
 
 // POST /api/v1/orders/escalation/run - Run escalation checks (Cloud Scheduler or admin trigger)
-// Protected by strictRateLimiter + authenticate so only admins can trigger manually;
-// for Cloud Scheduler, use a service account token.
+// Protected by authenticate + admin-only authorize + strictRateLimiter.
+// For Cloud Scheduler, use a service account token with admin claims.
 router.post(
   "/escalation/run",
+  authenticate,
+  authorize(UserRole.PLATFORM_ADMIN, UserRole.SUPPORT_ADMIN),
   strictRateLimiter,
   asyncHandler(async (_req, res) => {
     try {

@@ -1,4 +1,4 @@
-import { randomBytes } from "crypto";
+import { randomBytes, randomInt } from "crypto";
 import { ApiResponse } from "@pharmaconnect/shared/dist/types/index.js";
 
 /**
@@ -15,7 +15,7 @@ export const generateOrderNumber = (): string => {
  * Generate cryptographically secure 6-digit security code
  */
 export const generateSecurityCode = (): string => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return randomInt(100000, 1000000).toString();
 };
 
 /**
