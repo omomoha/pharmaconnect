@@ -15,7 +15,7 @@ class AppConstants {
   static const String firebaseAuthDomain = 'marketplace-50f56.firebaseapp.com';
   static const String firebaseStorageBucket =
       'marketplace-50f56.appspot.com';
-  static const String firebaseDatabasseUrl =
+  static const String firebaseDatabaseUrl =
       'https://marketplace-50f56-default-rtdb.firebaseio.com';
 
   // Timeouts

@@ -17,6 +17,7 @@ class _SplashScreenState extends State<SplashScreen>
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
+  bool _hasNavigated = false;
 
   @override
   void initState() {
@@ -40,13 +41,9 @@ class _SplashScreenState extends State<SplashScreen>
     Future.delayed(const Duration(seconds: 3), _navigateNext);
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _navigateNext();
-  }
-
   void _navigateNext() {
+    if (_hasNavigated || !mounted) return;
+    _hasNavigated = true;
     final authProvider = context.read<AuthProvider>();
     if (authProvider.isAuthenticated) {
       context.go(authProvider.getDashboardRoute());

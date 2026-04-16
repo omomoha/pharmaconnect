@@ -297,7 +297,7 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Order #${orderId.toString().substring(0, 8).toUpperCase()}',
+                    'Order #${orderId.toString().length >= 8 ? orderId.toString().substring(0, 8).toUpperCase() : orderId.toString().toUpperCase()}',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
