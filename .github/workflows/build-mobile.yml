@@ -37,7 +37,14 @@ jobs:
         run: flutter pub get
 
       - name: Analyze code
-        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+        run: |
+          flutter analyze --no-fatal-infos --no-fatal-warnings 2>&1 | tee /tmp/analyze_output.txt
+          EXIT_CODE=${PIPESTATUS[0]}
+          echo "--- ERROR-LEVEL ISSUES ---"
+          grep -i "error •" /tmp/analyze_output.txt || echo "No error-level issues found"
+          echo "--- SUMMARY ---"
+          tail -5 /tmp/analyze_output.txt
+          exit $EXIT_CODE
 
       - name: Run tests
         run: flutter test --coverage || true
