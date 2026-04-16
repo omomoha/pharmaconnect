@@ -212,14 +212,11 @@ class _PharmacyProductsScreenState extends State<PharmacyProductsScreen> {
               builder: (context, snapshot) {
                 // Loading state
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return ListView.builder(
+                  return Padding(
                     padding: const EdgeInsets.all(UIConstants.paddingMedium),
-                    itemCount: 5,
-                    itemBuilder: (context, index) => const ShimmerLoading(
-                      height: 180,
-                      margin: EdgeInsets.only(
-                        bottom: UIConstants.paddingMedium,
-                      ),
+                    child: ShimmerLoading(
+                      variant: ShimmerVariant.card,
+                      itemCount: 5,
                     ),
                   );
                 }
