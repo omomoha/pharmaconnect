@@ -1,9 +1,9 @@
 import { onRequest } from 'firebase-functions/v2/https';
+import * as admin from 'firebase-admin';
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
-import { initializeFirebase } from './config/firebase.js';
 import { getAllowedOrigins } from './config/index.js';
 import logger from './utils/logger.js';
 import {
@@ -21,12 +21,21 @@ import paymentRoutes from './modules/payment/payment.routes.js';
 import chatRoutes from './modules/chat/chat.routes.js';
 import adminRoutes from './modules/admin/admin.routes.js';
 
-// Initialize Firebase Admin SDK (uses ADC in Cloud Functions)
+/**
+ * Initialize Firebase Admin SDK synchronously for Cloud Functions.
+ * Uses Application Default Credentials (ADC) — no retries needed.
+ * The async initializeFirebase() from config/firebase.ts has retry logic
+ * and process.exit(1) that can crash the Cloud Run container, so we
+ * use a simple synchronous init here instead.
+ */
 try {
-  initializeFirebase();
+  if (!admin.apps.length) {
+    admin.initializeApp();
+  }
   logger.info('Firebase initialized for Cloud Functions');
 } catch (error) {
-  console.error('Firebase initialization failed:', error);
+  // Log but do NOT process.exit — let Cloud Run report the error
+  logger.error('Firebase initialization failed in Cloud Functions:', error);
 }
 
 // Create Express app
@@ -78,12 +87,15 @@ app.use(errorHandler);
 
 /**
  * Firebase Cloud Function v2 — API Handler
+ *
+ * Memory: 1GiB needed for cold start with heavy deps
+ * (firebase-admin, @anthropic-ai/sdk, @sentry/node, ioredis, socket.io)
  */
 export const api = onRequest(
   {
     region: 'us-central1',
     timeoutSeconds: 120,
-    memory: '512MiB',
+    memory: '1GiB',
     invoker: 'public',
   },
   app
