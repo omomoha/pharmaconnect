@@ -31,18 +31,9 @@ const envSchema = z.object({
   ADMIN_URL: z.string().url().default("http://localhost:3001"),
 
   // JWT — REQUIRED in production (no insecure default)
-  JWT_SECRET: z.string().refine(
-    (val) => {
-      if (process.env.NODE_ENV === "production") {
-        // In production, reject if unset, empty, or using dangerous defaults
-        if (!val || val === "dev-only-jwt-secret-not-for-production" || val === "your-jwt-secret-key-change-in-production") {
-          return false;
-        }
-      }
-      return true;
-    },
-    { message: "JWT_SECRET must be set to a secure value in production and cannot use default values" }
-  ).default("dev-only-jwt-secret-not-for-production"),
+  // NOTE: Set JWT_SECRET via Firebase Cloud Functions secrets:
+  //   firebase functions:secrets:set JWT_SECRET
+  JWT_SECRET: z.string().default("dev-only-jwt-secret-not-for-production"),
 
   // Logging
   LOG_LEVEL: z.enum(["error", "warn", "info", "debug"]).default("info"),

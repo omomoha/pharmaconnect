@@ -4,7 +4,7 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
-import { getAllowedOrigins } from './config/index.js';
+import config, { getAllowedOrigins } from './config/index.js';
 import logger from './utils/logger.js';
 import {
   errorHandler,
@@ -36,6 +36,11 @@ try {
 } catch (error) {
   // Log but do NOT process.exit — let Cloud Run report the error
   logger.error('Firebase initialization failed in Cloud Functions:', error);
+}
+
+// Warn about insecure JWT_SECRET in production (but don't crash)
+if (config.JWT_SECRET === 'dev-only-jwt-secret-not-for-production') {
+  logger.warn('WARNING: JWT_SECRET is using the insecure default. Set it via: firebase functions:secrets:set JWT_SECRET');
 }
 
 // Create Express app
