@@ -66,6 +66,13 @@ dependencies:
   # PIN Code Input
   pin_code_fields: ^8.0.1
 
+  # Maps
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+
+  # Push Notifications
+  firebase_messaging: ^15.1.6
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

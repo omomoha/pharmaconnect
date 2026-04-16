@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pharmaconnect/config/theme.dart';
 import 'package:pharmaconnect/config/constants.dart';
+import 'package:pharmaconnect/models/conversation_model.dart';
 import 'package:pharmaconnect/providers/auth_provider.dart';
 import 'package:pharmaconnect/services/api_service.dart';
+import 'package:pharmaconnect/services/chat_service.dart';
+import 'package:pharmaconnect/services/notification_service.dart';
 import 'package:pharmaconnect/widgets/common/index.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 
 class CustomerDashboardScreen extends StatefulWidget {
   const CustomerDashboardScreen({Key? key}) : super(key: key);
@@ -928,12 +933,15 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
   }
 
   // ============================================
-  // MESSAGES TAB - Chat List
+  // MESSAGES TAB - Chat Conversations
   // ============================================
   Widget _buildMessagesTab() {
+    final chatService = ChatService();
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
+
     return RefreshIndicator(
       onRefresh: () async {
-        await Future.delayed(const Duration(milliseconds: 500));
+        setState(() {}); // Triggers rebuild which re-fetches
       },
       child: CustomScrollView(
         slivers: [
@@ -946,10 +954,16 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
                   color: AppColors.neutral900,
                   fontWeight: FontWeight.w700,
                 ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.notifications_outlined),
+                onPressed: () => context.push('/notifications'),
+              ),
+            ],
           ),
           SliverFillRemaining(
-            child: FutureBuilder<dynamic>(
-              future: _apiService.get('/customer/chats'),
+            child: FutureBuilder<List<ConversationModel>>(
+              future: chatService.getConversations(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return ShimmerLoading(
@@ -965,37 +979,32 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
                   );
                 }
 
-                final chats = snapshot.data is Map && snapshot.data.containsKey('data')
-                    ? snapshot.data['data'] as List? ?? []
-                    : snapshot.data is List
-                        ? snapshot.data
-                        : [];
+                final conversations = snapshot.data ?? [];
 
-                if (chats.isEmpty) {
+                if (conversations.isEmpty) {
                   return Center(
                     child: EmptyState(
                       icon: Icons.message_outlined,
                       title: 'No Messages',
-                      subtitle: 'Start a conversation with a pharmacy',
+                      subtitle: 'Start a conversation with a pharmacy from your order details',
                       actionLabel: 'Browse Pharmacies',
                       onAction: () => setState(() => _currentIndex = 1),
                     ),
                   );
                 }
 
-                return SingleChildScrollView(
-                  padding:
-                      const EdgeInsets.all(UIConstants.paddingMedium),
-                  child: ListView.separated(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: chats.length,
-                    separatorBuilder: (_, __) => const Divider(),
-                    itemBuilder: (context, index) {
-                      final chat = chats[index];
-                      return _buildChatListItem(chat);
-                    },
+                return ListView.separated(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  itemCount: conversations.length,
+                  separatorBuilder: (_, __) => const Divider(
+                    height: 1,
+                    indent: 76,
+                    endIndent: 16,
                   ),
+                  itemBuilder: (context, index) {
+                    final conv = conversations[index];
+                    return _buildConversationTile(conv, currentUserId);
+                  },
                 );
               },
             ),
@@ -1005,79 +1014,91 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
     );
   }
 
-  Widget _buildChatListItem(dynamic chat) {
-    final pharmacyName =
-        chat is Map ? (chat['pharmacy'] is Map ? chat['pharmacy']['name'] ?? 'Unknown' : 'Unknown') : 'Unknown';
-    final lastMessage =
-        chat is Map ? chat['lastMessage'] ?? 'No messages' : 'No messages';
-    final unreadCount =
-        chat is Map ? chat['unreadCount'] ?? 0 : 0;
+  Widget _buildConversationTile(ConversationModel conv, String currentUserId) {
+    final otherName = conv.getOtherParticipantName(currentUserId);
+    final isPharmacy = conv.type == ConversationType.customerPharmacy;
+    final hasUnread = conv.unreadCount > 0;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: UIConstants.paddingSmall),
-      child: Row(
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      leading: CircleAvatar(
+        radius: 26,
+        backgroundColor: isPharmacy ? AppColors.primary50 : AppColors.secondary50,
+        child: Icon(
+          isPharmacy ? Icons.local_pharmacy : Icons.delivery_dining,
+          color: isPharmacy ? AppColors.primary600 : AppColors.secondary600,
+          size: 22,
+        ),
+      ),
+      title: Row(
         children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: AppColors.primary100,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.local_pharmacy,
-              color: AppColors.primary600,
-            ),
-          ),
-          const SizedBox(width: UIConstants.paddingMedium),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      pharmacyName,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                    ),
-                    if (unreadCount > 0)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary600,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          unreadCount.toString(),
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: AppColors.neutralWhite,
-                                fontWeight: FontWeight.w600,
-                              ),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  lastMessage,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.neutral600,
-                      ),
-                ),
-              ],
+            child: Text(
+              otherName,
+              style: TextStyle(
+                fontWeight: hasUnread ? FontWeight.w700 : FontWeight.w500,
+                fontSize: 15,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
+          if (conv.lastMessageAt != null)
+            Text(
+              _formatConvTime(conv.lastMessageAt!),
+              style: TextStyle(
+                fontSize: 12,
+                color: hasUnread ? AppColors.primary600 : AppColors.neutral500,
+                fontWeight: hasUnread ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
         ],
       ),
+      subtitle: Row(
+        children: [
+          Expanded(
+            child: Text(
+              conv.lastMessage ?? 'No messages yet',
+              style: TextStyle(
+                color: hasUnread ? AppColors.neutral800 : AppColors.neutral500,
+                fontWeight: hasUnread ? FontWeight.w500 : FontWeight.w400,
+                fontSize: 13,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          if (hasUnread)
+            Container(
+              margin: const EdgeInsets.only(left: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+              decoration: BoxDecoration(
+                color: AppColors.primary600,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                conv.unreadCount > 99 ? '99+' : conv.unreadCount.toString(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+        ],
+      ),
+      onTap: () => context.push('/chat/${conv.id}'),
     );
+  }
+
+  String _formatConvTime(DateTime dateTime) {
+    final now = DateTime.now();
+    final diff = now.difference(dateTime);
+    if (diff.inMinutes < 1) return 'now';
+    if (diff.inHours < 1) return '${diff.inMinutes}m';
+    if (diff.inDays < 1) return DateFormat.jm().format(dateTime);
+    if (diff.inDays < 7) return DateFormat.E().format(dateTime);
+    return DateFormat('MMM d').format(dateTime);
   }
 
   // ============================================

@@ -80,7 +80,11 @@ class ApiEndpoints {
   static const String pharmacies = '/pharmacies';
   static const String deliveryProviders = '/delivery-providers';
   static const String chat = '/chat';
+  static const String conversations = '$chat/conversations';
+  static const String unreadCount = '$chat/unread-count';
   static const String notifications = '/notifications';
+  static const String delivery = '/delivery';
+  static const String deliveryAssignments = '$delivery/assignments';
 }
 
 class UIConstants {

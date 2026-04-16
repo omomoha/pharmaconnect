@@ -27,6 +27,10 @@ import 'package:pharmaconnect/screens/delivery/delivery_navigation_screen.dart';
 import 'package:pharmaconnect/screens/delivery/delivery_verification_screen.dart';
 import 'package:pharmaconnect/screens/delivery/delivery_earnings_screen.dart';
 import 'package:pharmaconnect/screens/admin/admin_dashboard_screen.dart';
+import 'package:pharmaconnect/screens/shared/conversations_screen.dart';
+import 'package:pharmaconnect/screens/shared/chat_screen.dart';
+import 'package:pharmaconnect/screens/shared/delivery_tracking_screen.dart';
+import 'package:pharmaconnect/screens/shared/notifications_screen.dart';
 
 class AppRouter {
   static GoRouter createRouter(AuthProvider authProvider) {
@@ -42,7 +46,10 @@ class AppRouter {
         }
 
         if (!isAuthenticated) {
-          if (state.matchedLocation.startsWith('/dashboard')) {
+          if (state.matchedLocation.startsWith('/dashboard') ||
+              state.matchedLocation.startsWith('/chat') ||
+              state.matchedLocation.startsWith('/notifications') ||
+              state.matchedLocation.startsWith('/delivery/track')) {
             return '/login';
           }
           return null;
@@ -76,6 +83,44 @@ class AppRouter {
           name: 'forgotPassword',
           builder: (context, state) => const ForgotPasswordScreen(),
         ),
+
+        // ── Shared routes (all roles) ──
+        GoRoute(
+          path: '/conversations',
+          name: 'conversations',
+          builder: (context, state) => const ConversationsScreen(),
+        ),
+        GoRoute(
+          path: '/chat/:conversationId',
+          name: 'chat',
+          builder: (context, state) => ChatScreen(
+            conversationId: state.pathParameters['conversationId']!,
+          ),
+        ),
+        GoRoute(
+          path: '/notifications',
+          name: 'notifications',
+          builder: (context, state) => const NotificationsScreen(),
+        ),
+        GoRoute(
+          path: '/delivery/track/:assignmentId',
+          name: 'deliveryTracking',
+          builder: (context, state) {
+            final extra =
+                state.extra as Map<String, dynamic>? ?? {};
+            return DeliveryTrackingScreen(
+              assignmentId: state.pathParameters['assignmentId']!,
+              riderName: extra['riderName'] as String? ?? 'Delivery Rider',
+              status: extra['status'] as String? ?? 'in_transit',
+              pickupLat: extra['pickupLat'] as double?,
+              pickupLng: extra['pickupLng'] as double?,
+              deliveryLat: extra['deliveryLat'] as double?,
+              deliveryLng: extra['deliveryLng'] as double?,
+            );
+          },
+        ),
+
+        // ── Dashboard routes ──
         ShellRoute(
           builder: (context, state, child) => child,
           routes: [
@@ -101,7 +146,8 @@ class AppRouter {
             ),
           ],
         ),
-        // Customer shopping routes
+
+        // ── Customer shopping routes ──
         GoRoute(
           path: '/customer/browse-pharmacies',
           name: 'browsePharmacies',
@@ -148,7 +194,8 @@ class AppRouter {
             orderId: state.pathParameters['id']!,
           ),
         ),
-        // Pharmacy management routes
+
+        // ── Pharmacy management routes ──
         GoRoute(
           path: '/pharmacy/register',
           name: 'pharmacyRegistration',
@@ -188,7 +235,8 @@ class AppRouter {
           name: 'pharmacyApproval',
           builder: (context, state) => const PharmacyApprovalScreen(),
         ),
-        // Delivery provider routes
+
+        // ── Delivery provider routes ──
         GoRoute(
           path: '/delivery/register',
           name: 'deliveryRegistration',
@@ -250,6 +298,9 @@ class RouteNames {
   static const String deliveryDashboard = '/dashboard/delivery';
   static const String adminDashboard = '/dashboard/admin';
   static const String forgotPassword = '/forgot-password';
+  // Chat & notifications
+  static const String conversations = '/conversations';
+  static const String notifications = '/notifications';
   // Customer routes
   static const String browsePharmacies = '/customer/browse-pharmacies';
   static const String productSearch = '/customer/product-search';

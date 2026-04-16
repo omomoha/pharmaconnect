@@ -311,12 +311,238 @@ class AppTheme {
         onPrimary: AppColors.neutralWhite,
         secondary: AppColors.secondary600,
         onSecondary: AppColors.neutralWhite,
-        surface: AppColors.neutral900,
+        surface: AppColors.neutral800,
         onSurface: AppColors.neutral100,
         error: AppColors.error,
         onError: AppColors.neutralWhite,
         outline: AppColors.neutral700,
       ),
+      textTheme: TextTheme(
+        displayLarge: GoogleFonts.inter(
+          fontSize: 32,
+          fontWeight: FontWeight.w700,
+          color: AppColors.neutralWhite,
+          letterSpacing: -0.5,
+        ),
+        displayMedium: GoogleFonts.inter(
+          fontSize: 28,
+          fontWeight: FontWeight.w700,
+          color: AppColors.neutralWhite,
+          letterSpacing: -0.5,
+        ),
+        displaySmall: GoogleFonts.inter(
+          fontSize: 24,
+          fontWeight: FontWeight.w700,
+          color: AppColors.neutralWhite,
+        ),
+        headlineLarge: GoogleFonts.inter(
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+          color: AppColors.neutralWhite,
+        ),
+        headlineMedium: GoogleFonts.inter(
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+          color: AppColors.neutralWhite,
+        ),
+        headlineSmall: GoogleFonts.inter(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          color: AppColors.neutral100,
+        ),
+        titleLarge: GoogleFonts.inter(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: AppColors.neutral100,
+        ),
+        titleMedium: GoogleFonts.inter(
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+          color: AppColors.neutral100,
+        ),
+        titleSmall: GoogleFonts.inter(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: AppColors.neutral400,
+        ),
+        bodyLarge: GoogleFonts.inter(
+          fontSize: 16,
+          fontWeight: FontWeight.w400,
+          color: AppColors.neutral100,
+        ),
+        bodyMedium: GoogleFonts.inter(
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+          color: AppColors.neutral400,
+        ),
+        bodySmall: GoogleFonts.inter(
+          fontSize: 12,
+          fontWeight: FontWeight.w400,
+          color: AppColors.neutral500,
+        ),
+        labelLarge: GoogleFonts.inter(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: AppColors.neutral100,
+        ),
+        labelMedium: GoogleFonts.inter(
+          fontSize: 11,
+          fontWeight: FontWeight.w500,
+          color: AppColors.neutral400,
+        ),
+        labelSmall: GoogleFonts.inter(
+          fontSize: 10,
+          fontWeight: FontWeight.w500,
+          color: AppColors.neutral500,
+        ),
+      ),
+      appBarTheme: AppBarTheme(
+        backgroundColor: AppColors.neutral800,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        iconTheme: const IconThemeData(color: AppColors.neutral100),
+        titleTextStyle: GoogleFonts.inter(
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+          color: AppColors.neutralWhite,
+        ),
+      ),
+      cardTheme: CardTheme(
+        color: AppColors.neutral800,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: AppColors.neutral700),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: AppColors.neutral800,
+        hintStyle: GoogleFonts.inter(
+          color: AppColors.neutral500,
+          fontSize: 14,
+        ),
+        labelStyle: GoogleFonts.inter(
+          color: AppColors.neutral300,
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.neutral700),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.neutral700),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.primary600, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.error),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.error, width: 2),
+        ),
+        errorStyle: GoogleFonts.inter(
+          color: AppColors.error,
+          fontSize: 12,
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary600,
+          foregroundColor: AppColors.neutralWhite,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(
+            horizontal: 24,
+            vertical: 12,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          textStyle: GoogleFonts.inter(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.primary600,
+          side: const BorderSide(color: AppColors.primary600, width: 1.5),
+          padding: const EdgeInsets.symmetric(
+            horizontal: 24,
+            vertical: 12,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          textStyle: GoogleFonts.inter(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.primary600,
+          padding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 8,
+          ),
+          textStyle: GoogleFonts.inter(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: AppColors.primary600,
+        foregroundColor: AppColors.neutralWhite,
+        elevation: 4,
+      ),
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        backgroundColor: AppColors.neutral800,
+        elevation: 8,
+        selectedItemColor: AppColors.primary600,
+        unselectedItemColor: AppColors.neutral500,
+        selectedLabelStyle: TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 12,
+        ),
+        unselectedLabelStyle: TextStyle(
+          fontWeight: FontWeight.w400,
+          fontSize: 12,
+        ),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: AppColors.neutral700,
+        selectedColor: AppColors.primary600,
+        labelStyle: GoogleFonts.inter(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: AppColors.neutral100,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+      dividerTheme: const DividerThemeData(
+        color: AppColors.neutral700,
+        thickness: 1,
+        space: 16,
+      ),
+      extensions: <ThemeExtension<dynamic>>[
+        _CustomColorsDark(),
+      ],
     );
   }
 }
@@ -354,6 +580,46 @@ class _CustomColors extends ThemeExtension<_CustomColors> {
       return this;
     }
     return _CustomColors(
+      borderColor: Color.lerp(borderColor, other.borderColor, t) ?? borderColor,
+      shadowColor: Color.lerp(shadowColor, other.shadowColor, t) ?? shadowColor,
+      hoverColor: Color.lerp(hoverColor, other.hoverColor, t) ?? hoverColor,
+    );
+  }
+}
+
+class _CustomColorsDark extends ThemeExtension<_CustomColorsDark> {
+  final Color borderColor;
+  final Color shadowColor;
+  final Color hoverColor;
+
+  _CustomColorsDark({
+    this.borderColor = AppColors.neutral700, // Dark neutral border
+    this.shadowColor = const Color(0x3F000000),
+    this.hoverColor = AppColors.neutral700, // Dark hover state
+  });
+
+  @override
+  ThemeExtension<_CustomColorsDark> copyWith({
+    Color? borderColor,
+    Color? shadowColor,
+    Color? hoverColor,
+  }) {
+    return _CustomColorsDark(
+      borderColor: borderColor ?? this.borderColor,
+      shadowColor: shadowColor ?? this.shadowColor,
+      hoverColor: hoverColor ?? this.hoverColor,
+    );
+  }
+
+  @override
+  ThemeExtension<_CustomColorsDark> lerp(
+    ThemeExtension<_CustomColorsDark>? other,
+    double t,
+  ) {
+    if (other is! _CustomColorsDark) {
+      return this;
+    }
+    return _CustomColorsDark(
       borderColor: Color.lerp(borderColor, other.borderColor, t) ?? borderColor,
       shadowColor: Color.lerp(shadowColor, other.shadowColor, t) ?? shadowColor,
       hoverColor: Color.lerp(hoverColor, other.hoverColor, t) ?? hoverColor,
