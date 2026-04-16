@@ -423,7 +423,7 @@ class _DeliveryInfo extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      trackingInfo.deliveryRiderName,
+                      trackingInfo.deliveryRiderName ?? 'Unknown',
                       style: Theme.of(context).textTheme.bodySmall!.copyWith(
                         color: AppColors.neutral900,
                         fontWeight: FontWeight.w600,
@@ -448,13 +448,13 @@ class _DeliveryInfo extends StatelessWidget {
                         // TODO: Implement phone call functionality
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('Call ${trackingInfo.deliveryRiderPhone}'),
+                            content: Text('Call ${trackingInfo.deliveryRiderPhone ?? 'N/A'}'),
                             duration: const Duration(seconds: 2),
                           ),
                         );
                       },
                       child: Text(
-                        trackingInfo.deliveryRiderPhone,
+                        trackingInfo.deliveryRiderPhone ?? 'N/A',
                         style: Theme.of(context).textTheme.bodySmall!.copyWith(
                           color: AppColors.primary600,
                           fontWeight: FontWeight.w600,
