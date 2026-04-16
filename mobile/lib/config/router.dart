@@ -6,6 +6,14 @@ import 'package:pharmaconnect/screens/auth/register_screen.dart';
 import 'package:pharmaconnect/screens/auth/splash_screen.dart';
 import 'package:pharmaconnect/screens/auth/forgot_password_screen.dart';
 import 'package:pharmaconnect/screens/customer/customer_dashboard_screen.dart';
+import 'package:pharmaconnect/screens/customer/browse_pharmacies_screen.dart';
+import 'package:pharmaconnect/screens/customer/pharmacy_detail_screen.dart';
+import 'package:pharmaconnect/screens/customer/product_search_screen.dart';
+import 'package:pharmaconnect/screens/customer/product_detail_screen.dart';
+import 'package:pharmaconnect/screens/customer/cart_screen.dart';
+import 'package:pharmaconnect/screens/customer/checkout_screen.dart';
+import 'package:pharmaconnect/screens/customer/order_history_screen.dart';
+import 'package:pharmaconnect/screens/customer/order_detail_screen.dart';
 import 'package:pharmaconnect/screens/pharmacy/pharmacy_dashboard_screen.dart';
 import 'package:pharmaconnect/screens/delivery/delivery_dashboard_screen.dart';
 import 'package:pharmaconnect/screens/admin/admin_dashboard_screen.dart';
@@ -83,6 +91,53 @@ class AppRouter {
             ),
           ],
         ),
+        // Customer shopping routes
+        GoRoute(
+          path: '/customer/browse-pharmacies',
+          name: 'browsePharmacies',
+          builder: (context, state) => const BrowsePharmaciesScreen(),
+        ),
+        GoRoute(
+          path: '/customer/pharmacy/:id',
+          name: 'pharmacyDetail',
+          builder: (context, state) => PharmacyDetailScreen(
+            pharmacyId: state.pathParameters['id']!,
+          ),
+        ),
+        GoRoute(
+          path: '/customer/product-search',
+          name: 'productSearch',
+          builder: (context, state) => const ProductSearchScreen(),
+        ),
+        GoRoute(
+          path: '/customer/product/:id',
+          name: 'productDetail',
+          builder: (context, state) => ProductDetailScreen(
+            productId: state.pathParameters['id']!,
+          ),
+        ),
+        GoRoute(
+          path: '/customer/cart',
+          name: 'cart',
+          builder: (context, state) => const CartScreen(),
+        ),
+        GoRoute(
+          path: '/customer/checkout',
+          name: 'checkout',
+          builder: (context, state) => const CheckoutScreen(),
+        ),
+        GoRoute(
+          path: '/customer/orders',
+          name: 'orderHistory',
+          builder: (context, state) => const OrderHistoryScreen(),
+        ),
+        GoRoute(
+          path: '/customer/orders/:id',
+          name: 'orderDetail',
+          builder: (context, state) => OrderDetailScreen(
+            orderId: state.pathParameters['id']!,
+          ),
+        ),
       ],
       errorBuilder: (context, state) => Scaffold(
         appBar: AppBar(title: const Text('Error')),
@@ -115,4 +170,9 @@ class RouteNames {
   static const String deliveryDashboard = '/dashboard/delivery';
   static const String adminDashboard = '/dashboard/admin';
   static const String forgotPassword = '/forgot-password';
+  static const String browsePharmacies = '/customer/browse-pharmacies';
+  static const String productSearch = '/customer/product-search';
+  static const String cart = '/customer/cart';
+  static const String checkout = '/customer/checkout';
+  static const String orderHistory = '/customer/orders';
 }

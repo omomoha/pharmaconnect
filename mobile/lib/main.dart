@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:pharmaconnect/app.dart';
 import 'package:pharmaconnect/config/constants.dart';
 import 'package:pharmaconnect/providers/auth_provider.dart';
+import 'package:pharmaconnect/providers/cart_provider.dart';
 import 'package:pharmaconnect/services/api_service.dart';
 import 'package:pharmaconnect/services/auth_service.dart';
 import 'package:provider/provider.dart';
@@ -25,6 +26,9 @@ void main() async {
         Provider<ApiService>(create: (_) => apiService),
         ChangeNotifierProvider(
           create: (_) => AuthProvider(authService: authService),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => CartProvider(),
         ),
       ],
       child: const App(),
