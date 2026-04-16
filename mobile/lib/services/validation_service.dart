@@ -132,7 +132,7 @@ class ValidationService {
     sanitized = sanitized.replaceAll(RegExp(r'<[^>]*>'), '');
 
     // Remove potentially dangerous special sequences
-    sanitized = sanitized.replaceAll(RegExp(r'[<>&"\'`]'), '');
+    sanitized = sanitized.replaceAll(RegExp(r"""[<>&"'`]"""), '');
 
     return sanitized;
   }
