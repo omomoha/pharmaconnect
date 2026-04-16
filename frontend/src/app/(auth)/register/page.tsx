@@ -228,7 +228,7 @@ function RegisterContent() {
               <span className="font-medium">Also register on MalPay</span>
               <br />
               <span className="text-gray-500 text-xs">
-                Get a free MalPay wallet for easy payments. We&apos;ll use the same email and phone number. You&apos;ll receive an email to set your MalPay password.
+                Get a free MalPay account for easy payments. We&apos;ll use the same email and phone number. You&apos;ll receive an email to set your MalPay password.
               </span>
             </label>
           </div>
