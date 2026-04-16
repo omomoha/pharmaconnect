@@ -61,4 +61,68 @@ const logger = winston.createLogger({
   transports,
 });
 
+/**
+ * Sanitize sensitive data from objects before logging
+ * Masks:
+ *   - Email addresses: ab***@domain.com
+ *   - Phone numbers: +234***1234
+ *   - Payment references: first 4 chars + ***
+ *
+ * @param obj - Object or value to sanitize
+ * @returns Sanitized copy of the object
+ */
+export function sanitizeLogs(obj: any): any {
+  if (obj === null || obj === undefined) {
+    return obj;
+  }
+
+  if (typeof obj === "string") {
+    // Email pattern
+    if (obj.includes("@")) {
+      return obj.replace(/([a-zA-Z0-9])[a-zA-Z0-9]*([a-zA-Z0-9])@/g, "$1***$2@");
+    }
+    // Phone pattern (starts with + or has 10+ digits)
+    if (obj.match(/^\+[\d\s\-()]+$/) || obj.match(/\d{10,}/)) {
+      const visible = obj.substring(0, Math.max(4, obj.length - 4));
+      return visible + "***" + obj.substring(obj.length - 4);
+    }
+    // Payment reference pattern (common prefixes: ref_, txn_, pid_)
+    if (obj.match(/^(ref_|txn_|pid_|pref_)[a-zA-Z0-9]+$/i)) {
+      return obj.substring(0, 4) + "***";
+    }
+    return obj;
+  }
+
+  if (typeof obj === "object") {
+    if (Array.isArray(obj)) {
+      return obj.map((item) => sanitizeLogs(item));
+    }
+
+    const sanitized: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      // Common sensitive field names
+      const lowerKey = key.toLowerCase();
+      if (
+        lowerKey.includes("email") ||
+        lowerKey.includes("phone") ||
+        lowerKey.includes("password") ||
+        lowerKey.includes("token") ||
+        lowerKey.includes("secret") ||
+        lowerKey.includes("key") ||
+        lowerKey.includes("credential") ||
+        lowerKey.includes("authorization") ||
+        lowerKey.includes("payment") ||
+        lowerKey.includes("reference")
+      ) {
+        sanitized[key] = sanitizeLogs(value);
+      } else {
+        sanitized[key] = typeof value === "object" ? sanitizeLogs(value) : value;
+      }
+    }
+    return sanitized;
+  }
+
+  return obj;
+}
+
 export default logger;

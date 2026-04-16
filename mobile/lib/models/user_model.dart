@@ -62,10 +62,17 @@ class UserModel {
   }
 
   factory UserModel.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
-    final data = doc.data()!;
+    final data = doc.data() ?? {};
+
+    // Validate required fields
+    final email = data['email'] as String?;
+    if (email == null || email.isEmpty) {
+      throw Exception('UserModel.fromFirestore: email is required');
+    }
+
     return UserModel(
       id: doc.id,
-      email: data['email'] as String,
+      email: email,
       displayName: data['displayName'] as String?,
       phoneNumber: data['phoneNumber'] as String?,
       role: UserRole.fromString(data['role'] as String? ?? 'customer'),

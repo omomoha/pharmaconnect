@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { AuthController } from "./auth.controller.js";
+import { GDPRController } from "./gdpr.controller.js";
 import { authenticate } from "../../middleware/authenticate.js";
 import { asyncHandler } from "../../middleware/errorHandler.js";
 import { strictRateLimiter, authRateLimiter } from "../../middleware/rateLimiter.js";
@@ -31,6 +32,25 @@ router.put(
   authenticate,
   authRateLimiter,
   asyncHandler((req, res) => AuthController.updateProfile(req, res))
+);
+
+/**
+ * GDPR Routes
+ */
+
+// DELETE /api/v1/auth/me - Delete account (soft delete + anonymize PII)
+router.delete(
+  "/me",
+  authenticate,
+  strictRateLimiter,
+  asyncHandler((req, res) => GDPRController.deleteAccount(req, res))
+);
+
+// GET /api/v1/auth/me/export - Export user data as JSON (rate limited: 1 per hour)
+router.get(
+  "/me/export",
+  authenticate,
+  asyncHandler((req, res) => GDPRController.exportData(req, res))
 );
 
 export default router;

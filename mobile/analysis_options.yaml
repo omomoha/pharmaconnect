@@ -18,10 +18,13 @@ linter:
     - literal_only_boolean_expressions
     - no_adjacent_strings_in_list
     - no_duplicate_case_values
+    - prefer_const_constructors
+    - prefer_const_literals_to_create_immutables
     - prefer_void_to_null
     - throw_in_finally
     - unnecessary_statements
     - unrelated_type_equality_checks
+    - unused_import
     - valid_regexps
 
 analyzer:
@@ -32,3 +35,4 @@ analyzer:
     missing_required_param: error
     missing_return: error
     todo: ignore
+    unused_import: warning

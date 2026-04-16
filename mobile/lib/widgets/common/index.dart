@@ -11,3 +11,4 @@ export 'error_widget.dart';
 export 'app_badge.dart';
 export 'search_bar.dart';
 export 'section_header.dart';
+export 'offline_banner.dart';

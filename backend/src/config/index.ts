@@ -33,19 +33,28 @@ const envSchema = z.object({
   // JWT — REQUIRED in production (no insecure default)
   JWT_SECRET: z.string().refine(
     (val) => {
-      if (process.env.NODE_ENV === "production" && val === "your-jwt-secret-key-change-in-production") {
-        return false;
+      if (process.env.NODE_ENV === "production") {
+        // In production, reject if unset, empty, or using dangerous defaults
+        if (!val || val === "dev-only-jwt-secret-not-for-production" || val === "your-jwt-secret-key-change-in-production") {
+          return false;
+        }
       }
       return true;
     },
-    { message: "JWT_SECRET must be set to a secure value in production" }
+    { message: "JWT_SECRET must be set to a secure value in production and cannot use default values" }
   ).default("dev-only-jwt-secret-not-for-production"),
 
   // Logging
   LOG_LEVEL: z.enum(["error", "warn", "info", "debug"]).default("info"),
   LOG_FILE_PATH: z.string().default("./logs"),
 
-  // CORS
+  // CORS — Explicit origins only, no wildcards
+  // Allowed origins:
+  //   - http://localhost:3000 (local dev - customer frontend)
+  //   - http://localhost:3001 (local dev - admin frontend)
+  //   - https://pharmaconnect-frontend-pi.vercel.app (production frontend)
+  //   - https://pharmaconnect-frontend-git-main-omomohas-projects.vercel.app (staging frontend)
+  // Note: Socket.IO uses same origin list for WebSocket connections
   ALLOWED_ORIGINS: z.string().default("http://localhost:3000,http://localhost:3001,https://pharmaconnect-frontend-pi.vercel.app,https://pharmaconnect-frontend-git-main-omomohas-projects.vercel.app"),
 });
 

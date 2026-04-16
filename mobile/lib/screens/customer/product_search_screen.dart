@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:pharmaconnect/config/theme.dart';
 import 'package:pharmaconnect/config/constants.dart';
 import 'package:pharmaconnect/models/product_model.dart';
@@ -387,10 +389,17 @@ class _ProductSearchScreenState extends State<ProductSearchScreen> {
                   ? ClipRRect(
                       borderRadius: BorderRadius.circular(
                           UIConstants.borderRadiusMedium),
-                      child: Image.network(
-                        product.images.first,
+                      child: CachedNetworkImage(
+                        imageUrl: product.images.first,
                         fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) =>
+                        placeholder: (context, url) => Shimmer.fromColors(
+                          baseColor: AppColors.neutral200,
+                          highlightColor: AppColors.neutral100,
+                          child: Container(
+                            color: AppColors.neutral200,
+                          ),
+                        ),
+                        errorWidget: (context, url, error) =>
                             const Icon(
                           Icons.medication_outlined,
                           color: AppColors.secondary600,

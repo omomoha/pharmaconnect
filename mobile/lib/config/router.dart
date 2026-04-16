@@ -1,5 +1,31 @@
+/// Deep Link Configuration
+/// ═══════════════════════════════════════════════════════════════
+/// The app supports the following deep link patterns:
+///
+/// - pharmaconnect://orders/:orderId
+///   Navigate directly to an order detail screen
+///   Example: pharmaconnect://orders/ORDER_ID_123
+///
+/// - pharmaconnect://chat/:conversationId
+///   Open a specific conversation/chat thread
+///   Example: pharmaconnect://chat/CONV_ID_456
+///
+/// - pharmaconnect://notifications
+///   Open the notifications screen
+///   Example: pharmaconnect://notifications
+///
+/// - pharmaconnect://delivery/:assignmentId
+///   View delivery tracking for an assignment
+///   Example: pharmaconnect://delivery/ASSIGN_ID_789
+///
+/// Implementation:
+/// - Android: See android/app/src/main/AndroidManifest.xml (intent-filter)
+/// - iOS: See ios/Runner/Info.plist (CFBundleURLTypes)
+/// ═══════════════════════════════════════════════════════════════
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pharmaconnect/config/environment.dart';
 import 'package:pharmaconnect/models/product_model.dart';
 import 'package:pharmaconnect/providers/auth_provider.dart';
 import 'package:pharmaconnect/screens/auth/login_screen.dart';
@@ -36,7 +62,7 @@ class AppRouter {
   static GoRouter createRouter(AuthProvider authProvider) {
     return GoRouter(
       initialLocation: '/splash',
-      debugLogDiagnostics: true,
+      debugLogDiagnostics: EnvironmentConfig.enableLogging,
       redirect: (context, state) {
         final isAuthenticated = authProvider.isAuthenticated;
         final isSplash = state.matchedLocation == '/splash';

@@ -1,6 +1,11 @@
 export default function RootLoading() {
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center">
+    <div
+      className="min-h-screen bg-white flex items-center justify-center"
+      role="status"
+      aria-busy="true"
+      aria-label="Loading..."
+    >
       <div className="text-center space-y-4">
         {/* Spinner */}
         <div className="flex justify-center">

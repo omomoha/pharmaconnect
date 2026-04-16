@@ -15,7 +15,7 @@ export default function PrivacyPage() {
               Privacy <span className="text-gradient">Policy</span>
             </h1>
             <p className="text-lg text-gray-600">
-              Last updated: March 31, 2026
+              Last updated: April 16, 2026
             </p>
           </div>
         </div>
@@ -69,28 +69,35 @@ export default function PrivacyPage() {
               </div>
 
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">7. Data Retention</h2>
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">7. AI Moderation of Chat Messages</h2>
                 <p className="text-gray-600 leading-relaxed">
-                  We retain your personal information for as long as your account is active or as needed to provide services. We may retain certain information for legal compliance, dispute resolution, or enforcement of our agreements. You may request deletion of your account and associated data at any time.
+                  PharmaConnect employs AI-powered moderation systems to monitor chat messages between customers, pharmacies, and delivery providers. This includes automated keyword matching, natural language processing, and context analysis to detect and flag potentially prohibited content, such as requests for prescription medications or harmful substances. Chat messages flagged by our AI system are reviewed by human moderators and administrators. This automated moderation is conducted to ensure platform safety and legal compliance. You consent to this moderation when using our chat services.
                 </p>
               </div>
 
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">8. Children&apos;s Privacy</h2>
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">8. Data Deletion and GDPR Rights</h2>
+                <p className="text-gray-600 leading-relaxed">
+                  You have the right to request deletion of your personal data, subject to legal and operational requirements. When you request account deletion, we will delete your profile information, messages, and transaction history within 30 days, except where we are required by law to retain certain information for tax, regulatory, or dispute resolution purposes. To exercise your right to be forgotten or to request a copy of your data, please contact us at privacy@pharmaconnect.com with your request and sufficient identification information.
+                </p>
+              </div>
+
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">9. Children&apos;s Privacy</h2>
                 <p className="text-gray-600 leading-relaxed">
                   PharmaConnect is not intended for use by individuals under the age of 18. We do not knowingly collect personal information from children. If we become aware that a child has provided us with personal information, we will take steps to delete such information.
                 </p>
               </div>
 
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">9. Changes to This Policy</h2>
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">10. Changes to This Policy</h2>
                 <p className="text-gray-600 leading-relaxed">
                   We may update this Privacy Policy from time to time. We will notify you of any material changes by posting the new policy on this page and updating the &quot;Last updated&quot; date. Your continued use of the platform after changes constitutes acceptance of the updated policy.
                 </p>
               </div>
 
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">10. Contact Us</h2>
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">11. Contact Us</h2>
                 <p className="text-gray-600 leading-relaxed">
                   If you have questions about this Privacy Policy, please contact us at{' '}
                   <a href="mailto:privacy@pharmaconnect.com" className="text-primary-600 hover:text-primary-700">

@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:pharmaconnect/config/constants.dart';
 import 'api_exception.dart';
@@ -8,6 +10,9 @@ import 'api_exception.dart';
 class ApiService {
   final http.Client httpClient;
   final FirebaseAuth firebaseAuth;
+
+  static const int _maxRetries = 3;
+  static const int _initialBackoffMs = 2000;
 
   ApiService({
     http.Client? httpClient,
@@ -46,26 +51,89 @@ class ApiService {
     return headers;
   }
 
+  /// Retry a request with exponential backoff
+  /// Only retries on network errors and specific status codes (5xx, 401 on first attempt)
+  Future<dynamic> _retryRequest<T>(
+    Future<T> Function() requestFn, {
+    bool is401Retryable = true,
+  }) async {
+    int attempt = 0;
+
+    while (attempt < _maxRetries) {
+      try {
+        return await requestFn();
+      } on ApiException catch (e) {
+        attempt++;
+
+        // Retry on 401 once to refresh token
+        if (e.statusCode == 401 && is401Retryable && attempt == 1) {
+          try {
+            final user = firebaseAuth.currentUser;
+            if (user != null) {
+              await user.getIdToken(forceRefresh: true);
+              continue; // Retry the request
+            }
+          } catch (refreshError) {
+            if (kDebugMode) {
+              print('Token refresh failed: $refreshError');
+            }
+          }
+        }
+
+        // Retry on 5xx errors and timeouts
+        if (e.statusCode >= 500 || e.code == 'TIMEOUT') {
+          if (attempt < _maxRetries) {
+            // Exponential backoff with jitter
+            final backoffMs =
+                _initialBackoffMs * (1 << (attempt - 1)) +
+                DateTime.now().millisecond % 1000;
+            await Future.delayed(Duration(milliseconds: backoffMs));
+            continue;
+          }
+        }
+
+        // Don't retry on 4xx (except 401 which we handled above)
+        rethrow;
+      } on SocketException catch (e) {
+        // Network error - retry with backoff
+        attempt++;
+        if (attempt < _maxRetries) {
+          final backoffMs =
+              _initialBackoffMs * (1 << (attempt - 1)) +
+              DateTime.now().millisecond % 1000;
+          await Future.delayed(Duration(milliseconds: backoffMs));
+          continue;
+        }
+        rethrow;
+      } catch (e) {
+        // Unexpected error - don't retry
+        rethrow;
+      }
+    }
+
+    // Should not reach here
+    throw ApiException.network('Max retries exceeded');
+  }
+
   Future<dynamic> get(
     String endpoint, {
     Map<String, String>? queryParams,
   }) async {
-    try {
-      final url = Uri.parse('${AppConstants.baseApiUrl}$endpoint')
-          .replace(queryParameters: queryParams);
-      final headers = await _getHeaders();
+    return _retryRequest(
+      () async {
+        final url = Uri.parse('${AppConstants.baseApiUrl}$endpoint')
+            .replace(queryParameters: queryParams);
+        final headers = await _getHeaders();
 
-      final response = await httpClient.get(url, headers: headers).timeout(
-            AppConstants.apiTimeout,
-            onTimeout: () => throw ApiException.timeout(),
-          );
+        final response = await httpClient.get(url, headers: headers).timeout(
+              AppConstants.apiTimeout,
+              onTimeout: () => throw ApiException.timeout(),
+            );
 
-      return _handleResponse(response);
-    } on ApiException {
-      rethrow;
-    } catch (e) {
-      throw ApiException.network(e);
-    }
+        return _handleResponse(response);
+      },
+      is401Retryable: true,
+    );
   }
 
   Future<dynamic> post(
@@ -73,28 +141,27 @@ class ApiService {
     required Map<String, dynamic> body,
     Map<String, String>? queryParams,
   }) async {
-    try {
-      final url = Uri.parse('${AppConstants.baseApiUrl}$endpoint')
-          .replace(queryParameters: queryParams);
-      final headers = await _getHeaders();
+    return _retryRequest(
+      () async {
+        final url = Uri.parse('${AppConstants.baseApiUrl}$endpoint')
+            .replace(queryParameters: queryParams);
+        final headers = await _getHeaders();
 
-      final response = await httpClient
-          .post(
-            url,
-            headers: headers,
-            body: jsonEncode(body),
-          )
-          .timeout(
-            AppConstants.apiTimeout,
-            onTimeout: () => throw ApiException.timeout(),
-          );
+        final response = await httpClient
+            .post(
+              url,
+              headers: headers,
+              body: jsonEncode(body),
+            )
+            .timeout(
+              AppConstants.apiTimeout,
+              onTimeout: () => throw ApiException.timeout(),
+            );
 
-      return _handleResponse(response);
-    } on ApiException {
-      rethrow;
-    } catch (e) {
-      throw ApiException.network(e);
-    }
+        return _handleResponse(response);
+      },
+      is401Retryable: true,
+    );
   }
 
   Future<dynamic> put(
@@ -102,28 +169,27 @@ class ApiService {
     required Map<String, dynamic> body,
     Map<String, String>? queryParams,
   }) async {
-    try {
-      final url = Uri.parse('${AppConstants.baseApiUrl}$endpoint')
-          .replace(queryParameters: queryParams);
-      final headers = await _getHeaders();
+    return _retryRequest(
+      () async {
+        final url = Uri.parse('${AppConstants.baseApiUrl}$endpoint')
+            .replace(queryParameters: queryParams);
+        final headers = await _getHeaders();
 
-      final response = await httpClient
-          .put(
-            url,
-            headers: headers,
-            body: jsonEncode(body),
-          )
-          .timeout(
-            AppConstants.apiTimeout,
-            onTimeout: () => throw ApiException.timeout(),
-          );
+        final response = await httpClient
+            .put(
+              url,
+              headers: headers,
+              body: jsonEncode(body),
+            )
+            .timeout(
+              AppConstants.apiTimeout,
+              onTimeout: () => throw ApiException.timeout(),
+            );
 
-      return _handleResponse(response);
-    } on ApiException {
-      rethrow;
-    } catch (e) {
-      throw ApiException.network(e);
-    }
+        return _handleResponse(response);
+      },
+      is401Retryable: true,
+    );
   }
 
   Future<dynamic> patch(
@@ -131,50 +197,48 @@ class ApiService {
     required Map<String, dynamic> body,
     Map<String, String>? queryParams,
   }) async {
-    try {
-      final url = Uri.parse('${AppConstants.baseApiUrl}$endpoint')
-          .replace(queryParameters: queryParams);
-      final headers = await _getHeaders();
+    return _retryRequest(
+      () async {
+        final url = Uri.parse('${AppConstants.baseApiUrl}$endpoint')
+            .replace(queryParameters: queryParams);
+        final headers = await _getHeaders();
 
-      final response = await httpClient
-          .patch(
-            url,
-            headers: headers,
-            body: jsonEncode(body),
-          )
-          .timeout(
-            AppConstants.apiTimeout,
-            onTimeout: () => throw ApiException.timeout(),
-          );
+        final response = await httpClient
+            .patch(
+              url,
+              headers: headers,
+              body: jsonEncode(body),
+            )
+            .timeout(
+              AppConstants.apiTimeout,
+              onTimeout: () => throw ApiException.timeout(),
+            );
 
-      return _handleResponse(response);
-    } on ApiException {
-      rethrow;
-    } catch (e) {
-      throw ApiException.network(e);
-    }
+        return _handleResponse(response);
+      },
+      is401Retryable: true,
+    );
   }
 
   Future<dynamic> delete(
     String endpoint, {
     Map<String, String>? queryParams,
   }) async {
-    try {
-      final url = Uri.parse('${AppConstants.baseApiUrl}$endpoint')
-          .replace(queryParameters: queryParams);
-      final headers = await _getHeaders();
+    return _retryRequest(
+      () async {
+        final url = Uri.parse('${AppConstants.baseApiUrl}$endpoint')
+            .replace(queryParameters: queryParams);
+        final headers = await _getHeaders();
 
-      final response = await httpClient.delete(url, headers: headers).timeout(
-            AppConstants.apiTimeout,
-            onTimeout: () => throw ApiException.timeout(),
-          );
+        final response = await httpClient.delete(url, headers: headers).timeout(
+              AppConstants.apiTimeout,
+              onTimeout: () => throw ApiException.timeout(),
+            );
 
-      return _handleResponse(response);
-    } on ApiException {
-      rethrow;
-    } catch (e) {
-      throw ApiException.network(e);
-    }
+        return _handleResponse(response);
+      },
+      is401Retryable: true,
+    );
   }
 
   dynamic _handleResponse(http.Response response) {

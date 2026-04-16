@@ -14,6 +14,7 @@ import {
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { apiClient } from '@/lib/api';
+import { setUser as setErrorUser } from '@/lib/error-tracking';
 import toast from 'react-hot-toast';
 
 export interface UserProfile {
@@ -151,6 +152,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(profileData);
       }
 
+      // Set user context for error tracking
+      setErrorUser(firebaseUser.uid, email);
+
       toast.success('Signed in successfully!');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to sign in';
@@ -168,6 +172,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await firebaseSignOut(auth);
       setUser(null);
       setProfile(null);
+
+      // Clear user context from error tracking
+      setErrorUser(null);
+
       toast.success('Signed out successfully!');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to sign out';

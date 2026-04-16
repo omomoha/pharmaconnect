@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:pharmaconnect/config/theme.dart';
 import 'package:pharmaconnect/config/constants.dart';
 import 'package:pharmaconnect/models/pharmacy_model.dart';
@@ -219,10 +221,17 @@ class _BrowsePharmaciesScreenState extends State<BrowsePharmaciesScreen> {
                 ? ClipRRect(
                     borderRadius: BorderRadius.circular(
                         UIConstants.borderRadiusMedium),
-                    child: Image.network(
-                      pharmacy.logoUrl!,
+                    child: CachedNetworkImage(
+                      imageUrl: pharmacy.logoUrl!,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) =>
+                      placeholder: (context, url) => Shimmer.fromColors(
+                        baseColor: AppColors.neutral200,
+                        highlightColor: AppColors.neutral100,
+                        child: Container(
+                          color: AppColors.neutral200,
+                        ),
+                      ),
+                      errorWidget: (context, url, error) =>
                           const Icon(
                         Icons.local_pharmacy,
                         color: AppColors.primary600,

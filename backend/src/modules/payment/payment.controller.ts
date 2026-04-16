@@ -204,6 +204,51 @@ export class PaymentController {
         return;
       }
 
+      // Validate order is eligible for refund
+      if (order.paymentStatus === PaymentStatus.REFUNDED) {
+        res.status(400).json(
+          apiResponse(false, undefined, {
+            code: "ALREADY_REFUNDED",
+            message: "Order has already been refunded",
+          })
+        );
+        return;
+      }
+
+      // Check if order has been delivered beyond refund window
+      // (Assuming 24-hour refund window after delivery or order creation)
+      const refundWindowMs = 24 * 60 * 60 * 1000; // 24 hours
+      const now = Date.now();
+      const createdAt = order.createdAt instanceof Date
+        ? order.createdAt.getTime()
+        : new Date(order.createdAt).getTime();
+
+      // If order is delivered, check delivery time
+      if (order.status === "DELIVERED" && order.deliveredAt) {
+        const deliveredAt = order.deliveredAt instanceof Date
+          ? order.deliveredAt.getTime()
+          : new Date(order.deliveredAt).getTime();
+
+        if (now - deliveredAt > refundWindowMs) {
+          res.status(400).json(
+            apiResponse(false, undefined, {
+              code: "REFUND_WINDOW_EXPIRED",
+              message: "Refund window has expired (24 hours after delivery)",
+            })
+          );
+          return;
+        }
+      } else if (now - createdAt > refundWindowMs * 2) {
+        // If not delivered, allow refund for 48 hours from creation
+        res.status(400).json(
+          apiResponse(false, undefined, {
+            code: "REFUND_WINDOW_EXPIRED",
+            message: "Refund window has expired (48 hours from order creation)",
+          })
+        );
+        return;
+      }
+
       const refund = await PaymentService.refundPayment(
         order.paymentReference,
         validated.reason

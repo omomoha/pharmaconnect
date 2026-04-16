@@ -1,6 +1,7 @@
 import { getFirestore } from "../../config/firebase.js";
 import logger from "../../utils/logger.js";
 import { sanitizeString } from "../../utils/helpers.js";
+import xss from "xss";
 import {
   Conversation,
   Message,
@@ -22,6 +23,7 @@ import { classifyMessage } from "../../services/moderation/nlp-classifier.js";
 export class ChatService {
   /**
    * Create conversation
+   * Includes a system message disclosing AI moderation of messages
    */
   static async createConversation(data: {
     type: ConversationType;
@@ -50,7 +52,26 @@ export class ChatService {
         .doc(id)
         .set(conversation);
 
-      logger.info(`Conversation created: ${id}`);
+      // Create system message to disclose AI moderation
+      const systemMessageId = uuid();
+      const systemMessage: Message = {
+        id: systemMessageId,
+        conversationId: id,
+        senderId: "system",
+        senderRole: UserRole.PLATFORM_ADMIN, // System messages sent by platform admin
+        type: MessageType.SYSTEM,
+        content: "Messages in this conversation are monitored for safety compliance.",
+        flagged: false,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      await db
+        .collection(FIRESTORE_COLLECTIONS.MESSAGES)
+        .doc(systemMessageId)
+        .set(systemMessage);
+
+      logger.info(`Conversation created: ${id} with AI moderation disclosure`);
       return conversation;
     } catch (error) {
       logger.error("Failed to create conversation:", error);
@@ -119,8 +140,11 @@ export class ChatService {
       const messageId = uuid();
       const now = new Date();
 
-      // Sanitize content
-      const sanitizedContent = sanitizeString(data.content);
+      // Sanitize content — remove HTML/JavaScript to prevent XSS
+      const sanitizedContent = xss(sanitizeString(data.content), {
+        whiteList: {}, // No HTML tags allowed in chat messages
+        stripIgnoredTag: true,
+      });
 
       // Moderate message
       const moderation = await this.moderateMessage({

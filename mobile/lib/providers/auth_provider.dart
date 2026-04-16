@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:pharmaconnect/models/user_model.dart';
 import 'package:pharmaconnect/services/auth_service.dart';
+import 'package:pharmaconnect/services/validation_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthService authService;
@@ -42,10 +43,23 @@ class AuthProvider extends ChangeNotifier {
       _error = null;
       notifyListeners();
     } catch (e) {
-      _error = 'Failed to load user profile: $e';
+      _error = _sanitizeErrorMessage(e);
       _user = null;
       notifyListeners();
     }
+  }
+
+  /// Sanitize error messages for user display
+  String _sanitizeErrorMessage(dynamic error) {
+    if (error is Exception) {
+      final message = error.toString();
+      // Remove "Exception: " prefix if present
+      if (message.startsWith('Exception: ')) {
+        return message.substring(10);
+      }
+      return message;
+    }
+    return 'An error occurred. Please try again.';
   }
 
   Future<void> login({
@@ -63,7 +77,7 @@ class AuthProvider extends ChangeNotifier {
       );
       await _loadUserProfile();
     } catch (e) {
-      _error = e.toString();
+      _error = _sanitizeErrorMessage(e);
       _user = null;
       notifyListeners();
       rethrow;
@@ -94,7 +108,7 @@ class AuthProvider extends ChangeNotifier {
       );
       await _loadUserProfile();
     } catch (e) {
-      _error = e.toString();
+      _error = _sanitizeErrorMessage(e);
       _user = null;
       notifyListeners();
       rethrow;
@@ -162,7 +176,7 @@ class AuthProvider extends ChangeNotifier {
       );
       await _loadUserProfile();
     } catch (e) {
-      _error = e.toString();
+      _error = _sanitizeErrorMessage(e);
       notifyListeners();
       rethrow;
     } finally {
@@ -181,7 +195,7 @@ class AuthProvider extends ChangeNotifier {
       _error = null;
       _verificationId = null;
     } catch (e) {
-      _error = e.toString();
+      _error = _sanitizeErrorMessage(e);
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -218,7 +232,7 @@ class AuthProvider extends ChangeNotifier {
         photoUrl: photoUrl ?? _user!.photoUrl,
       );
     } catch (e) {
-      _error = e.toString();
+      _error = _sanitizeErrorMessage(e);
       rethrow;
     } finally {
       _isLoading = false;
@@ -234,7 +248,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       await authService.sendPasswordResetEmail(email);
     } catch (e) {
-      _error = e.toString();
+      _error = _sanitizeErrorMessage(e);
       rethrow;
     } finally {
       _isLoading = false;
@@ -256,7 +270,7 @@ class AuthProvider extends ChangeNotifier {
         newPassword: newPassword,
       );
     } catch (e) {
-      _error = e.toString();
+      _error = _sanitizeErrorMessage(e);
       rethrow;
     } finally {
       _isLoading = false;
@@ -282,7 +296,7 @@ class AuthProvider extends ChangeNotifier {
       await authService.deleteAccount(password);
       _user = null;
     } catch (e) {
-      _error = e.toString();
+      _error = _sanitizeErrorMessage(e);
       rethrow;
     } finally {
       _isLoading = false;

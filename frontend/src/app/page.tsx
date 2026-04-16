@@ -43,6 +43,31 @@ export default function HomePage() {
 
   return (
     <>
+      {/* Structured Data (JSON-LD) for SEO */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'Organization',
+            'name': 'PharmaConnect',
+            'url': 'https://pharmaconnect-frontend-pi.vercel.app',
+            'description': 'Online pharmacy marketplace for OTC medications',
+            'logo': 'https://pharmaconnect-frontend-pi.vercel.app/logo.png',
+            'sameAs': [
+              'https://www.facebook.com/pharmaconnect',
+              'https://www.twitter.com/pharmaconnect',
+              'https://www.instagram.com/pharmaconnect',
+            ],
+            'contactPoint': {
+              '@type': 'ContactPoint',
+              'telephone': '+234-700-000-0000',
+              'contactType': 'Customer Service',
+              'availableLanguage': ['en-NG'],
+            },
+          }),
+        }}
+      />
       <Navbar />
 
       {/* Hero Section */}

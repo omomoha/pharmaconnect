@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:pharmaconnect/config/theme.dart';
 import 'package:pharmaconnect/models/message_model.dart';
 import 'package:intl/intl.dart';
@@ -51,11 +53,20 @@ class ChatBubble extends StatelessWidget {
                       padding: const EdgeInsets.only(bottom: 6),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: Image.network(
-                          message.imageUrl!,
+                        child: CachedNetworkImage(
+                          imageUrl: message.imageUrl!,
                           width: 200,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
+                          placeholder: (context, url) => Shimmer.fromColors(
+                            baseColor: AppColors.neutral200,
+                            highlightColor: AppColors.neutral100,
+                            child: Container(
+                              width: 200,
+                              height: 100,
+                              color: AppColors.neutral200,
+                            ),
+                          ),
+                          errorWidget: (_, __, ___) => Container(
                             width: 200,
                             height: 100,
                             color: AppColors.neutral200,

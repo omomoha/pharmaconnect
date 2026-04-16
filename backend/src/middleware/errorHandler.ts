@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import logger from "../utils/logger.js";
+import logger, { sanitizeLogs } from "../utils/logger.js";
 
 export interface AppError extends Error {
   statusCode?: number;
@@ -10,6 +10,15 @@ export interface AppError extends Error {
 const isProduction = process.env.NODE_ENV === "production";
 
 /**
+ * Generate a unique error ID for tracking and support reference
+ */
+function generateErrorId(): string {
+  const timestamp = Date.now().toString(36);
+  const random = Math.random().toString(36).substring(2, 8);
+  return `ERR-${timestamp}-${random}`.toUpperCase();
+}
+
+/**
  * Global error handler middleware
  * Should be registered after all other middleware and routes
  *
@@ -17,7 +26,8 @@ const isProduction = process.env.NODE_ENV === "production";
  *   - 5xx errors return a generic message (no internal details leak)
  *   - 4xx errors return the specific message (client needs actionable info)
  *   - Stack traces and internal details are NEVER sent to the client
- *   - Full context is always logged server-side
+ *   - Full context is always logged server-side with error ID for correlation
+ *   - Error ID is returned to client for support reference
  */
 export const errorHandler = (
   error: AppError | Error,
@@ -29,10 +39,15 @@ export const errorHandler = (
   const code = (error as AppError).code || "INTERNAL_SERVER_ERROR";
   const message = error.message || "An unexpected error occurred";
   const details = (error as AppError).details;
+  const errorId = generateErrorId();
 
-  // Always log the full error server-side
+  // Always log the full error server-side with error ID for correlation
+  // Sanitize request body before logging to prevent leaking sensitive data
+  const sanitizedBody = sanitizeLogs(req.body);
+
   if (statusCode >= 500) {
     logger.error("Server error:", {
+      errorId,
       statusCode,
       code,
       message,
@@ -40,14 +55,17 @@ export const errorHandler = (
       url: req.url,
       method: req.method,
       ip: req.ip,
+      body: sanitizedBody,
     });
   } else {
     logger.warn("Client error:", {
+      errorId,
       statusCode,
       code,
       message,
       url: req.url,
       method: req.method,
+      body: sanitizedBody,
     });
   }
 
@@ -55,6 +73,7 @@ export const errorHandler = (
   const errorResponse: any = {
     success: false,
     error: {
+      errorId,
       code: isProduction && statusCode >= 500 ? "INTERNAL_SERVER_ERROR" : code,
       message:
         isProduction && statusCode >= 500

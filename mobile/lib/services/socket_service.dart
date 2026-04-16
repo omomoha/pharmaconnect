@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:pharmaconnect/config/constants.dart';
+import 'package:pharmaconnect/services/logging_service.dart';
 
 /// Socket event names — must match backend SOCKET_EVENTS constants
 class SocketEvents {
@@ -40,7 +42,8 @@ class SocketService extends ChangeNotifier {
   String? _currentUserId;
   Timer? _reconnectTimer;
   int _reconnectAttempts = 0;
-  static const int _maxReconnectAttempts = 5;
+  static const int _maxReconnectAttempts = 10;
+  final Random _random = Random();
 
   bool get isConnected => _isConnected;
   io.Socket? get socket => _socket;
@@ -52,7 +55,7 @@ class SocketService extends ChangeNotifier {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
-        debugPrint('SocketService: No authenticated user, skipping connect');
+        LoggingService.warning('No authenticated user, skipping connect', tag: 'SocketService');
         return;
       }
 
@@ -81,13 +84,13 @@ class SocketService extends ChangeNotifier {
       _setupListeners();
       _socket!.connect();
     } catch (e) {
-      debugPrint('SocketService: Connection error: $e');
+      LoggingService.error('Connection error', tag: 'SocketService', error: e);
     }
   }
 
   void _setupListeners() {
     _socket!.onConnect((_) {
-      debugPrint('SocketService: Connected');
+      LoggingService.info('Connected', tag: 'SocketService');
       _isConnected = true;
       _reconnectAttempts = 0;
       notifyListeners();
@@ -101,38 +104,49 @@ class SocketService extends ChangeNotifier {
     });
 
     _socket!.onDisconnect((_) {
-      debugPrint('SocketService: Disconnected');
+      LoggingService.info('Disconnected', tag: 'SocketService');
       _isConnected = false;
       notifyListeners();
     });
 
     _socket!.onConnectError((data) {
-      debugPrint('SocketService: Connection error: $data');
+      LoggingService.error('Connection error: $data', tag: 'SocketService');
       _isConnected = false;
       notifyListeners();
       _scheduleReconnect();
     });
 
     _socket!.on(SocketEvents.authSuccess, (data) {
-      debugPrint('SocketService: Auth success: $data');
+      LoggingService.info('Auth success: $data', tag: 'SocketService');
     });
 
     _socket!.on(SocketEvents.authError, (data) {
-      debugPrint('SocketService: Auth error: $data');
+      LoggingService.error('Auth error: $data', tag: 'SocketService');
       _isConnected = false;
       notifyListeners();
     });
 
     _socket!.on(SocketEvents.error, (data) {
-      debugPrint('SocketService: Error: $data');
+      LoggingService.error('Socket error: $data', tag: 'SocketService');
     });
   }
 
   void _scheduleReconnect() {
     if (_reconnectAttempts >= _maxReconnectAttempts) return;
     _reconnectTimer?.cancel();
+
+    // Exponential backoff with jitter: base delay increases exponentially, then add 0-1000ms jitter
+    final baseDelayMs = (1000 * pow(2, _reconnectAttempts)).toInt().clamp(1000, 60000);
+    final jitterMs = _random.nextInt(1001); // 0-1000ms
+    final totalDelayMs = baseDelayMs + jitterMs;
+
+    LoggingService.info(
+      'Scheduling reconnect attempt ${_reconnectAttempts + 1}/$_maxReconnectAttempts in ${totalDelayMs}ms',
+      tag: 'SocketService',
+    );
+
     _reconnectTimer = Timer(
-      Duration(seconds: 2 * (_reconnectAttempts + 1)),
+      Duration(milliseconds: totalDelayMs),
       () {
         _reconnectAttempts++;
         connect();

@@ -9,23 +9,59 @@ interface RateLimitOptions {
 }
 
 // ─── In-Memory Fallback Store ─────────────────────────────────────────────────
-// Used when Redis is unavailable. LRU-style cleanup prevents unbounded growth.
+// Used when Redis is unavailable. Periodic cleanup prevents unbounded memory growth.
 
 interface MemoryEntry {
   count: number;
   expiresAt: number;
 }
 
-const MEM_MAX_KEYS = 10_000;
+const MEM_MAX_KEYS = 5_000; // Reduced from 10k to prevent OOM
 const memoryStore = new Map<string, MemoryEntry>();
+let lastCleanupAt = Date.now();
+const CLEANUP_INTERVAL_MS = 60_000; // Run cleanup every 60 seconds
+
+/**
+ * Periodic cleanup of expired entries in memory store
+ * Runs every 60 seconds to prevent unbounded memory growth
+ */
+function cleanupExpiredEntries(): void {
+  const now = Date.now();
+  let deletedCount = 0;
+
+  for (const [k, v] of memoryStore) {
+    if (v.expiresAt <= now) {
+      memoryStore.delete(k);
+      deletedCount++;
+    }
+  }
+
+  if (deletedCount > 0) {
+    logger.debug(`Rate limiter: cleaned up ${deletedCount} expired entries, store size: ${memoryStore.size}`);
+  }
+}
 
 function memoryIncr(key: string, windowMs: number): number {
   const now = Date.now();
 
-  // Periodic cleanup: evict expired entries when store is large
+  // Periodic cleanup: every 60 seconds, iterate and remove expired entries
+  if (now - lastCleanupAt > CLEANUP_INTERVAL_MS) {
+    cleanupExpiredEntries();
+    lastCleanupAt = now;
+  }
+
+  // Additional emergency cleanup: evict expired entries when store exceeds max size
   if (memoryStore.size > MEM_MAX_KEYS) {
     for (const [k, v] of memoryStore) {
-      if (v.expiresAt <= now) memoryStore.delete(k);
+      if (v.expiresAt <= now) {
+        memoryStore.delete(k);
+      }
+    }
+    // If still over limit, log warning
+    if (memoryStore.size > MEM_MAX_KEYS) {
+      logger.warn(
+        `Rate limiter memory store approaching limit: ${memoryStore.size}/${MEM_MAX_KEYS} entries`
+      );
     }
   }
 
@@ -168,12 +204,13 @@ export const adminRateLimiter = createRateLimiter({
 });
 
 /**
- * Strict rate limiter: 10 requests per minute
+ * Strict rate limiter: 5 requests per minute
  * Used for sensitive operations like password reset, OTP requests
+ * NOTE: Future enhancement — implement exponential lockout to temporarily block accounts with repeated failed attempts
  */
 export const strictRateLimiter = createRateLimiter({
   windowMs: 60 * 1000, // 1 minute
-  maxRequests: 10,
+  maxRequests: 5,
   message: "Too many attempts, please try again later",
 });
 

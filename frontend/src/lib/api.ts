@@ -7,6 +7,20 @@ export interface FetchOptions extends RequestInit {
 }
 
 /**
+ * Generic API response type for type safety
+ * TODO: Consider creating more specific response types for different endpoints
+ */
+export interface ApiResponse<T = unknown> {
+  success: boolean;
+  data?: T;
+  error?: {
+    code: string;
+    message: string;
+    errorId?: string;
+  };
+}
+
+/**
  * Fetch with Firebase authentication token attached
  */
 export async function fetchWithAuth(
@@ -74,6 +88,7 @@ export async function get(url: string, options?: FetchOptions) {
 
 /**
  * POST request with auth
+ * TODO: Replace Record<string, any> with specific request body types
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function post(url: string, data?: Record<string, any>, options?: FetchOptions) {
@@ -99,6 +114,7 @@ export async function post(url: string, data?: Record<string, any>, options?: Fe
 
 /**
  * PUT request with auth
+ * TODO: Replace Record<string, any> with specific request body types
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function put(url: string, data?: Record<string, any>, options?: FetchOptions) {
@@ -124,6 +140,7 @@ export async function put(url: string, data?: Record<string, any>, options?: Fet
 
 /**
  * PATCH request with auth
+ * TODO: Replace Record<string, any> with specific request body types
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function patch(url: string, data?: Record<string, any>, options?: FetchOptions) {

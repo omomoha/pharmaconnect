@@ -16,9 +16,12 @@ import {
   asyncHandler,
 } from "./middleware/errorHandler.js";
 import { publicRateLimiter } from "./middleware/rateLimiter.js";
+import { secFetchValidator } from "./middleware/secFetchValidator.js";
 import { initializeChatSocket } from "./modules/chat/chat.socket.js";
 import { validateEncryptionConfig } from "./utils/encryption.js";
 import { initializeMonitoring, setupSentryErrorHandler } from "./config/monitoring.js";
+import { readFileSync } from "fs";
+import { join } from "path";
 
 // Import routes
 import authRoutes from "./modules/auth/auth.routes.js";
@@ -96,16 +99,32 @@ export const createApp = (): {
   // Rate limiting
   app.use(publicRateLimiter);
 
+  // Sec-Fetch-Site validation for CSRF protection (applied to all routes)
+  app.use(secFetchValidator);
+
   // ===== Routes =====
 
   // Health check
   app.get(
     "/health",
     asyncHandler(async (_req, res) => {
+      let version = "1.0.0";
+      try {
+        const packageJsonPath = join(process.cwd(), "package.json");
+        const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
+        version = packageJson.version || version;
+      } catch (_err) {
+        // Fallback to default version if file read fails
+      }
+
       res.json({
         success: true,
+        status: "healthy",
         message: "PharmaConnect Backend is healthy",
-        timestamp: new Date(),
+        timestamp: new Date().toISOString(),
+        version,
+        environment: config.NODE_ENV,
+        uptime: process.uptime(),
       });
     })
   );
@@ -150,11 +169,18 @@ export const startServer = async (): Promise<{
   io: SocketIOServer;
 }> => {
   try {
+    // Global unhandledRejection handler for async errors
+    process.on('unhandledRejection', (reason: unknown, promise: Promise<unknown>) => {
+      logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+      // In production, you might want to alert monitoring services
+      // For now, we just log it
+    });
+
     // Initialize monitoring (Sentry — noop if SENTRY_DSN not set)
     initializeMonitoring();
 
-    // Initialize Firebase Admin SDK
-    initializeFirebase();
+    // Initialize Firebase Admin SDK with retry logic
+    await initializeFirebase();
     logger.info("Firebase initialized");
 
     // Validate encryption configuration (fails fast in production if key missing)

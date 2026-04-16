@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:pharmaconnect/config/theme.dart';
 import 'package:pharmaconnect/config/constants.dart';
 import 'package:pharmaconnect/models/product_model.dart';
+import 'package:pharmaconnect/providers/cart_provider.dart';
 import 'package:pharmaconnect/services/api_service.dart';
 import 'package:pharmaconnect/services/product_service.dart';
 import 'package:pharmaconnect/widgets/common/index.dart';
+import 'package:provider/provider.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final String productId;
@@ -104,7 +108,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     icon: const Icon(Icons.favorite_outline,
                         color: AppColors.neutral900),
                     onPressed: () {
-                      // TODO: Implement favorite
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Favorites feature coming soon'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
                     },
                   ),
                 ],
@@ -164,10 +173,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           color: AppColors.secondary100,
           child: images.isNotEmpty
               ? ClipRRect(
-                  child: Image.network(
-                    images[_currentImageIndex],
+                  child: CachedNetworkImage(
+                    imageUrl: images[_currentImageIndex],
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => const Icon(
+                    placeholder: (context, url) => Shimmer.fromColors(
+                      baseColor: AppColors.neutral200,
+                      highlightColor: AppColors.neutral100,
+                      child: Container(
+                        color: AppColors.neutral200,
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => const Icon(
                       Icons.medication_outlined,
                       color: AppColors.secondary600,
                       size: 48,
@@ -214,10 +230,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(
                             UIConstants.borderRadiusSmall),
-                        child: Image.network(
-                          images[index],
+                        child: CachedNetworkImage(
+                          imageUrl: images[index],
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
+                          placeholder: (context, url) => Shimmer.fromColors(
+                            baseColor: AppColors.neutral200,
+                            highlightColor: AppColors.neutral100,
+                            child: Container(
+                              color: AppColors.neutral200,
+                            ),
+                          ),
+                          errorWidget: (context, url, error) =>
                               Container(
                             color: AppColors.secondary100,
                             child: const Icon(
@@ -576,7 +599,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             child: ElevatedButton(
               onPressed: product.inStock
                   ? () {
-                      // TODO: Implement add to cart
+                      // Add to cart via CartProvider
+                      context.read<CartProvider>().addToCart(
+                        product,
+                        quantity: _quantity,
+                      );
+
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(

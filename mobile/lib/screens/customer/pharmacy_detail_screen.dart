@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:pharmaconnect/config/theme.dart';
 import 'package:pharmaconnect/config/constants.dart';
 import 'package:pharmaconnect/models/pharmacy_model.dart';
@@ -107,7 +109,12 @@ class _PharmacyDetailScreenState extends State<PharmacyDetailScreen> {
                   IconButton(
                     icon: const Icon(Icons.call, color: AppColors.primary600),
                     onPressed: () {
-                      // TODO: Implement phone call
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Phone call feature coming soon'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
                     },
                   ),
                 ],
@@ -183,10 +190,17 @@ class _PharmacyDetailScreenState extends State<PharmacyDetailScreen> {
             color: AppColors.primary100,
           ),
           child: pharmacy.coverImageUrl != null
-              ? Image.network(
-                  pharmacy.coverImageUrl!,
+              ? CachedNetworkImage(
+                  imageUrl: pharmacy.coverImageUrl!,
                   fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => const Center(
+                  placeholder: (context, url) => Shimmer.fromColors(
+                    baseColor: AppColors.neutral200,
+                    highlightColor: AppColors.neutral100,
+                    child: Container(
+                      color: AppColors.neutral200,
+                    ),
+                  ),
+                  errorWidget: (context, url, error) => const Center(
                     child: Icon(
                       Icons.local_pharmacy,
                       color: AppColors.primary600,
@@ -226,10 +240,17 @@ class _PharmacyDetailScreenState extends State<PharmacyDetailScreen> {
                         ? ClipRRect(
                             borderRadius: BorderRadius.circular(
                                 UIConstants.borderRadiusMedium),
-                            child: Image.network(
-                              pharmacy.logoUrl!,
+                            child: CachedNetworkImage(
+                              imageUrl: pharmacy.logoUrl!,
                               fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) =>
+                              placeholder: (context, url) => Shimmer.fromColors(
+                                baseColor: AppColors.neutral200,
+                                highlightColor: AppColors.neutral100,
+                                child: Container(
+                                  color: AppColors.neutral200,
+                                ),
+                              ),
+                              errorWidget: (context, url, error) =>
                                   const Icon(
                                 Icons.local_pharmacy,
                                 color: AppColors.primary600,
@@ -466,10 +487,17 @@ class _PharmacyDetailScreenState extends State<PharmacyDetailScreen> {
                   ? ClipRRect(
                       borderRadius: BorderRadius.circular(
                           UIConstants.borderRadiusMedium),
-                      child: Image.network(
-                        product.images.first,
+                      child: CachedNetworkImage(
+                        imageUrl: product.images.first,
                         fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) =>
+                        placeholder: (context, url) => Shimmer.fromColors(
+                          baseColor: AppColors.neutral200,
+                          highlightColor: AppColors.neutral100,
+                          child: Container(
+                            color: AppColors.neutral200,
+                          ),
+                        ),
+                        errorWidget: (context, url, error) =>
                             const Icon(
                           Icons.medication_outlined,
                           color: AppColors.secondary600,

@@ -44,9 +44,30 @@ android {
         versionName = flutterVersionName
     }
 
+    // TODO: Production Signing Configuration
+    // For release builds, replace signingConfigs.debug with your production signing config
+    // Example:
+    //
+    // signingConfigs {
+    //   release {
+    //     storeFile file("path/to/keystore.jks")
+    //     storePassword System.getenv("KEYSTORE_PASSWORD")
+    //     keyAlias System.getenv("KEY_ALIAS")
+    //     keyPassword System.getenv("KEY_PASSWORD")
+    //   }
+    // }
+
     buildTypes {
         release {
+            // SECURITY WARNING: Using debug signing config in release is insecure
+            // TODO: Switch to production signing config for app store releases
             signingConfig = signingConfigs.debug
+
+            // Enable code shrinking and ProGuard
+            minifyEnabled true
+            shrinkResources true
+
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 }

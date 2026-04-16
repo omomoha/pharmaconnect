@@ -21,7 +21,18 @@ class ChatService {
         if (orderId != null) 'orderId': orderId,
       },
     );
-    return ConversationModel.fromJson(response['data'] ?? response);
+
+    // Validate response structure
+    if (response is! Map<String, dynamic>) {
+      throw Exception('Invalid response structure for conversation creation');
+    }
+
+    final data = response['data'] ?? response;
+    if (data is! Map<String, dynamic>) {
+      throw Exception('Invalid conversation data format');
+    }
+
+    return ConversationModel.fromJson(data);
   }
 
   /// Get all conversations for the current user
@@ -37,13 +48,34 @@ class ChatService {
   /// Get a single conversation with its messages
   Future<Map<String, dynamic>> getConversation(String conversationId) async {
     final response = await _api.get('/chat/conversations/$conversationId');
-    final data = response['data'] ?? response;
 
-    final conversation = ConversationModel.fromJson(data['conversation'] ?? data);
-    final messages = (data['messages'] as List?)
-            ?.map((m) => MessageModel.fromJson(m))
-            .toList() ??
-        [];
+    // Validate response structure
+    if (response is! Map<String, dynamic>) {
+      throw Exception('Invalid response structure for conversation');
+    }
+
+    final data = response['data'] ?? response;
+    if (data is! Map<String, dynamic>) {
+      throw Exception('Invalid conversation data format');
+    }
+
+    final conversationData = data['conversation'] ?? data;
+    if (conversationData is! Map<String, dynamic>) {
+      throw Exception('Invalid conversation object format');
+    }
+
+    final conversation = ConversationModel.fromJson(conversationData);
+
+    // Parse messages safely
+    final messages = <MessageModel>[];
+    final messagesData = data['messages'];
+    if (messagesData is List) {
+      for (final m in messagesData) {
+        if (m is Map<String, dynamic>) {
+          messages.add(MessageModel.fromJson(m));
+        }
+      }
+    }
 
     return {
       'conversation': conversation,
@@ -64,7 +96,18 @@ class ChatService {
         if (imageUrl != null) 'imageUrl': imageUrl,
       },
     );
-    return MessageModel.fromJson(response['data'] ?? response);
+
+    // Validate response structure
+    if (response is! Map<String, dynamic>) {
+      throw Exception('Invalid response structure for message');
+    }
+
+    final data = response['data'] ?? response;
+    if (data is! Map<String, dynamic>) {
+      throw Exception('Invalid message data format');
+    }
+
+    return MessageModel.fromJson(data);
   }
 
   /// Mark a message as read

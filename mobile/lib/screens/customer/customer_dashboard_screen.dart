@@ -954,9 +954,12 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
                   fontWeight: FontWeight.w700,
                 ),
             actions: [
-              IconButton(
-                icon: const Icon(Icons.notifications_outlined),
-                onPressed: () => context.push('/notifications'),
+              Tooltip(
+                message: 'View notifications',
+                child: IconButton(
+                  icon: const Icon(Icons.notifications_outlined),
+                  onPressed: () => context.push('/notifications'),
+                ),
               ),
             ],
           ),

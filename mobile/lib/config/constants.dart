@@ -1,11 +1,15 @@
+import 'package:pharmaconnect/config/environment.dart';
+
 class AppConstants {
   // App Info
   static const String appName = 'PharmaConnect';
   static const String appVersion = '1.0.0';
 
   // API Configuration
-  static const String baseApiUrl =
-      'https://us-central1-marketplace-50f56.cloudfunctions.net/api/api/v1';
+  static String get baseApiUrl => EnvironmentConfig.apiUrl;
+
+  // Production check
+  static bool get isProduction => EnvironmentConfig.environment == Environment.production;
 
   // Firebase Configuration
   static const String firebaseProjectId = 'marketplace-50f56';

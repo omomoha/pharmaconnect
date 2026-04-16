@@ -11,6 +11,36 @@ interface SocketUser {
   email?: string;
 }
 
+// Rate limiting for socket message events
+// Track message count per socket to prevent spam
+const socketMessageTracker = new Map<string, { count: number; resetAt: number }>();
+const MESSAGE_RATE_LIMIT = 30; // messages per minute
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+
+/**
+ * Check if socket has exceeded message rate limit
+ */
+function isRateLimited(socketId: string): boolean {
+  const now = Date.now();
+  const tracker = socketMessageTracker.get(socketId);
+
+  if (!tracker || now >= tracker.resetAt) {
+    // Reset window
+    socketMessageTracker.set(socketId, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
+    return false;
+  }
+
+  tracker.count++;
+  return tracker.count > MESSAGE_RATE_LIMIT;
+}
+
+/**
+ * Clean up rate limiter entry when socket disconnects
+ */
+function cleanupRateLimiter(socketId: string): void {
+  socketMessageTracker.delete(socketId);
+}
+
 /**
  * Socket.IO handlers for real-time chat
  */
@@ -27,6 +57,7 @@ export const initializeChatSocket = (io: Server): void => {
           message: "Authorization token is required",
           code: "NO_TOKEN",
         });
+        socket.disconnect(true); // Force disconnect
         return next(new Error("Authorization token is required"));
       }
 
@@ -53,7 +84,8 @@ export const initializeChatSocket = (io: Server): void => {
         code: "AUTH_FAILED",
         error: error instanceof Error ? error.message : "Unknown error",
       });
-      next(new Error("Authentication failed"));
+      socket.disconnect(true); // Force disconnect on auth failure
+      return next(new Error("Authentication failed"));
     }
   });
 
@@ -67,36 +99,52 @@ export const initializeChatSocket = (io: Server): void => {
     });
 
     // Join chat room
-    socket.on(SOCKET_EVENTS.CHAT_ROOM_JOIN, (data: { conversationId: string }) => {
-      const { conversationId } = data;
-      const user = socket.data.user as SocketUser;
-      const roomName = `chat:${conversationId}`;
+    socket.on(SOCKET_EVENTS.CHAT_ROOM_JOIN, async (data: { conversationId: string }) => {
+      try {
+        const { conversationId } = data;
+        const user = socket.data.user as SocketUser;
+        const roomName = `chat:${conversationId}`;
 
-      socket.join(roomName);
-      logger.info(`User ${user.uid} joined chat room: ${conversationId}`);
+        socket.join(roomName);
+        logger.info(`User ${user.uid} joined chat room: ${conversationId}`);
 
-      // Notify others in room
-      socket.to(roomName).emit(SOCKET_EVENTS.NOTIFICATION_RECEIVED, {
-        type: "user_joined",
-        userId: user.uid,
-        timestamp: new Date(),
-      });
+        // Notify others in room
+        socket.to(roomName).emit(SOCKET_EVENTS.NOTIFICATION_RECEIVED, {
+          type: "user_joined",
+          userId: user.uid,
+          timestamp: new Date(),
+        });
+      } catch (error) {
+        logger.error("Chat room join error:", error);
+        socket.emit(SOCKET_EVENTS.ERROR, {
+          message: "Failed to join chat room",
+          code: "ROOM_JOIN_ERROR",
+        });
+      }
     });
 
     // Leave chat room
-    socket.on(SOCKET_EVENTS.CHAT_ROOM_LEAVE, (data: { conversationId: string }) => {
-      const { conversationId } = data;
-      const user = socket.data.user as SocketUser;
-      const roomName = `chat:${conversationId}`;
+    socket.on(SOCKET_EVENTS.CHAT_ROOM_LEAVE, async (data: { conversationId: string }) => {
+      try {
+        const { conversationId } = data;
+        const user = socket.data.user as SocketUser;
+        const roomName = `chat:${conversationId}`;
 
-      socket.leave(roomName);
-      logger.info(`User ${user.uid} left chat room: ${conversationId}`);
+        socket.leave(roomName);
+        logger.info(`User ${user.uid} left chat room: ${conversationId}`);
 
-      socket.to(roomName).emit(SOCKET_EVENTS.NOTIFICATION_RECEIVED, {
-        type: "user_left",
-        userId: user.uid,
-        timestamp: new Date(),
-      });
+        socket.to(roomName).emit(SOCKET_EVENTS.NOTIFICATION_RECEIVED, {
+          type: "user_left",
+          userId: user.uid,
+          timestamp: new Date(),
+        });
+      } catch (error) {
+        logger.error("Chat room leave error:", error);
+        socket.emit(SOCKET_EVENTS.ERROR, {
+          message: "Failed to leave chat room",
+          code: "ROOM_LEAVE_ERROR",
+        });
+      }
     });
 
     // Send message
@@ -107,6 +155,18 @@ export const initializeChatSocket = (io: Server): void => {
         content: string;
       }) => {
         try {
+          // Rate limiting check
+          if (isRateLimited(socket.id)) {
+            logger.warn(`Rate limit exceeded for socket ${socket.id}`);
+            socket.emit(SOCKET_EVENTS.ERROR, {
+              message: "Too many messages, please slow down",
+              code: "RATE_LIMIT_EXCEEDED",
+            });
+            // Disconnect socket that exceeded limit
+            socket.disconnect(true);
+            return;
+          }
+
           const { conversationId, content } = data;
           const user = socket.data.user as SocketUser;
           const roomName = `chat:${conversationId}`;
@@ -167,30 +227,38 @@ export const initializeChatSocket = (io: Server): void => {
     // Typing indicator
     socket.on(
       SOCKET_EVENTS.CHAT_TYPING,
-      (data: { conversationId: string }) => {
-        const { conversationId } = data;
-        const user = socket.data.user as SocketUser;
-        const roomName = `chat:${conversationId}`;
+      async (data: { conversationId: string }) => {
+        try {
+          const { conversationId } = data;
+          const user = socket.data.user as SocketUser;
+          const roomName = `chat:${conversationId}`;
 
-        socket.to(roomName).emit(SOCKET_EVENTS.CHAT_TYPING, {
-          userId: user.uid,
-          timestamp: new Date(),
-        });
+          socket.to(roomName).emit(SOCKET_EVENTS.CHAT_TYPING, {
+            userId: user.uid,
+            timestamp: new Date(),
+          });
+        } catch (error) {
+          logger.error("Typing indicator error:", error);
+        }
       }
     );
 
     // Stopped typing
     socket.on(
       SOCKET_EVENTS.CHAT_STOPPED_TYPING,
-      (data: { conversationId: string }) => {
-        const { conversationId } = data;
-        const user = socket.data.user as SocketUser;
-        const roomName = `chat:${conversationId}`;
+      async (data: { conversationId: string }) => {
+        try {
+          const { conversationId } = data;
+          const user = socket.data.user as SocketUser;
+          const roomName = `chat:${conversationId}`;
 
-        socket.to(roomName).emit(SOCKET_EVENTS.CHAT_STOPPED_TYPING, {
-          userId: user.uid,
-          timestamp: new Date(),
-        });
+          socket.to(roomName).emit(SOCKET_EVENTS.CHAT_STOPPED_TYPING, {
+            userId: user.uid,
+            timestamp: new Date(),
+          });
+        } catch (error) {
+          logger.error("Stopped typing indicator error:", error);
+        }
       }
     );
 
@@ -238,21 +306,26 @@ export const initializeChatSocket = (io: Server): void => {
     // Delivery status change
     socket.on(
       SOCKET_EVENTS.DELIVERY_STATUS_CHANGE,
-      (data: { assignmentId: string; status: string }) => {
-        const { assignmentId, status } = data;
-        const roomName = `delivery:${assignmentId}`;
+      async (data: { assignmentId: string; status: string }) => {
+        try {
+          const { assignmentId, status } = data;
+          const roomName = `delivery:${assignmentId}`;
 
-        io.to(roomName).emit(SOCKET_EVENTS.DELIVERY_STATUS_CHANGE, {
-          status,
-          timestamp: new Date(),
-        });
+          io.to(roomName).emit(SOCKET_EVENTS.DELIVERY_STATUS_CHANGE, {
+            status,
+            timestamp: new Date(),
+          });
 
-        logger.info(`Delivery status changed: ${assignmentId} -> ${status}`);
+          logger.info(`Delivery status changed: ${assignmentId} -> ${status}`);
+        } catch (error) {
+          logger.error("Delivery status change error:", error);
+        }
       }
     );
 
     // Disconnect
     socket.on(SOCKET_EVENTS.DISCONNECT, () => {
+      cleanupRateLimiter(socket.id);
       logger.info(`Socket disconnected: ${socket.id}`);
     });
   });

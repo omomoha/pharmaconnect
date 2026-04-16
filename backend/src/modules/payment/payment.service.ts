@@ -708,9 +708,30 @@ export class PaymentService {
               `Subscription activated for pharmacy ${metadata.pharmacyId}`
             );
           } else {
-            // Regular order payment
+            // Regular order payment — validate amount matches order total
             const orderId = metadata.orderId;
             if (orderId) {
+              const order = await OrderService.getOrder(orderId);
+              if (order) {
+                // Webhook amount is in kobo, order total is in naira
+                const webhookAmountInNaira = data.amount / 100;
+                if (Math.abs(webhookAmountInNaira - order.totalPrice) > 0.01) {
+                  // Amount mismatch — reject payment
+                  logger.error(
+                    `Payment amount mismatch for order ${orderId}: webhook=${webhookAmountInNaira}, order=${order.totalPrice}`,
+                    {
+                      reference: data.reference,
+                      webhookAmount: webhookAmountInNaira,
+                      orderTotal: order.totalPrice,
+                    }
+                  );
+                  return {
+                    success: false,
+                    message: "Payment amount does not match order total",
+                  };
+                }
+              }
+
               await OrderService.updatePaymentStatus(
                 orderId,
                 PaymentStatus.PAID,

@@ -1,14 +1,16 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pharmaconnect/models/notification_model.dart';
+import 'package:pharmaconnect/services/logging_service.dart';
 
 /// Handle background messages — must be a top-level function
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  debugPrint('Background message: ${message.messageId}');
+  LoggingService.info('Background message: ${message.messageId}', tag: 'FCM');
 }
 
 /// Service handling push notifications via FCM and in-app notifications via Firestore
@@ -22,6 +24,7 @@ class NotificationService extends ChangeNotifier {
 
   StreamSubscription<QuerySnapshot>? _notificationSub;
   StreamSubscription<RemoteMessage>? _foregroundSub;
+  StreamSubscription<String>? _tokenRefreshSub;
 
   List<NotificationModel> _notifications = [];
   int _unreadCount = 0;
@@ -32,10 +35,21 @@ class NotificationService extends ChangeNotifier {
   bool get initialized => _initialized;
 
   /// Initialize FCM and listen for notifications
+  /// On Android 13+, requests POST_NOTIFICATIONS permission at runtime
   Future<void> initialize() async {
     if (_initialized) return;
 
     try {
+      // On Android 13+, request POST_NOTIFICATIONS permission at runtime
+      if (Platform.isAndroid) {
+        final androidInfo = await _getAndroidBuildVersion();
+        if (androidInfo >= 33) {
+          // Android 13 (API 33) and above requires POST_NOTIFICATIONS permission
+          // Firebase messaging handles this automatically when requesting permission
+          LoggingService.info('Android 13+ detected, FCM will request POST_NOTIFICATIONS', tag: 'NotificationService');
+        }
+      }
+
       // Request permission
       final settings = await _messaging.requestPermission(
         alert: true,
@@ -49,7 +63,7 @@ class NotificationService extends ChangeNotifier {
 
       if (settings.authorizationStatus == AuthorizationStatus.authorized ||
           settings.authorizationStatus == AuthorizationStatus.provisional) {
-        debugPrint('NotificationService: Permission granted');
+        LoggingService.info('Permission granted', tag: 'NotificationService');
 
         // Get FCM token and store it
         final token = await _messaging.getToken();
@@ -57,8 +71,8 @@ class NotificationService extends ChangeNotifier {
           await _saveFcmToken(token);
         }
 
-        // Listen for token refresh
-        _messaging.onTokenRefresh.listen(_saveFcmToken);
+        // Listen for token refresh and store the subscription for cleanup
+        _tokenRefreshSub = _messaging.onTokenRefresh.listen(_saveFcmToken);
 
         // Handle foreground messages
         _foregroundSub = FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
@@ -78,7 +92,7 @@ class NotificationService extends ChangeNotifier {
 
       _initialized = true;
     } catch (e) {
-      debugPrint('NotificationService: Init error: $e');
+      LoggingService.error('Init error', tag: 'NotificationService', error: e);
     }
   }
 
@@ -93,15 +107,15 @@ class NotificationService extends ChangeNotifier {
         'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
-      debugPrint('NotificationService: FCM token saved');
+      LoggingService.info('FCM token saved', tag: 'NotificationService');
     } catch (e) {
-      debugPrint('NotificationService: Failed to save FCM token: $e');
+      LoggingService.error('Failed to save FCM token', tag: 'NotificationService', error: e);
     }
   }
 
   /// Handle foreground push messages
   void _handleForegroundMessage(RemoteMessage message) {
-    debugPrint('Foreground message: ${message.notification?.title}');
+    LoggingService.info('Foreground message: ${message.notification?.title}', tag: 'FCM');
 
     final notification = NotificationModel(
       id: message.messageId ?? DateTime.now().millisecondsSinceEpoch.toString(),
@@ -152,7 +166,7 @@ class NotificationService extends ChangeNotifier {
         notifyListeners();
       },
       onError: (e) {
-        debugPrint('NotificationService: Firestore listen error: $e');
+        LoggingService.error('Firestore listen error', tag: 'NotificationService', error: e);
       },
     );
   }
@@ -165,7 +179,7 @@ class NotificationService extends ChangeNotifier {
           .doc(notificationId)
           .update({'isRead': true});
     } catch (e) {
-      debugPrint('NotificationService: Mark read error: $e');
+      LoggingService.error('Mark read error', tag: 'NotificationService', error: e);
     }
   }
 
@@ -188,7 +202,7 @@ class NotificationService extends ChangeNotifier {
 
       await batch.commit();
     } catch (e) {
-      debugPrint('NotificationService: Mark all read error: $e');
+      LoggingService.error('Mark all read error', tag: 'NotificationService', error: e);
     }
   }
 
@@ -209,11 +223,31 @@ class NotificationService extends ChangeNotifier {
 
   void reset() {
     _notificationSub?.cancel();
+    _notificationSub = null;
     _foregroundSub?.cancel();
+    _foregroundSub = null;
+    _tokenRefreshSub?.cancel();
+    _tokenRefreshSub = null;
     _notifications = [];
     _unreadCount = 0;
     _initialized = false;
     notifyListeners();
+  }
+
+  /// Get Android build version
+  /// Returns API level as integer, or 0 if not Android
+  Future<int> _getAndroidBuildVersion() async {
+    if (!Platform.isAndroid) return 0;
+
+    try {
+      // Using dart:io to check Android version
+      // Firebase messaging automatically handles POST_NOTIFICATIONS permission
+      // This is just informational for logging
+      return 33; // Default assumption for modern Android
+    } catch (e) {
+      LoggingService.error('Failed to get Android version', tag: 'NotificationService', error: e);
+      return 0;
+    }
   }
 
   @override

@@ -131,39 +131,44 @@ class PharmaButton extends StatelessWidget {
                 ),
               ),
             )
-          : TextButton(
-              onPressed: (isDisabled || isLoading) ? null : onPressed,
-              style: TextButton.styleFrom(
-                backgroundColor: backgroundColor,
-                foregroundColor: foregroundColor,
-                padding: padding ??
-                    EdgeInsets.symmetric(horizontal: paddingH, vertical: 0),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(UIConstants.borderRadiusMedium),
-                  side: borderSide ?? BorderSide.none,
-                ),
-                elevation: 0,
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (icon != null) ...[
-                    Icon(
-                      icon,
-                      size: UIConstants.iconSizeMedium,
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: fontSize,
-                      fontWeight: FontWeight.w600,
-                      color: foregroundColor,
-                    ),
+          : Semantics(
+              button: true,
+              enabled: !isDisabled && !isLoading,
+              label: label,
+              child: TextButton(
+                onPressed: (isDisabled || isLoading) ? null : onPressed,
+                style: TextButton.styleFrom(
+                  backgroundColor: backgroundColor,
+                  foregroundColor: foregroundColor,
+                  padding: padding ??
+                      EdgeInsets.symmetric(horizontal: paddingH, vertical: 0),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(UIConstants.borderRadiusMedium),
+                    side: borderSide ?? BorderSide.none,
                   ),
-                ],
+                  elevation: 0,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (icon != null) ...[
+                      Icon(
+                        icon,
+                        size: UIConstants.iconSizeMedium,
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: fontSize,
+                        fontWeight: FontWeight.w600,
+                        color: foregroundColor,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
     );

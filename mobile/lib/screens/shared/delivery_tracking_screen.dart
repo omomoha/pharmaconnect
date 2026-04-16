@@ -50,7 +50,7 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
     // Join delivery tracking room
     _socketService.joinDeliveryRoom(widget.assignmentId);
 
-    // Listen for location updates
+    // Listen for location updates with proper listener references
     _socketService.on(
         SocketEvents.deliveryLocationUpdate, _onLocationUpdate);
     _socketService.on(
@@ -111,10 +111,17 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
 
   @override
   void dispose() {
+    // Leave delivery room and remove listeners
     _socketService.leaveDeliveryRoom(widget.assignmentId);
-    _socketService.off(SocketEvents.deliveryLocationUpdate);
-    _socketService.off(SocketEvents.deliveryStatusChange);
+    _socketService.off(SocketEvents.deliveryLocationUpdate, _onLocationUpdate);
+    _socketService.off(SocketEvents.deliveryStatusChange, _onStatusChange);
+
+    // Cancel any pending timer
     _locationEmitTimer?.cancel();
+
+    // Dispose map controller
+    _mapController.dispose();
+
     super.dispose();
   }
 

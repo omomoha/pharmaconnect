@@ -7,47 +7,64 @@ let auth: admin.auth.Auth;
 let storage: any;
 
 /**
- * Initialize Firebase Admin SDK
+ * Initialize Firebase Admin SDK with retry logic
  * Uses Application Default Credentials in Cloud Functions,
  * or explicit service account credentials from env vars locally
+ *
+ * Retry logic: 3 attempts with 2s delay between attempts
+ * If all retries fail, process exits
  */
-export const initializeFirebase = (): void => {
-  try {
-    const hasExplicitCreds = config.FIREBASE_PROJECT_ID && config.FIREBASE_CLIENT_EMAIL && config.FIREBASE_PRIVATE_KEY;
+export const initializeFirebase = async (): Promise<void> => {
+  const MAX_RETRIES = 3;
+  const RETRY_DELAY_MS = 2000;
 
-    if (hasExplicitCreds) {
-      // Local development: use explicit service account credentials
-      const privateKey = config.FIREBASE_PRIVATE_KEY!.replace(/\\n/g, "\n");
-
-      admin.initializeApp({
-        credential: admin.credential.cert({
-          projectId: config.FIREBASE_PROJECT_ID!,
-          clientEmail: config.FIREBASE_CLIENT_EMAIL!,
-          privateKey,
-        }),
-        storageBucket: config.FIREBASE_STORAGE_BUCKET,
-        projectId: config.FIREBASE_PROJECT_ID,
-      });
-    } else {
-      // Cloud Functions: use Application Default Credentials
-      admin.initializeApp();
-    }
-
-    // Get references to services
-    db = admin.firestore();
-    auth = admin.auth();
-
-    // Storage bucket — optional, may not be configured in all environments
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      storage = admin.storage().bucket();
-    } catch (_storageError) {
-      logger.warn("Firebase Storage bucket not configured — file uploads disabled");
-    }
+      const hasExplicitCreds = config.FIREBASE_PROJECT_ID && config.FIREBASE_CLIENT_EMAIL && config.FIREBASE_PRIVATE_KEY;
 
-    logger.info("Firebase Admin SDK initialized successfully");
-  } catch (error) {
-    logger.error("Failed to initialize Firebase Admin SDK:", error);
-    throw error;
+      if (hasExplicitCreds) {
+        // Local development: use explicit service account credentials
+        const privateKey = config.FIREBASE_PRIVATE_KEY!.replace(/\\n/g, "\n");
+
+        admin.initializeApp({
+          credential: admin.credential.cert({
+            projectId: config.FIREBASE_PROJECT_ID!,
+            clientEmail: config.FIREBASE_CLIENT_EMAIL!,
+            privateKey,
+          }),
+          storageBucket: config.FIREBASE_STORAGE_BUCKET,
+          projectId: config.FIREBASE_PROJECT_ID,
+        });
+      } else {
+        // Cloud Functions: use Application Default Credentials
+        admin.initializeApp();
+      }
+
+      // Get references to services
+      db = admin.firestore();
+      auth = admin.auth();
+
+      // Storage bucket — optional, may not be configured in all environments
+      try {
+        storage = admin.storage().bucket();
+      } catch (_storageError) {
+        logger.warn("Firebase Storage bucket not configured — file uploads disabled");
+      }
+
+      logger.info("Firebase Admin SDK initialized successfully");
+      return; // Success — exit function
+    } catch (error) {
+      logger.error(`Firebase initialization attempt ${attempt}/${MAX_RETRIES} failed:`, error);
+
+      if (attempt < MAX_RETRIES) {
+        logger.info(`Retrying Firebase initialization in ${RETRY_DELAY_MS}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+      } else {
+        // All retries exhausted
+        logger.error("Firebase initialization failed after all retries. Exiting process.");
+        process.exit(1);
+      }
+    }
   }
 };
 

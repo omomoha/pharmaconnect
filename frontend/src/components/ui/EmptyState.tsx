@@ -2,12 +2,13 @@ import Link from 'next/link';
 import Button from './Button';
 
 interface EmptyStateProps {
-  icon?: string;
+  icon?: React.ReactNode;
   title: string;
   description?: string;
   action?: {
     label: string;
-    href: string;
+    onClick?: () => void;
+    href?: string;
   };
 }
 
@@ -25,11 +26,17 @@ export default function EmptyState({
         <p className="text-gray-600 mb-8 max-w-md">{description}</p>
       )}
       {action && (
-        <Link href={action.href}>
-          <Button variant="primary" size="md">
+        action.onClick ? (
+          <Button variant="primary" size="md" onClick={action.onClick}>
             {action.label}
           </Button>
-        </Link>
+        ) : action.href ? (
+          <Link href={action.href}>
+            <Button variant="primary" size="md">
+              {action.label}
+            </Button>
+          </Link>
+        ) : null
       )}
     </div>
   );

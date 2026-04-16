@@ -1,6 +1,7 @@
 'use client';
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { captureError } from '@/lib/error-tracking';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -11,29 +12,42 @@ interface ErrorBoundaryProps {
 interface ErrorBoundaryState {
   hasError: boolean;
   error: Error | null;
+  errorId: string | null;
 }
 
 /**
  * Error Boundary component to catch and display runtime errors gracefully.
  * Prevents the entire dashboard from crashing when a child component fails.
+ * Reports errors to centralized error tracking system.
  */
 export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, errorId: null };
   }
 
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+  static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
     return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('[ErrorBoundary] Caught error:', error, errorInfo);
+
+    // Generate error ID and capture to error tracking
+    const errorId = `ERR-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 8)}`.toUpperCase();
+    this.setState({ errorId });
+
+    // Report to centralized error tracking
+    captureError(error, {
+      type: 'react_error_boundary',
+      componentStack: errorInfo.componentStack,
+    });
+
     this.props.onError?.(error, errorInfo);
   }
 
   handleRetry = () => {
-    this.setState({ hasError: false, error: null });
+    this.setState({ hasError: false, error: null, errorId: null });
   };
 
   render() {
@@ -55,6 +69,11 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
               <p className="text-sm text-gray-500 mt-1">
                 An unexpected error occurred. Please try again.
               </p>
+              {this.state.errorId && (
+                <p className="text-xs text-gray-400 mt-3 font-mono">
+                  Error ID: {this.state.errorId}
+                </p>
+              )}
             </div>
             {process.env.NODE_ENV === 'development' && this.state.error && (
               <details className="text-left bg-gray-50 rounded-xl p-3 text-xs">
