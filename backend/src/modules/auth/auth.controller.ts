@@ -34,7 +34,7 @@ export class AuthController {
       const setupSchema = z.object({
         firstName: z.string().min(1),
         lastName: z.string().min(1),
-        phoneNumber: z.string().min(10),
+        phoneNumber: z.string().optional().default(""),
         role: z.nativeEnum(UserRole),
       });
 
