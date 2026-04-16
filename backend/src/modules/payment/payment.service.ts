@@ -715,14 +715,14 @@ export class PaymentService {
               if (order) {
                 // Webhook amount is in kobo, order total is in naira
                 const webhookAmountInNaira = data.amount / 100;
-                if (Math.abs(webhookAmountInNaira - order.totalPrice) > 0.01) {
+                if (Math.abs(webhookAmountInNaira - order.total) > 0.01) {
                   // Amount mismatch — reject payment
                   logger.error(
-                    `Payment amount mismatch for order ${orderId}: webhook=${webhookAmountInNaira}, order=${order.totalPrice}`,
+                    `Payment amount mismatch for order ${orderId}: webhook=${webhookAmountInNaira}, order=${order.total}`,
                     {
                       reference: data.reference,
                       webhookAmount: webhookAmountInNaira,
-                      orderTotal: order.totalPrice,
+                      orderTotal: order.total,
                     }
                   );
                   return {

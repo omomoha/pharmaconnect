@@ -4,7 +4,7 @@ import { PaymentService } from "./payment.service.js";
 import { apiResponse } from "../../utils/helpers.js";
 import logger from "../../utils/logger.js";
 import { z } from "zod";
-import { SubscriptionTier, PaymentStatus } from "@pharmaconnect/shared/dist/types/index.js";
+import { SubscriptionTier, PaymentStatus, OrderStatus } from "@pharmaconnect/shared/dist/types/index.js";
 import { writeAuditLog, AuditAction } from "../../utils/auditLog.js";
 
 declare global {
@@ -224,10 +224,10 @@ export class PaymentController {
         : new Date(order.createdAt).getTime();
 
       // If order is delivered, check delivery time
-      if (order.status === "DELIVERED" && order.deliveredAt) {
-        const deliveredAt = order.deliveredAt instanceof Date
-          ? order.deliveredAt.getTime()
-          : new Date(order.deliveredAt).getTime();
+      if (order.status === OrderStatus.DELIVERED && order.actualDeliveryTime) {
+        const deliveredAt = order.actualDeliveryTime instanceof Date
+          ? order.actualDeliveryTime.getTime()
+          : new Date(order.actualDeliveryTime).getTime();
 
         if (now - deliveredAt > refundWindowMs) {
           res.status(400).json(

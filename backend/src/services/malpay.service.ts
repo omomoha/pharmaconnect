@@ -47,7 +47,7 @@ export class MalPayService {
         }),
       });
 
-      const result = await response.json();
+      const result = await response.json() as { success: boolean; data?: { userId?: string; isExisting?: boolean }; message?: string };
 
       if (result.success) {
         logger.info(`MalPay registration successful for ${data.email}`, {

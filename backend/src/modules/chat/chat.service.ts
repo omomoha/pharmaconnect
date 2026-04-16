@@ -143,7 +143,7 @@ export class ChatService {
       // Sanitize content — remove HTML/JavaScript to prevent XSS
       const sanitizedContent = xss(sanitizeString(data.content), {
         whiteList: {}, // No HTML tags allowed in chat messages
-        stripIgnoredTag: true,
+        stripIgnoreTag: true,
       });
 
       // Moderate message

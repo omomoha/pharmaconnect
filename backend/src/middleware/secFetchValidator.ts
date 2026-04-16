@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import logger from '../utils/logger.js';
-import config, { getAllowedOrigins } from '../config/index.js';
+import { getAllowedOrigins } from '../config/index.js';
 
 /**
  * Middleware to validate Sec-Fetch-Site header on mutating requests
