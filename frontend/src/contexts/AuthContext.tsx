@@ -36,6 +36,7 @@ interface AuthContextType {
     email: string,
     password: string,
     name: string,
+    phone: string,
     role: 'customer' | 'pharmacy' | 'delivery_provider',
     registerOnMalPay?: boolean
   ) => Promise<void>;
@@ -90,6 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     email: string,
     password: string,
     name: string,
+    phone: string,
     role: 'customer' | 'pharmacy' | 'delivery_provider',
     registerOnMalPay?: boolean
   ) => {
@@ -113,12 +115,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       await setDoc(doc(db, 'profiles', firebaseUser.uid), profileData);
 
+      // Split full name into firstName and lastName
+      const nameParts = name.trim().split(/\s+/);
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
       // Call backend to setup profile
       try {
         await apiClient.post('/auth/setup-profile', {
-          uid: firebaseUser.uid,
-          email,
-          name,
+          firstName,
+          lastName,
+          phoneNumber: phone,
           role,
         });
       } catch (backendError) {

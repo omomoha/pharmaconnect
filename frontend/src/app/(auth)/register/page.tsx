@@ -58,7 +58,7 @@ function RegisterContent() {
     setIsLoading(true);
 
     try {
-      await signUp(email, password, name, role, registerOnMalPay);
+      await signUp(email, password, name, phone, role, registerOnMalPay);
 
       // Redirect based on role
       const dashboardMap: Record<UserRole, string> = {
