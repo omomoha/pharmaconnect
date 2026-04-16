@@ -2,9 +2,9 @@ import * as admin from "firebase-admin";
 import config from "./index.js";
 import logger from "../utils/logger.js";
 
-let db: admin.firestore.Firestore;
-let auth: admin.auth.Auth;
-let storage: any;
+let db: admin.firestore.Firestore | null = null;
+let auth: admin.auth.Auth | null = null;
+let storage: any = null;
 
 /**
  * Initialize Firebase Admin SDK with retry logic
@@ -70,30 +70,49 @@ export const initializeFirebase = async (): Promise<void> => {
 
 /**
  * Get Firestore database instance
+ * Lazily initializes from the default Firebase app if not set by initializeFirebase()
  */
 export const getFirestore = (): admin.firestore.Firestore => {
   if (!db) {
-    throw new Error("Firebase not initialized. Call initializeFirebase() first.");
+    if (admin.apps.length) {
+      db = admin.firestore();
+    } else {
+      throw new Error("Firebase not initialized. Call initializeFirebase() or admin.initializeApp() first.");
+    }
   }
   return db;
 };
 
 /**
  * Get Firebase Auth instance
+ * Lazily initializes from the default Firebase app if not set by initializeFirebase()
  */
 export const getAuth = (): admin.auth.Auth => {
   if (!auth) {
-    throw new Error("Firebase not initialized. Call initializeFirebase() first.");
+    if (admin.apps.length) {
+      auth = admin.auth();
+    } else {
+      throw new Error("Firebase not initialized. Call initializeFirebase() or admin.initializeApp() first.");
+    }
   }
   return auth;
 };
 
 /**
  * Get Firebase Storage bucket
+ * Lazily initializes from the default Firebase app if not set by initializeFirebase()
  */
 export const getStorageBucket = (): any => {
   if (!storage) {
-    throw new Error("Firebase not initialized. Call initializeFirebase() first.");
+    if (admin.apps.length) {
+      try {
+        storage = admin.storage().bucket();
+      } catch (_err) {
+        throw new Error("Firebase Storage bucket not configured.");
+      }
+    } else {
+      throw new Error("Firebase not initialized. Call initializeFirebase() or admin.initializeApp() first.");
+    }
   }
   return storage;
 };
