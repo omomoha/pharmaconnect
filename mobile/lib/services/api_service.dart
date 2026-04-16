@@ -70,7 +70,7 @@ class ApiService {
           try {
             final user = firebaseAuth.currentUser;
             if (user != null) {
-              await user.getIdToken(forceRefresh: true);
+              await user.getIdToken(true);
               continue; // Retry the request
             }
           } catch (refreshError) {
@@ -81,7 +81,7 @@ class ApiService {
         }
 
         // Retry on 5xx errors and timeouts
-        if (e.statusCode >= 500 || e.code == 'TIMEOUT') {
+        if ((e.statusCode ?? 0) >= 500 || e.code == 'TIMEOUT') {
           if (attempt < _maxRetries) {
             // Exponential backoff with jitter
             final backoffMs =

@@ -37,19 +37,7 @@ jobs:
         run: flutter pub get
 
       - name: Analyze code
-        run: flutter analyze --no-fatal-infos --no-fatal-warnings 2>&1 | tee /tmp/analyze_output.txt || true
-
-      - name: Show analysis summary
-        if: always()
-        run: |
-          echo "=== ERRORS ==="
-          grep -i "error" /tmp/analyze_output.txt || echo "none"
-          echo "=== SUMMARY (last 5 lines) ==="
-          tail -5 /tmp/analyze_output.txt
-          echo "=== ISSUE COUNT ==="
-          grep -c "error •" /tmp/analyze_output.txt || echo "0 errors"
-          grep -c "warning •" /tmp/analyze_output.txt || echo "0 warnings"
-          grep -c "info •" /tmp/analyze_output.txt || echo "0 infos"
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
       - name: Run tests
         run: flutter test --coverage || true
