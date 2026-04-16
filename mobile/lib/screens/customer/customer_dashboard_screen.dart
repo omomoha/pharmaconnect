@@ -280,7 +280,7 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
 
   Widget _buildOrderCard(dynamic order) {
     final orderId = order is Map ? order['id'] ?? 'N/A' : 'N/A';
-    final pharmacyName = order is Map ? order['pharmacy']?['name'] ?? 'Unknown' : 'Unknown';
+    final pharmacyName = order is Map ? (order['pharmacy'] is Map ? order['pharmacy']['name'] ?? 'Unknown' : 'Unknown') : 'Unknown';
     final status = order is Map ? order['status'] ?? 'pending' : 'pending';
     final total = order is Map ? order['total'] ?? 0 : 0;
     final createdAt = order is Map ? order['createdAt'] ?? '' : '';
@@ -1007,7 +1007,7 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
 
   Widget _buildChatListItem(dynamic chat) {
     final pharmacyName =
-        chat is Map ? chat['pharmacy']?['name'] ?? 'Unknown' : 'Unknown';
+        chat is Map ? (chat['pharmacy'] is Map ? chat['pharmacy']['name'] ?? 'Unknown' : 'Unknown') : 'Unknown';
     final lastMessage =
         chat is Map ? chat['lastMessage'] ?? 'No messages' : 'No messages';
     final unreadCount =
@@ -1214,7 +1214,7 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
                         onTap: () {},
                       ),
                       _buildProfileMenuItem(
-                        icon: Icons.privacy_tip_outline,
+                        icon: Icons.privacy_tip_outlined,
                         label: 'Privacy Policy',
                         onTap: () {},
                       ),
