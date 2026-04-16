@@ -271,7 +271,7 @@ class _PharmacyDashboardScreenState extends State<PharmacyDashboardScreen> {
         _buildQuickActionButton(
           icon: Icons.add_circle_outline,
           label: 'Add Product',
-          onTap: () {},
+          onTap: () => context.push('/pharmacy/products/add'),
         ),
         _buildQuickActionButton(
           icon: Icons.receipt_outlined,
@@ -1143,19 +1143,29 @@ class _PharmacyDashboardScreenState extends State<PharmacyDashboardScreen> {
                 () {},
               ),
               _buildMenuItem(
-                'Settings',
-                Icons.settings_outlined,
-                () {},
+                'Approval Status',
+                Icons.verified_outlined,
+                () => context.push('/pharmacy/approval'),
               ),
               _buildMenuItem(
                 'Documents',
                 Icons.document_scanner_outlined,
-                () {},
+                () => context.push('/pharmacy/approval'),
               ),
             ]),
             const SizedBox(height: UIConstants.paddingLarge),
 
             _buildMenuSection('Business', [
+              _buildMenuItem(
+                'Products',
+                Icons.inventory_2_outlined,
+                () => context.push('/pharmacy/products'),
+              ),
+              _buildMenuItem(
+                'Orders',
+                Icons.receipt_outlined,
+                () => context.push('/pharmacy/orders'),
+              ),
               _buildMenuItem(
                 'Messages',
                 Icons.message_outlined,

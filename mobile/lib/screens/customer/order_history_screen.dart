@@ -86,13 +86,30 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
   }
 }
 
-class _ActiveOrdersList extends StatelessWidget {
+class _ActiveOrdersList extends StatefulWidget {
   const _ActiveOrdersList();
+
+  @override
+  State<_ActiveOrdersList> createState() => _ActiveOrdersListState();
+}
+
+class _ActiveOrdersListState extends State<_ActiveOrdersList> {
+  Future<Map<String, dynamic>>? _future;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _future ??= _loadOrders();
+  }
+
+  Future<Map<String, dynamic>> _loadOrders() {
+    return OrderService(apiService: context.read<ApiService>()).getMyOrders();
+  }
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<Map<String, dynamic>>(
-      future: OrderService(apiService: context.read<ApiService>()).getMyOrders(),
+      future: _future,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return _LoadingOrdersList();
@@ -101,13 +118,15 @@ class _ActiveOrdersList extends StatelessWidget {
         if (snapshot.hasError) {
           return _ErrorState(
             onRetry: () {
-              (context as Element).markNeedsBuild();
+              setState(() {
+                _future = _loadOrders();
+              });
             },
           );
         }
 
         final result = snapshot.data ?? {};
-        final orders = (result['orders'] as List<dynamic>?)?.cast<OrderModel>() ?? [];
+        final orders = (result['orders'] as List<OrderModel>?) ?? [];
         final activeOrders = orders.where((order) {
           return [
             OrderStatus.pending,
@@ -138,13 +157,30 @@ class _ActiveOrdersList extends StatelessWidget {
   }
 }
 
-class _CompletedOrdersList extends StatelessWidget {
+class _CompletedOrdersList extends StatefulWidget {
   const _CompletedOrdersList();
+
+  @override
+  State<_CompletedOrdersList> createState() => _CompletedOrdersListState();
+}
+
+class _CompletedOrdersListState extends State<_CompletedOrdersList> {
+  Future<Map<String, dynamic>>? _future;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _future ??= _loadOrders();
+  }
+
+  Future<Map<String, dynamic>> _loadOrders() {
+    return OrderService(apiService: context.read<ApiService>()).getMyOrders();
+  }
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<Map<String, dynamic>>(
-      future: OrderService(apiService: context.read<ApiService>()).getMyOrders(),
+      future: _future,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return _LoadingOrdersList();
@@ -153,13 +189,15 @@ class _CompletedOrdersList extends StatelessWidget {
         if (snapshot.hasError) {
           return _ErrorState(
             onRetry: () {
-              (context as Element).markNeedsBuild();
+              setState(() {
+                _future = _loadOrders();
+              });
             },
           );
         }
 
         final result = snapshot.data ?? {};
-        final orders = (result['orders'] as List<dynamic>?)?.cast<OrderModel>() ?? [];
+        final orders = (result['orders'] as List<OrderModel>?) ?? [];
         final completedOrders = orders
             .where((order) => order.status == OrderStatus.delivered)
             .toList();
@@ -184,13 +222,30 @@ class _CompletedOrdersList extends StatelessWidget {
   }
 }
 
-class _CancelledOrdersList extends StatelessWidget {
+class _CancelledOrdersList extends StatefulWidget {
   const _CancelledOrdersList();
+
+  @override
+  State<_CancelledOrdersList> createState() => _CancelledOrdersListState();
+}
+
+class _CancelledOrdersListState extends State<_CancelledOrdersList> {
+  Future<Map<String, dynamic>>? _future;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _future ??= _loadOrders();
+  }
+
+  Future<Map<String, dynamic>> _loadOrders() {
+    return OrderService(apiService: context.read<ApiService>()).getMyOrders();
+  }
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<Map<String, dynamic>>(
-      future: OrderService(apiService: context.read<ApiService>()).getMyOrders(),
+      future: _future,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return _LoadingOrdersList();
@@ -199,13 +254,15 @@ class _CancelledOrdersList extends StatelessWidget {
         if (snapshot.hasError) {
           return _ErrorState(
             onRetry: () {
-              (context as Element).markNeedsBuild();
+              setState(() {
+                _future = _loadOrders();
+              });
             },
           );
         }
 
         final result = snapshot.data ?? {};
-        final orders = (result['orders'] as List<dynamic>?)?.cast<OrderModel>() ?? [];
+        final orders = (result['orders'] as List<OrderModel>?) ?? [];
         final cancelledOrders =
             orders.where((order) => order.status == OrderStatus.cancelled).toList();
 

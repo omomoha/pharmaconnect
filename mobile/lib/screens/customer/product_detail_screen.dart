@@ -21,6 +21,7 @@ class ProductDetailScreen extends StatefulWidget {
 
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
   late ProductService _productService;
+  late Future<ProductModel> _productFuture;
   int _quantity = 1;
   int _currentImageIndex = 0;
 
@@ -28,6 +29,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   void initState() {
     super.initState();
     _productService = ProductService(apiService: ApiService());
+    _productFuture = _productService.getProductById(widget.productId);
   }
 
   @override
@@ -35,7 +37,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     return Scaffold(
       backgroundColor: AppColors.neutralWhite,
       body: FutureBuilder<ProductModel>(
-        future: _productService.getProductById(widget.productId),
+        future: _productFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return ShimmerLoading(variant: ShimmerVariant.card);
@@ -55,7 +57,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               body: AppErrorWidget(
                 message: 'Failed to load product details',
                 onRetry: () {
-                  setState(() {});
+                  setState(() {
+                    _productFuture = _productService.getProductById(widget.productId);
+                  });
                 },
               ),
             );
@@ -136,7 +140,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         },
       ),
       bottomNavigationBar: FutureBuilder<ProductModel>(
-        future: _productService.getProductById(widget.productId),
+        future: _productFuture,
         builder: (context, snapshot) {
           if (snapshot.data == null) {
             return const SizedBox.shrink();
