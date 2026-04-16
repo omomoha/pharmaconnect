@@ -20,6 +20,8 @@ import deliveryRoutes from './modules/delivery/delivery.routes.js';
 import paymentRoutes from './modules/payment/payment.routes.js';
 import chatRoutes from './modules/chat/chat.routes.js';
 import adminRoutes from './modules/admin/admin.routes.js';
+import aiRoutes from './modules/ai/ai.routes.js';
+import subscriptionRoutes from './modules/subscription/subscription.routes.js';
 
 /**
  * Initialize Firebase Admin SDK synchronously for Cloud Functions.
@@ -84,6 +86,8 @@ apiV1.use('/delivery', deliveryRoutes);
 apiV1.use('/payments', paymentRoutes);
 apiV1.use('/chat', chatRoutes);
 apiV1.use('/admin', adminRoutes);
+apiV1.use('/ai', aiRoutes);
+apiV1.use('/subscriptions', subscriptionRoutes);
 app.use('/api/v1', apiV1);
 
 // Error handling

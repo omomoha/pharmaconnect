@@ -214,10 +214,11 @@ export class OrderController {
       );
     } catch (error) {
       logger.error("Get user orders error:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       res.status(500).json(
         apiResponse(false, undefined, {
           code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to retrieve orders",
+          message: `Failed to retrieve orders: ${errorMessage}`,
         })
       );
     }

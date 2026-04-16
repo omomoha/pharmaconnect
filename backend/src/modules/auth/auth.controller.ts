@@ -70,10 +70,11 @@ export class AuthController {
       );
     } catch (error) {
       logger.error("Profile setup error:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       res.status(500).json(
         apiResponse(false, undefined, {
           code: "PROFILE_SETUP_FAILED",
-          message: "Failed to setup user profile",
+          message: `Failed to setup user profile: ${errorMessage}`,
         })
       );
     }
