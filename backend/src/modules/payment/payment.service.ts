@@ -4,6 +4,7 @@ import { PaymentStatus, SubscriptionTier } from "@pharmaconnect/shared/dist/type
 import { SUBSCRIPTION_TIERS } from "@pharmaconnect/shared/dist/constants/index.js";
 import { OrderService } from "../order/order.service.js";
 import { SubscriptionService } from "../subscription/subscription.service.js";
+import { getFirestore } from "../../config/firebase.js";
 import crypto from "crypto";
 
 /**
@@ -652,6 +653,45 @@ export class PaymentService {
       logger.info(`Webhook received: ${eventType}`, {
         reference: data.reference,
       });
+
+      // IDEMPOTENCY: Check if webhook has already been processed
+      if (data.reference) {
+        try {
+          const db = getFirestore();
+          const webhookDocRef = db
+            .collection("processed_webhooks")
+            .doc(data.reference);
+
+          // Use transaction for atomic check-and-set
+          const result = await db.runTransaction(async (transaction) => {
+            const docSnapshot = await transaction.get(webhookDocRef);
+
+            if (docSnapshot.exists) {
+              // Webhook already processed, return success to prevent Paystack retries
+              logger.warn(
+                `Webhook idempotency: reference ${data.reference} already processed`
+              );
+              return { alreadyProcessed: true };
+            }
+
+            // Mark webhook as processed
+            transaction.set(webhookDocRef, {
+              reference: data.reference,
+              eventType,
+              processedAt: new Date(),
+            });
+
+            return { alreadyProcessed: false };
+          });
+
+          if (result.alreadyProcessed) {
+            return { success: true, message: "Webhook already processed" };
+          }
+        } catch (error) {
+          logger.error("Idempotency check failed:", error);
+          // Continue with processing if idempotency check fails
+        }
+      }
 
       switch (eventType) {
         case "charge.success": {

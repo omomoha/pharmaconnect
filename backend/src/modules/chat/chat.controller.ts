@@ -5,11 +5,36 @@ import { apiResponse } from "../../utils/helpers.js";
 import logger from "../../utils/logger.js";
 import { z } from "zod";
 import { ConversationType, MessageType } from "@pharmaconnect/shared/dist/types/index.js";
+import { PharmacyService } from "../pharmacy/pharmacy.service.js";
 
 /**
  * Chat Controller
  */
 export class ChatController {
+  /**
+   * Helper method: Verify user is a participant in the conversation
+   * Returns true if user is authorized, false otherwise
+   */
+  private static async isUserParticipant(
+    userId: string,
+    conversation: any
+  ): Promise<boolean> {
+    // Direct matches for customer and delivery rider
+    if (conversation.customerId === userId || conversation.deliveryRiderId === userId) {
+      return true;
+    }
+
+    // Check if user owns the pharmacy
+    if (conversation.pharmacyId) {
+      const pharmacy = await PharmacyService.getPharmacy(conversation.pharmacyId);
+      if (pharmacy && pharmacy.userId === userId) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   /**
    * POST /conversations
    * Create conversation
@@ -71,6 +96,16 @@ export class ChatController {
     res: Response
   ): Promise<void> {
     try {
+      if (!req.user) {
+        res.status(401).json(
+          apiResponse(false, undefined, {
+            code: "UNAUTHORIZED",
+            message: "User not authenticated",
+          })
+        );
+        return;
+      }
+
       const { conversationId } = req.params;
 
       const conversation = await ChatService.getConversation(conversationId);
@@ -80,6 +115,18 @@ export class ChatController {
           apiResponse(false, undefined, {
             code: "CONVERSATION_NOT_FOUND",
             message: "Conversation not found",
+          })
+        );
+        return;
+      }
+
+      // Verify user is a participant in this conversation
+      const isParticipant = await this.isUserParticipant(req.user.uid, conversation);
+      if (!isParticipant) {
+        res.status(403).json(
+          apiResponse(false, undefined, {
+            code: "FORBIDDEN",
+            message: "You are not a participant in this conversation",
           })
         );
         return;
@@ -211,7 +258,41 @@ export class ChatController {
     res: Response
   ): Promise<void> {
     try {
-      const { messageId } = req.params;
+      if (!req.user) {
+        res.status(401).json(
+          apiResponse(false, undefined, {
+            code: "UNAUTHORIZED",
+            message: "User not authenticated",
+          })
+        );
+        return;
+      }
+
+      const { conversationId, messageId } = req.params;
+
+      // Fetch the conversation to verify user participation
+      const conversation = await ChatService.getConversation(conversationId);
+      if (!conversation) {
+        res.status(404).json(
+          apiResponse(false, undefined, {
+            code: "CONVERSATION_NOT_FOUND",
+            message: "Conversation not found",
+          })
+        );
+        return;
+      }
+
+      // Verify user is a participant in this conversation
+      const isParticipant = await this.isUserParticipant(req.user.uid, conversation);
+      if (!isParticipant) {
+        res.status(403).json(
+          apiResponse(false, undefined, {
+            code: "FORBIDDEN",
+            message: "You are not a participant in this conversation",
+          })
+        );
+        return;
+      }
 
       await ChatService.markMessageAsRead(messageId);
 
@@ -238,7 +319,40 @@ export class ChatController {
     res: Response
   ): Promise<void> {
     try {
+      if (!req.user) {
+        res.status(401).json(
+          apiResponse(false, undefined, {
+            code: "UNAUTHORIZED",
+            message: "User not authenticated",
+          })
+        );
+        return;
+      }
+
       const { conversationId } = req.params;
+
+      const conversation = await ChatService.getConversation(conversationId);
+      if (!conversation) {
+        res.status(404).json(
+          apiResponse(false, undefined, {
+            code: "CONVERSATION_NOT_FOUND",
+            message: "Conversation not found",
+          })
+        );
+        return;
+      }
+
+      // Verify user is a participant in this conversation
+      const isParticipant = await this.isUserParticipant(req.user.uid, conversation);
+      if (!isParticipant) {
+        res.status(403).json(
+          apiResponse(false, undefined, {
+            code: "FORBIDDEN",
+            message: "You are not a participant in this conversation",
+          })
+        );
+        return;
+      }
 
       await ChatService.closeConversation(conversationId);
 

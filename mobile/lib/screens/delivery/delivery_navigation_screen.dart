@@ -200,10 +200,12 @@ class _DeliveryNavigationScreenState extends State<DeliveryNavigationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        context.go('/dashboard/delivery');
-        return false;
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithRoute: (didPop, route) {
+        if (!didPop) {
+          context.go('/dashboard/delivery');
+        }
       },
       child: Scaffold(
         appBar: AppBar(

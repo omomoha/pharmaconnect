@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:async';
+import 'dart:math';
 import 'package:pharmaconnect/config/theme.dart';
 import 'package:pharmaconnect/config/constants.dart';
 import 'package:pharmaconnect/widgets/common/index.dart';
@@ -48,14 +49,16 @@ class _DeliveryVerificationScreenState extends State<DeliveryVerificationScreen>
   }
 
   void _generateRiderCode() {
-    // Mock: Generate a random 4-digit code
-    _riderCode = List.generate(4, (index) => DateTime.now().millisecond % 10)
-        .join()
-        .substring(0, 4);
+    final random = Random();
+    _riderCode = List.generate(4, (index) => random.nextInt(10)).join();
   }
 
   void _startCountdown() {
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
       if (_remainingSeconds > 0) {
         setState(() {
           _remainingSeconds--;
@@ -69,6 +72,7 @@ class _DeliveryVerificationScreenState extends State<DeliveryVerificationScreen>
   }
 
   void _showCodeExpiredDialog() {
+    if (!mounted) return;
     showDialog(
       context: context,
       barrierDismissible: false,
