@@ -121,6 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const lastName = nameParts.slice(1).join(' ') || '';
 
       // Call backend to setup profile
+      let profileSetupSucceeded = false;
       try {
         await apiClient.post('/auth/setup-profile', {
           firstName,
@@ -128,13 +129,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           phoneNumber: phone,
           role,
         });
+        profileSetupSucceeded = true;
       } catch (backendError) {
         console.error('Backend profile setup failed:', backendError);
         toast.error('Profile setup failed on backend. Please contact support.');
       }
 
-      // Register on MalPay if opted in (fire-and-forget)
-      if (registerOnMalPay) {
+      // Register on MalPay if opted in — requires profile setup to have succeeded
+      if (registerOnMalPay && profileSetupSucceeded) {
         try {
           const malpayResult = await apiClient.post('/auth/register-malpay');
           if (malpayResult?.data?.isExisting) {
@@ -144,8 +146,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         } catch (malpayError) {
           console.error('MalPay registration failed:', malpayError);
-          // Silent failure — don't block PharmaConnect registration
+          toast.error('MalPay registration failed. You can link your account later.');
         }
+      } else if (registerOnMalPay && !profileSetupSucceeded) {
+        console.warn('Skipping MalPay registration because profile setup failed');
       }
 
       setProfile(profileData);

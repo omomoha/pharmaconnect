@@ -102,8 +102,10 @@ export class AuthController {
       }
 
       // Get user profile to extract name and phone
+      logger.info(`MalPay registration requested for user ${req.user.uid} (${req.user.email})`);
       const profile = await AuthService.getUserProfile(req.user.uid);
       if (!profile) {
+        logger.warn(`MalPay registration aborted: profile not found for user ${req.user.uid}. Setup-profile may have failed.`);
         res.status(404).json(
           apiResponse(false, undefined, {
             code: "PROFILE_NOT_FOUND",
@@ -112,6 +114,12 @@ export class AuthController {
         );
         return;
       }
+
+      logger.info(`Calling MalPay for user ${req.user.uid}`, {
+        email: profile.email,
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+      });
 
       const malpayService = new MalPayService();
       const result = await malpayService.registerUser({

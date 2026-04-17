@@ -32,6 +32,11 @@ export class MalPayService {
     }
 
     try {
+      logger.info(`Calling MalPay partner API for ${data.email}`, {
+        url: `${this.apiUrl}/api/v1/partners/register-user`,
+        partnerUserId: data.partnerUserId,
+      });
+
       const response = await fetch(`${this.apiUrl}/api/v1/partners/register-user`, {
         method: 'POST',
         headers: {
@@ -46,6 +51,17 @@ export class MalPayService {
           partnerUserId: data.partnerUserId,
         }),
       });
+
+      // Check HTTP status before parsing JSON
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => 'Unable to read response body');
+        logger.error(`MalPay API returned HTTP ${response.status} for ${data.email}:`, {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText,
+        });
+        return { success: false };
+      }
 
       const result = await response.json() as { success: boolean; data?: { userId?: string; isExisting?: boolean }; message?: string };
 
