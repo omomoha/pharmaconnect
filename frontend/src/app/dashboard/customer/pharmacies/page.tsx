@@ -437,7 +437,7 @@ export default function PharmaciesPage() {
                 </p>
 
                 {/* Info Row */}
-                <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 text-sm">
                   <div className="bg-gray-50 p-2 rounded">
                     <p className="text-gray-600 text-xs">Delivery</p>
                     <p className="font-semibold text-gray-900">

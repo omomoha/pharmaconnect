@@ -214,7 +214,7 @@ export default function BrowsePharmaciesPage() {
               value={locationFilter}
               onChange={(e) => setLocationFilter(e.target.value)}
               placeholder="Filter by location..."
-              className="input-modern max-w-[200px] !py-2"
+              className="input-modern w-full sm:max-w-[200px] !py-2"
               aria-label="Filter by location"
             />
             <Button size="sm" variant="primary" onClick={handleSearch}>Filter</Button>

@@ -526,7 +526,7 @@ export default function OrdersManagementPage() {
               <h3 className="text-sm font-semibold text-gray-900 mb-3">
                 Order Information
               </h3>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs text-gray-600 uppercase tracking-wide">
                     Order Number
@@ -567,7 +567,7 @@ export default function OrdersManagementPage() {
               <h3 className="text-sm font-semibold text-gray-900 mb-3">
                 Parties Involved
               </h3>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="bg-gray-50 p-3 rounded-lg">
                   <p className="text-xs text-gray-600 uppercase tracking-wide">
                     Customer

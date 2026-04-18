@@ -295,7 +295,7 @@ export default function OrdersPage() {
           </div>
         ) : selectedOrder && (
           <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-gray-600">Order Status</p>
                 <div className="mt-1">

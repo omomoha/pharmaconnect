@@ -386,7 +386,7 @@ export default function ModerationDashboardPage() {
       >
         {selectedFlag && (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <p className="text-xs text-gray-600 uppercase tracking-wide">
                   Risk Level

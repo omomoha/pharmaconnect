@@ -157,7 +157,7 @@ export default function AvailableOrdersPage() {
                 </div>
 
                 {/* Details Grid */}
-                <div className="grid grid-cols-2 gap-4 py-4 border-y border-gray-200">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4 border-y border-gray-200">
                   <div>
                     <p className="text-xs font-semibold text-gray-500 uppercase mb-1">
                       Order Total

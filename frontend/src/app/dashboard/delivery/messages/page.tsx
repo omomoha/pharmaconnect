@@ -264,7 +264,7 @@ export default function DeliveryMessagesPage() {
         description="Chat with customers about their deliveries"
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[600px]">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[calc(100vh-220px)] min-h-[400px]">
         {/* Conversation List */}
         <div
           className={`${

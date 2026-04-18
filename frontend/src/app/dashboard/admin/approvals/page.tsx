@@ -231,7 +231,7 @@ export default function ApprovalsPage() {
       />
 
       {/* Stats Bar */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white border border-gray-200 rounded-lg p-4 text-center">
           <p className="text-2xl font-bold text-gray-900">{approvals.length}</p>
           <p className="text-sm text-gray-500">Total Pending</p>
@@ -545,7 +545,7 @@ export default function ApprovalsPage() {
               {previewDocUrl.toLowerCase().includes('.pdf') ? (
                 <iframe
                   src={previewDocUrl}
-                  className="w-full h-[500px] rounded-lg border border-gray-200"
+                  className="w-full h-[min(500px,70vh)] rounded-lg border border-gray-200"
                   title={previewDocName}
                 />
               ) : (
@@ -554,7 +554,7 @@ export default function ApprovalsPage() {
                   <img
                     src={previewDocUrl}
                     alt={previewDocName}
-                    className="max-w-full max-h-[500px] rounded-lg border border-gray-200 object-contain"
+                    className="max-w-full max-h-[min(500px,70vh)] rounded-lg border border-gray-200 object-contain"
                   />
                 </div>
               )}
