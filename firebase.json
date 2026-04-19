@@ -6,9 +6,22 @@
       "ignore": [
         "node_modules",
         ".git",
-        "src/__tests__",
+        "src",
+        "dist/index.js",
+        "dist/index.js.map",
+        "dist/index.d.ts",
+        "dist/index.d.ts.map",
+        "dist/app.js",
+        "dist/app.js.map",
+        "dist/app.d.ts",
+        "dist/app.d.ts.map",
+        "dist/__tests__",
+        "dist/scripts",
         "jest.config.ts",
-        ".env.test"
+        ".env",
+        ".env.*",
+        "*.md",
+        "tsconfig.json"
       ],
       "predeploy": [
         "cd shared && npm run build && cd ..",
