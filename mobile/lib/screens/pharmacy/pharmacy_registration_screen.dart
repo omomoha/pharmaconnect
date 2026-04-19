@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:pharmaconnect/config/theme.dart';
 import 'package:pharmaconnect/config/constants.dart';
 import 'package:pharmaconnect/services/api_service.dart';
@@ -123,30 +124,43 @@ class _PharmacyRegistrationScreenState
     );
   }
 
-  Future<void> _mockFileUpload(String documentName) async {
-    // Mock file picker - in production, use file_picker package
-    // For now, we simulate file selection
-    final fileName = '$documentName-${DateTime.now().millisecondsSinceEpoch}.pdf';
-    final mockFile = File(fileName);
+  Future<void> _pickFile(String documentName) async {
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+      );
 
-    setState(() {
-      switch (documentName) {
-        case 'pharmacy_license':
-          _pharmacyLicenseFile = mockFile;
-          _pharmacyLicenseFileName = 'Pharmacy_License.pdf';
-          break;
-        case 'cac_certificate':
-          _cacCertificateFile = mockFile;
-          _cacCertificateFileName = 'CAC_Certificate.pdf';
-          break;
-        case 'owner_id':
-          _ownerIdFile = mockFile;
-          _ownerIdFileName = "Owner_Government_ID.pdf";
-          break;
+      if (pickedFile == null) {
+        _showError('No file selected');
+        return;
       }
-    });
 
-    _showSuccess('$documentName uploaded successfully');
+      final file = File(pickedFile.path);
+      final fileName = pickedFile.name;
+
+      setState(() {
+        switch (documentName) {
+          case 'pharmacy_license':
+            _pharmacyLicenseFile = file;
+            _pharmacyLicenseFileName = fileName;
+            break;
+          case 'cac_certificate':
+            _cacCertificateFile = file;
+            _cacCertificateFileName = fileName;
+            break;
+          case 'owner_id':
+            _ownerIdFile = file;
+            _ownerIdFileName = fileName;
+            break;
+        }
+      });
+
+      _showSuccess('$documentName selected successfully');
+    } catch (e) {
+      _showError('Failed to select file: $e');
+    }
   }
 
   Future<void> _handleSubmit() async {
@@ -437,7 +451,7 @@ class _PharmacyRegistrationScreenState
           _buildDocumentUploadCard(
             title: 'Pharmacy License',
             fileName: _pharmacyLicenseFileName,
-            onTap: () => _mockFileUpload('pharmacy_license'),
+            onTap: () => _pickFile('pharmacy_license'),
             isUploaded: _pharmacyLicenseFile != null,
           ),
           const SizedBox(height: UIConstants.paddingMedium),
@@ -446,7 +460,7 @@ class _PharmacyRegistrationScreenState
           _buildDocumentUploadCard(
             title: 'CAC Certificate',
             fileName: _cacCertificateFileName,
-            onTap: () => _mockFileUpload('cac_certificate'),
+            onTap: () => _pickFile('cac_certificate'),
             isUploaded: _cacCertificateFile != null,
           ),
           const SizedBox(height: UIConstants.paddingMedium),
@@ -455,7 +469,7 @@ class _PharmacyRegistrationScreenState
           _buildDocumentUploadCard(
             title: "Owner's Government ID",
             fileName: _ownerIdFileName,
-            onTap: () => _mockFileUpload('owner_id'),
+            onTap: () => _pickFile('owner_id'),
             isUploaded: _ownerIdFile != null,
           ),
           const SizedBox(height: UIConstants.paddingXLarge),

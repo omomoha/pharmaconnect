@@ -6,6 +6,7 @@ import 'package:pharmaconnect/providers/auth_provider.dart';
 import 'package:pharmaconnect/services/api_service.dart';
 import 'package:pharmaconnect/widgets/common/index.dart';
 import 'package:provider/provider.dart';
+import 'dart:async';
 
 class PharmacyDashboardScreen extends StatefulWidget {
   const PharmacyDashboardScreen({Key? key}) : super(key: key);
@@ -54,69 +55,98 @@ class _PharmacyDashboardScreenState extends State<PharmacyDashboardScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Mock API calls - replace with actual ApiService calls
-      await Future.delayed(const Duration(milliseconds: 500));
+      final apiService = ApiService();
+      final authProvider = context.read<AuthProvider>();
+
+      // Get current user's pharmacy
+      final pharmacyResponse = await apiService.get(ApiEndpoints.pharmacies + '/mine');
+      if (pharmacyResponse is! Map<String, dynamic>) {
+        throw Exception('Invalid pharmacy response');
+      }
+
+      final pharmacyId = pharmacyResponse['data']['id'] as String;
+
+      // Fetch orders for this pharmacy
+      final ordersResponse = await apiService.get(
+        '${ApiEndpoints.orders}/pharmacy/$pharmacyId',
+      );
+
+      if (ordersResponse is! Map<String, dynamic>) {
+        throw Exception('Invalid orders response');
+      }
+
+      final orders = ordersResponse['data'] as List<dynamic>? ?? [];
+
+      // Fetch products for this pharmacy
+      final productsResponse = await apiService.get(
+        '${ApiEndpoints.pharmacies}/$pharmacyId/products',
+      );
+
+      if (productsResponse is! Map<String, dynamic>) {
+        throw Exception('Invalid products response');
+      }
+
+      final products = productsResponse['data'] as List<dynamic>? ?? [];
+
+      // Process orders data
+      final recentOrders = <Map<String, dynamic>>[];
+      final ordersList = <Map<String, dynamic>>[];
+
+      for (final order in orders) {
+        if (order is! Map<String, dynamic>) continue;
+
+        final orderData = {
+          'id': order['id'] as String? ?? 'Unknown',
+          'customerName': order['customerName'] as String? ?? 'Unknown Customer',
+          'itemsSummary': _formatItemsSummary(order['items'] as List<dynamic>? ?? []),
+          'total': (order['total'] as num?)?.toDouble() ?? 0.0,
+          'status': order['status'] as String? ?? 'pending',
+          'date': _formatDate(order['createdAt'] as String?),
+        };
+
+        ordersList.add(orderData);
+
+        // Only add first 3 orders to recent orders
+        if (recentOrders.length < 3) {
+          recentOrders.add(orderData);
+        }
+      }
+
+      // Identify low stock products (assuming there's a stock field)
+      final lowStockProducts = <Map<String, dynamic>>[];
+      for (final product in products) {
+        if (product is! Map<String, dynamic>) continue;
+
+        final currentStock = (product['stock'] as num?)?.toInt() ?? 0;
+        final minStock = (product['minStock'] as num?)?.toInt() ?? 20;
+
+        if (currentStock < minStock) {
+          lowStockProducts.add({
+            'name': product['name'] as String? ?? 'Unknown',
+            'currentStock': currentStock,
+            'minStock': minStock,
+          });
+        }
+      }
+
+      // Calculate statistics
+      final totalOrders = orders.length;
+      final totalRevenue = orders.fold<double>(
+        0.0,
+        (sum, order) => sum + ((order['total'] as num?)?.toDouble() ?? 0.0),
+      );
 
       setState(() {
-        _recentOrders = [
-          {
-            'id': 'ORD-001',
-            'customerName': 'John Doe',
-            'itemsSummary': 'Paracetamol, Aspirin',
-            'total': 45.99,
-            'status': 'delivered',
-            'date': '2026-04-16'
-          },
-          {
-            'id': 'ORD-002',
-            'customerName': 'Jane Smith',
-            'itemsSummary': 'Antibiotic Cream',
-            'total': 23.50,
-            'status': 'processing',
-            'date': '2026-04-15'
-          },
-          {
-            'id': 'ORD-003',
-            'customerName': 'Bob Johnson',
-            'itemsSummary': 'Vitamins (3 items)',
-            'total': 67.25,
-            'status': 'ready',
-            'date': '2026-04-15'
-          },
-        ];
+        _dashboardStats = {
+          'totalOrders': totalOrders,
+          'revenue': totalRevenue,
+          'productsListed': products.length,
+          'averageRating': 4.8,
+        };
 
-        _lowStockProducts = [
-          {
-            'name': 'Paracetamol 500mg',
-            'currentStock': 5,
-            'minStock': 20,
-          },
-          {
-            'name': 'Aspirin 100mg',
-            'currentStock': 8,
-            'minStock': 25,
-          },
-        ];
-
-        _allOrders = [
-          ..._recentOrders,
-          {
-            'id': 'ORD-004',
-            'customerName': 'Alice Brown',
-            'itemsSummary': 'Cough Syrup',
-            'total': 12.99,
-            'status': 'pending',
-            'date': '2026-04-14'
-          },
-          {
-            'id': 'ORD-005',
-            'customerName': 'Charlie Davis',
-            'itemsSummary': 'First Aid Kit',
-            'total': 89.99,
-            'status': 'cancelled',
-            'date': '2026-04-14'
-          },
-        ];
+        _recentOrders = recentOrders;
+        _lowStockProducts = lowStockProducts;
+        _allOrders = ordersList;
 
         // Count orders by status
         _orderFilters['all'] = _allOrders.length;
@@ -145,6 +175,39 @@ class _PharmacyDashboardScreenState extends State<PharmacyDashboardScreen> {
       if (mounted) {
         setState(() => _isLoading = false);
       }
+    }
+  }
+
+  String _formatItemsSummary(List<dynamic> items) {
+    if (items.isEmpty) return 'No items';
+
+    final itemNames = items
+        .take(2)
+        .map((item) {
+          if (item is Map<String, dynamic>) {
+            return item['name'] as String? ?? 'Unknown';
+          }
+          return 'Unknown';
+        })
+        .toList();
+
+    final summary = itemNames.join(', ');
+    if (items.length > 2) {
+      return '$summary +${items.length - 2} more';
+    }
+    return summary;
+  }
+
+  String _formatDate(String? dateString) {
+    if (dateString == null || dateString.isEmpty) {
+      return 'N/A';
+    }
+
+    try {
+      final date = DateTime.parse(dateString);
+      return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    } catch (_) {
+      return dateString;
     }
   }
 

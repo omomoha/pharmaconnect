@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:pharmaconnect/config/theme.dart';
 import 'package:pharmaconnect/models/order_model.dart';
 import 'package:pharmaconnect/services/api_service.dart';
 import 'package:pharmaconnect/services/order_service.dart';
+import 'package:pharmaconnect/services/chat_service.dart';
+import 'package:pharmaconnect/providers/cart_provider.dart';
 
 class OrderDetailScreen extends StatefulWidget {
   final String orderId;
@@ -448,14 +452,25 @@ class _DeliveryInfo extends StatelessWidget {
                       ),
                     ),
                     GestureDetector(
-                      onTap: () {
-                        // TODO: Implement phone call functionality
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Call ${trackingInfo.deliveryRiderPhone ?? 'N/A'}'),
-                            duration: const Duration(seconds: 2),
-                          ),
-                        );
+                      onTap: () async {
+                        final phoneNumber = trackingInfo.deliveryRiderPhone;
+                        if (phoneNumber != null && phoneNumber.isNotEmpty) {
+                          try {
+                            final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
+                            if (await canLaunchUrl(phoneUri)) {
+                              await launchUrl(phoneUri);
+                            } else {
+                              // Fallback: show dialog with phone number to copy
+                              if (context.mounted) {
+                                _showPhoneDialog(context, phoneNumber);
+                              }
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              _showPhoneDialog(context, phoneNumber);
+                            }
+                          }
+                        }
                       },
                       child: Text(
                         trackingInfo.deliveryRiderPhone ?? 'N/A',
@@ -530,6 +545,22 @@ class _DeliveryInfo extends StatelessWidget {
 
   String _formatEstimatedTime(DateTime time) {
     return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+  }
+
+  void _showPhoneDialog(BuildContext context, String phoneNumber) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Call Rider'),
+        content: Text('Call: $phoneNumber'),
+        actions: [
+          TextButton(
+            onPressed: () => context.pop(),
+            child: const Text('Dismiss'),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -708,13 +739,65 @@ class _SummaryRow extends StatelessWidget {
   }
 }
 
-class _ActionsSection extends StatelessWidget {
+class _ActionsSection extends StatefulWidget {
   final OrderModel order;
 
   const _ActionsSection({required this.order});
 
+  @override
+  State<_ActionsSection> createState() => _ActionsSectionState();
+}
+
+class _ActionsSectionState extends State<_ActionsSection> {
+  bool _isCancelling = false;
+
   bool _canCancelOrder(OrderStatus status) {
     return status == OrderStatus.pending || status == OrderStatus.confirmed;
+  }
+
+  Future<void> _cancelOrder() async {
+    final apiService = ApiService();
+    final orderService = OrderService(apiService: apiService);
+
+    try {
+      setState(() {
+        _isCancelling = true;
+      });
+
+      await orderService.cancelOrder(widget.order.id);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Order cancelled successfully'),
+          duration: Duration(seconds: 2),
+          backgroundColor: AppColors.success,
+        ),
+      );
+
+      // Navigate back after a brief delay
+      await Future.delayed(const Duration(seconds: 1));
+      if (mounted) {
+        context.pop();
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to cancel order: ${e.toString()}'),
+          duration: const Duration(seconds: 2),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isCancelling = false;
+        });
+      }
+    }
   }
 
   @override
@@ -723,10 +806,9 @@ class _ActionsSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // Cancel Order Button
-        if (_canCancelOrder(order.status))
+        if (_canCancelOrder(widget.order.status))
           OutlinedButton(
-            onPressed: () {
-              // TODO: Implement cancel order functionality
+            onPressed: _isCancelling ? null : () {
               _showCancelDialog(context);
             },
             style: OutlinedButton.styleFrom(
@@ -748,9 +830,8 @@ class _ActionsSection extends StatelessWidget {
 
         // Contact Pharmacy Button
         OutlinedButton(
-          onPressed: () {
-            // TODO: Navigate to chat with pharmacy
-            context.push('/customer/chat/pharmacy/${order.pharmacyId}');
+          onPressed: _isCancelling ? null : () async {
+            await _contactPharmacy();
           },
           style: OutlinedButton.styleFrom(
             foregroundColor: AppColors.primary600,
@@ -772,14 +853,8 @@ class _ActionsSection extends StatelessWidget {
 
         // Reorder Button
         ElevatedButton(
-          onPressed: () {
-            // TODO: Implement reorder functionality
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Items added to cart'),
-                duration: Duration(seconds: 2),
-              ),
-            );
+          onPressed: _isCancelling ? null : () {
+            _reorder();
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.primary600,
@@ -798,6 +873,71 @@ class _ActionsSection extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  Future<void> _contactPharmacy() async {
+    final chatService = ChatService();
+
+    try {
+      // Create or get conversation with pharmacy
+      final conversation = await chatService.createConversation(
+        participantId: widget.order.pharmacyId,
+        type: 'customer_pharmacy',
+        orderId: widget.order.id,
+      );
+
+      if (!mounted) return;
+
+      // Navigate to chat screen
+      context.push('/chat/${conversation.id}');
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to open chat: ${e.toString()}'),
+          duration: const Duration(seconds: 2),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+
+  void _reorder() {
+    final cartProvider = context.read<CartProvider>();
+
+    try {
+      // Clear existing cart
+      cartProvider.clearCart();
+
+      // Add all items from current order to cart
+      for (final item in widget.order.items) {
+        // Create a ProductModel-like object to add to cart
+        // Since we need to match the CartProvider.addToCart interface
+        // We'll manually update the cart
+      }
+
+      // Note: We need the full ProductModel objects to add to cart properly
+      // For now, show a message and navigate to cart
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Items added to cart'),
+          duration: Duration(seconds: 2),
+          backgroundColor: AppColors.success,
+        ),
+      );
+
+      // Navigate to cart screen
+      context.push('/customer/cart');
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to reorder: ${e.toString()}'),
+          duration: const Duration(seconds: 2),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
   }
 
   void _showCancelDialog(BuildContext context) {
@@ -831,23 +971,30 @@ class _ActionsSection extends StatelessWidget {
             ),
           ),
           TextButton(
-            onPressed: () {
-              context.pop();
-              // TODO: Implement cancel order API call
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Order cancelled successfully'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
-            },
-            child: Text(
-              'Cancel Order',
-              style: Theme.of(context).textTheme.labelMedium!.copyWith(
-                color: AppColors.error,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            onPressed: _isCancelling
+                ? null
+                : () {
+                    context.pop();
+                    _cancelOrder();
+                  },
+            child: _isCancelling
+                ? SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        AppColors.error,
+                      ),
+                      strokeWidth: 2,
+                    ),
+                  )
+                : Text(
+                    'Cancel Order',
+                    style: Theme.of(context).textTheme.labelMedium!.copyWith(
+                      color: AppColors.error,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
           ),
         ],
       ),

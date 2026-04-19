@@ -19,14 +19,27 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
   final ChatService _chatService = ChatService();
   final SocketService _socketService = SocketService();
   List<ConversationModel> _conversations = [];
+  List<ConversationModel> _filteredConversations = [];
   bool _isLoading = true;
   String? _error;
+  bool _isSearching = false;
+  late TextEditingController _searchController;
 
   @override
   void initState() {
     super.initState();
+    _searchController = TextEditingController();
+    _searchController.addListener(_filterConversations);
     _loadConversations();
     _listenForNewMessages();
+  }
+
+  @override
+  void dispose() {
+    _searchController.removeListener(_filterConversations);
+    _searchController.dispose();
+    _socketService.off(SocketEvents.chatMessageReceive);
+    super.dispose();
   }
 
   Future<void> _loadConversations() async {
@@ -41,6 +54,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
 
       setState(() {
         _conversations = conversations;
+        _filteredConversations = conversations;
         _isLoading = false;
       });
     } catch (e) {
@@ -52,6 +66,34 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
     }
   }
 
+  void _filterConversations() {
+    final query = _searchController.text.toLowerCase();
+
+    setState(() {
+      if (query.isEmpty) {
+        _filteredConversations = _conversations;
+      } else {
+        _filteredConversations = _conversations.where((conversation) {
+          final currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
+          final otherName = conversation.getOtherParticipantName(currentUserId).toLowerCase();
+          final lastMessage = conversation.lastMessage?.toLowerCase() ?? '';
+
+          return otherName.contains(query) || lastMessage.contains(query);
+        }).toList();
+      }
+    });
+  }
+
+  void _toggleSearch() {
+    setState(() {
+      _isSearching = !_isSearching;
+      if (!_isSearching) {
+        _searchController.clear();
+        _filterConversations();
+      }
+    });
+  }
+
   void _listenForNewMessages() {
     _socketService.on(SocketEvents.chatMessageReceive, (data) {
       // Refresh the list when a new message comes in
@@ -60,23 +102,26 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
   }
 
   @override
-  void dispose() {
-    _socketService.off(SocketEvents.chatMessageReceive);
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Messages'),
+        title: _isSearching
+            ? TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Search conversations...',
+                  border: InputBorder.none,
+                  hintStyle: TextStyle(color: AppColors.neutral500),
+                ),
+                autofocus: true,
+                style: const TextStyle(color: Colors.black87),
+              )
+            : const Text('Messages'),
         actions: [
           if (_conversations.isNotEmpty)
             IconButton(
-              icon: const Icon(Icons.search),
-              onPressed: () {
-                // TODO: search conversations
-              },
+              icon: Icon(_isSearching ? Icons.close : Icons.search),
+              onPressed: _toggleSearch,
             ),
         ],
       ),
@@ -120,26 +165,55 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
 
     return RefreshIndicator(
       onRefresh: _loadConversations,
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        itemCount: _conversations.length,
-        separatorBuilder: (_, __) => const Divider(
-          height: 1,
-          indent: 76,
-          endIndent: 16,
-        ),
-        itemBuilder: (context, index) {
-          return _ConversationTile(
-            conversation: _conversations[index],
-            currentUserId: FirebaseAuth.instance.currentUser?.uid ?? '',
-            onTap: () {
-              context.push(
-                '/chat/${_conversations[index].id}',
-              );
-            },
-          );
-        },
-      ),
+      child: _filteredConversations.isEmpty && _searchController.text.isNotEmpty
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.search_off,
+                    size: 48,
+                    color: AppColors.neutral400,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'No conversations found',
+                    style: TextStyle(
+                      color: AppColors.neutral600,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: () {
+                      _searchController.clear();
+                      _filterConversations();
+                    },
+                    child: const Text('Clear search'),
+                  ),
+                ],
+              ),
+            )
+          : ListView.separated(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              itemCount: _filteredConversations.length,
+              separatorBuilder: (_, __) => const Divider(
+                height: 1,
+                indent: 76,
+                endIndent: 16,
+              ),
+              itemBuilder: (context, index) {
+                return _ConversationTile(
+                  conversation: _filteredConversations[index],
+                  currentUserId: FirebaseAuth.instance.currentUser?.uid ?? '',
+                  onTap: () {
+                    context.push(
+                      '/chat/${_filteredConversations[index].id}',
+                    );
+                  },
+                );
+              },
+            ),
     );
   }
 }

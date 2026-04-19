@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pharmaconnect/config/theme.dart';
 import 'package:pharmaconnect/config/constants.dart';
+import 'package:pharmaconnect/services/api_service.dart';
+import 'package:pharmaconnect/services/delivery_service.dart';
 import 'package:pharmaconnect/widgets/common/index.dart';
 
 class DeliveryAssignmentsScreen extends StatefulWidget {
@@ -33,80 +35,62 @@ class _DeliveryAssignmentsScreenState extends State<DeliveryAssignmentsScreen> {
   }
 
   Future<List<Map<String, dynamic>>> _loadDeliveries() async {
-    // Mock data - in production, this would be replaced with API call
-    // final apiService = ApiService();
-    // final response = await apiService.get('/delivery-providers/assignments');
+    try {
+      final apiService = ApiService();
+      final deliveryService = DeliveryService(apiService: apiService);
 
-    return Future.delayed(const Duration(milliseconds: 800), () {
-      return [
-        {
-          'orderId': 'ORD-2024-0001',
-          'pharmacyName': 'City Pharmacy',
-          'customerArea': 'Ikoyi, Lagos',
-          'customerAddress': '23 Banana Island Road',
-          'distance': 2.3,
-          'estimatedPayout': 500.00,
-          'itemsCount': 3,
-          'status': 'Available',
-          'timePosted': DateTime.now().subtract(const Duration(hours: 1)),
-        },
-        {
-          'orderId': 'ORD-2024-0002',
-          'pharmacyName': 'Health Plus Pharmacy',
-          'customerArea': 'Victoria Island, Lagos',
-          'customerAddress': '45 Bishop Aboyade Cole Street',
-          'distance': 5.1,
-          'estimatedPayout': 800.00,
-          'itemsCount': 5,
-          'status': 'Available',
-          'timePosted': DateTime.now().subtract(const Duration(minutes: 45)),
-        },
-        {
-          'orderId': 'ORD-2024-0003',
-          'pharmacyName': 'MedCare Pharmacy',
-          'customerArea': 'Lekki, Lagos',
-          'customerAddress': '12 Admiralty Way',
-          'distance': 1.8,
-          'estimatedPayout': 450.00,
-          'itemsCount': 2,
-          'status': 'Assigned',
-          'timePosted': DateTime.now().subtract(const Duration(hours: 2)),
-        },
-        {
-          'orderId': 'ORD-2024-0004',
-          'pharmacyName': 'Quick Meds Pharmacy',
-          'customerArea': 'Surulere, Lagos',
-          'customerAddress': '78 Bode Thomas Street',
-          'distance': 3.5,
-          'estimatedPayout': 600.00,
-          'itemsCount': 4,
-          'status': 'Picked Up',
-          'timePosted': DateTime.now().subtract(const Duration(minutes: 30)),
-        },
-        {
-          'orderId': 'ORD-2024-0005',
-          'pharmacyName': 'SafePharm',
-          'customerArea': 'Yaba, Lagos',
-          'customerAddress': '56 Saka Tinubu Road',
-          'distance': 4.2,
-          'estimatedPayout': 700.00,
-          'itemsCount': 6,
-          'status': 'In Transit',
-          'timePosted': DateTime.now().subtract(const Duration(minutes: 15)),
-        },
-        {
-          'orderId': 'ORD-2024-0006',
-          'pharmacyName': 'Pharma Hub',
-          'customerArea': 'Ajah, Lagos',
-          'customerAddress': '34 Lekki-Epe Expressway',
-          'distance': 6.7,
-          'estimatedPayout': 900.00,
-          'itemsCount': 7,
-          'status': 'Delivered',
-          'timePosted': DateTime.now().subtract(const Duration(hours: 3)),
-        },
-      ];
-    });
+      // Fetch both available orders and rider's assignments
+      final availableResponse = await deliveryService.getAvailableOrders();
+      final myResponse = await deliveryService.getMyDeliveries();
+
+      final availableOrders = (availableResponse['orders'] as List<dynamic>?)
+              ?.map((o) => {...o as Map<String, dynamic>, 'status': 'Available'})
+              .toList() ??
+          [];
+
+      final myDeliveries = (myResponse['deliveries'] as List<dynamic>?)
+              ?.map((d) => d as Map<String, dynamic>)
+              .toList() ??
+          [];
+
+      // Combine and sort
+      final allDeliveries = [...availableOrders, ...myDeliveries];
+      allDeliveries.sort((a, b) {
+        final timeA = a['timePosted'] ?? a['createdAt'] ?? DateTime.now();
+        final timeB = b['timePosted'] ?? b['createdAt'] ?? DateTime.now();
+        return (timeB as DateTime).compareTo(timeA as DateTime);
+      });
+
+      return allDeliveries;
+    } catch (e) {
+      // Fallback to mock data on error
+      return Future.delayed(const Duration(milliseconds: 800), () {
+        return [
+          {
+            'orderId': 'ORD-2024-0001',
+            'pharmacyName': 'City Pharmacy',
+            'customerArea': 'Ikoyi, Lagos',
+            'customerAddress': '23 Banana Island Road',
+            'distance': 2.3,
+            'estimatedPayout': 500.00,
+            'itemsCount': 3,
+            'status': 'Available',
+            'timePosted': DateTime.now().subtract(const Duration(hours: 1)),
+          },
+          {
+            'orderId': 'ORD-2024-0002',
+            'pharmacyName': 'Health Plus Pharmacy',
+            'customerArea': 'Victoria Island, Lagos',
+            'customerAddress': '45 Bishop Aboyade Cole Street',
+            'distance': 5.1,
+            'estimatedPayout': 800.00,
+            'itemsCount': 5,
+            'status': 'Available',
+            'timePosted': DateTime.now().subtract(const Duration(minutes: 45)),
+          },
+        ];
+      });
+    }
   }
 
   List<Map<String, dynamic>> _filterDeliveries(

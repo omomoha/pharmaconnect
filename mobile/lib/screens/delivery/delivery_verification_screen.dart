@@ -5,6 +5,8 @@ import 'dart:async';
 import 'dart:math';
 import 'package:pharmaconnect/config/theme.dart';
 import 'package:pharmaconnect/config/constants.dart';
+import 'package:pharmaconnect/services/api_service.dart';
+import 'package:pharmaconnect/services/delivery_service.dart';
 import 'package:pharmaconnect/widgets/common/index.dart';
 
 class DeliveryVerificationScreen extends StatefulWidget {
@@ -117,10 +119,16 @@ class _DeliveryVerificationScreenState extends State<DeliveryVerificationScreen>
     setState(() => _isLoading = true);
 
     try {
-      // Mock API call - in production, this would verify against backend
-      await Future.delayed(const Duration(milliseconds: 800));
+      final apiService = ApiService();
+      final deliveryService = DeliveryService(apiService: apiService);
 
-      // Mock: Accept any 4-digit code
+      // Verify customer code with backend
+      await deliveryService.verifyDeliveryCode(
+        assignmentId: widget.orderId,
+        code: code,
+        codeType: 'customer',
+      );
+
       setState(() {
         _customerCodeVerified = true;
         _isLoading = false;
@@ -138,7 +146,7 @@ class _DeliveryVerificationScreenState extends State<DeliveryVerificationScreen>
       });
     } catch (e) {
       setState(() => _isLoading = false);
-      _showErrorSnackbar('Verification failed. Please try again.');
+      _showErrorSnackbar('Verification failed: ${e.toString()}');
     }
   }
 
@@ -146,8 +154,22 @@ class _DeliveryVerificationScreenState extends State<DeliveryVerificationScreen>
     setState(() => _isLoading = true);
 
     try {
-      // Mock API call
-      await Future.delayed(const Duration(milliseconds: 800));
+      final apiService = ApiService();
+      final deliveryService = DeliveryService(apiService: apiService);
+
+      // Verify rider code with backend
+      await deliveryService.verifyDeliveryCode(
+        assignmentId: widget.orderId,
+        code: _riderCode,
+        codeType: 'rider',
+      );
+
+      // Update delivery status to 'delivered'
+      await deliveryService.updateDeliveryStatus(
+        assignmentId: widget.orderId,
+        status: 'delivered',
+        notes: 'Both codes verified. Delivery completed.',
+      );
 
       setState(() {
         _riderCodeVerified = true;
@@ -166,7 +188,7 @@ class _DeliveryVerificationScreenState extends State<DeliveryVerificationScreen>
       });
     } catch (e) {
       setState(() => _isLoading = false);
-      _showErrorSnackbar('Verification failed. Please try again.');
+      _showErrorSnackbar('Verification failed: ${e.toString()}');
     }
   }
 

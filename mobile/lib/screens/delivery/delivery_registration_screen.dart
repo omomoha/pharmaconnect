@@ -1,9 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:pharmaconnect/config/theme.dart';
 import 'package:pharmaconnect/config/constants.dart';
 import 'package:pharmaconnect/services/api_service.dart';
+import 'package:pharmaconnect/services/delivery_service.dart';
 import 'package:pharmaconnect/widgets/common/index.dart';
 
 class DeliveryRegistrationScreen extends StatefulWidget {
@@ -167,30 +169,43 @@ class _DeliveryRegistrationScreenState
     );
   }
 
-  Future<void> _mockFileUpload(String documentName) async {
-    // Mock file picker - in production, use file_picker package
-    // For now, we simulate file selection
-    final fileName = '$documentName-${DateTime.now().millisecondsSinceEpoch}.pdf';
-    final mockFile = File(fileName);
+  Future<void> _pickFile(String documentName) async {
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+      );
 
-    setState(() {
-      switch (documentName) {
-        case 'cac_certificate':
-          _cacCertificateFile = mockFile;
-          _cacCertificateFileName = 'CAC_Certificate.pdf';
-          break;
-        case 'vehicle_insurance':
-          _vehicleInsuranceFile = mockFile;
-          _vehicleInsuranceFileName = 'Vehicle_Insurance.pdf';
-          break;
-        case 'owner_id':
-          _ownerIdFile = mockFile;
-          _ownerIdFileName = "Owner_Government_ID.pdf";
-          break;
+      if (pickedFile == null) {
+        _showError('No file selected');
+        return;
       }
-    });
 
-    _showSuccess('$documentName uploaded successfully');
+      final file = File(pickedFile.path);
+      final fileName = pickedFile.name;
+
+      setState(() {
+        switch (documentName) {
+          case 'cac_certificate':
+            _cacCertificateFile = file;
+            _cacCertificateFileName = fileName;
+            break;
+          case 'vehicle_insurance':
+            _vehicleInsuranceFile = file;
+            _vehicleInsuranceFileName = fileName;
+            break;
+          case 'owner_id':
+            _ownerIdFile = file;
+            _ownerIdFileName = fileName;
+            break;
+        }
+      });
+
+      _showSuccess('$documentName selected successfully');
+    } catch (e) {
+      _showError('Failed to select file: $e');
+    }
   }
 
   Future<void> _handleSubmit() async {
@@ -202,8 +217,9 @@ class _DeliveryRegistrationScreenState
 
     try {
       final apiService = ApiService();
+      final deliveryService = DeliveryService(apiService: apiService);
 
-      final registrationData = {
+      final businessDetails = {
         'companyName': _companyNameController.text,
         'description': _descriptionController.text,
         'phone': _phoneController.text,
@@ -213,22 +229,21 @@ class _DeliveryRegistrationScreenState
         'state': _stateController.text,
         'fleetSize': _selectedFleetSize,
         'serviceArea': _serviceAreaController.text,
-        'documents': {
-          'cacCertificate': _cacCertificateFileName ?? '',
-          'vehicleInsurance': _vehicleInsuranceFileName ?? '',
-          'ownerId': _ownerIdFileName ?? '',
-        },
-        'vehicleInformation': {
-          'vehicleType': _selectedVehicleType,
-          'licensePlate': _licensePlateController.text,
-          'vehicleColor': _vehicleColorController.text,
-          'driverLicenseNumber': _driverLicenseController.text,
-        },
+        'cacCertificate': _cacCertificateFileName ?? '',
+        'vehicleInsurance': _vehicleInsuranceFileName ?? '',
+        'ownerId': _ownerIdFileName ?? '',
       };
 
-      await apiService.post(
-        ApiEndpoints.deliveryProviders,
-        body: registrationData,
+      final vehicleInfo = {
+        'vehicleType': _selectedVehicleType,
+        'licensePlate': _licensePlateController.text,
+        'vehicleColor': _vehicleColorController.text,
+        'driverLicenseNumber': _driverLicenseController.text,
+      };
+
+      await deliveryService.registerDeliveryProvider(
+        businessDetails: businessDetails,
+        vehicleInfo: vehicleInfo,
       );
 
       if (mounted) {
@@ -509,7 +524,7 @@ class _DeliveryRegistrationScreenState
           _buildDocumentUploadCard(
             title: 'CAC Certificate',
             fileName: _cacCertificateFileName,
-            onTap: () => _mockFileUpload('cac_certificate'),
+            onTap: () => _pickFile('cac_certificate'),
             isUploaded: _cacCertificateFile != null,
           ),
           const SizedBox(height: UIConstants.paddingMedium),
@@ -518,7 +533,7 @@ class _DeliveryRegistrationScreenState
           _buildDocumentUploadCard(
             title: 'Vehicle Insurance',
             fileName: _vehicleInsuranceFileName,
-            onTap: () => _mockFileUpload('vehicle_insurance'),
+            onTap: () => _pickFile('vehicle_insurance'),
             isUploaded: _vehicleInsuranceFile != null,
           ),
           const SizedBox(height: UIConstants.paddingMedium),
@@ -527,7 +542,7 @@ class _DeliveryRegistrationScreenState
           _buildDocumentUploadCard(
             title: "Owner's Government ID",
             fileName: _ownerIdFileName,
-            onTap: () => _mockFileUpload('owner_id'),
+            onTap: () => _pickFile('owner_id'),
             isUploaded: _ownerIdFile != null,
           ),
           const SizedBox(height: UIConstants.paddingXLarge),

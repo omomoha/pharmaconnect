@@ -89,6 +89,8 @@ class ApiEndpoints {
   static const String notifications = '/notifications';
   static const String delivery = '/delivery';
   static const String deliveryAssignments = '$delivery/assignments';
+  static const String deliveryEarnings = '$delivery/earnings';
+  static const String deliveryTransactions = '$delivery/transactions';
 }
 
 class UIConstants {

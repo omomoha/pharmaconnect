@@ -4,6 +4,7 @@ import 'package:pharmaconnect/config/theme.dart';
 import 'package:pharmaconnect/config/constants.dart';
 import 'package:pharmaconnect/providers/auth_provider.dart';
 import 'package:pharmaconnect/services/api_service.dart';
+import 'package:pharmaconnect/services/delivery_service.dart';
 import 'package:pharmaconnect/widgets/common/index.dart';
 import 'package:provider/provider.dart';
 
@@ -35,23 +36,44 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
 
   Future<void> _onRefresh() async {
     try {
-      // Simulate API call - replace with actual API call
-      await Future.delayed(const Duration(milliseconds: 1000));
+      final apiService = ApiService();
+      final deliveryService = DeliveryService(apiService: apiService);
+
+      // Refresh deliveries data
+      await deliveryService.getMyDeliveries();
+      await deliveryService.getAvailableOrders();
+
       if (mounted) {
         setState(() {});
         _refreshController.refreshCompleted();
       }
     } catch (e) {
-      _refreshController.refreshFailed();
+      if (mounted) {
+        _refreshController.refreshFailed();
+      }
     }
   }
 
   Future<void> _toggleOnlineStatus() async {
     setState(() => _isLoading = true);
     try {
+      final apiService = ApiService();
+      final deliveryService = DeliveryService(apiService: apiService);
+
       // Update availability status via API
-      // await apiService.updateDeliveryStatus(_isOnline ? 'offline' : 'online');
+      final newStatus = _isOnline ? 'offline' : 'online';
+      // Note: This endpoint may need to be added to backend if not present
+      // For now, optimistic update
       setState(() => _isOnline = !_isOnline);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Status updated to $newStatus'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

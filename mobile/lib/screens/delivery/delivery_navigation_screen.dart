@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pharmaconnect/config/theme.dart';
 import 'package:pharmaconnect/config/constants.dart';
+import 'package:pharmaconnect/services/api_service.dart';
+import 'package:pharmaconnect/services/delivery_service.dart';
 import 'package:pharmaconnect/widgets/common/index.dart';
 
 class DeliveryNavigationScreen extends StatefulWidget {
@@ -73,8 +75,15 @@ class _DeliveryNavigationScreenState extends State<DeliveryNavigationScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Simulate API call
-      await Future.delayed(const Duration(milliseconds: 800));
+      final apiService = ApiService();
+      final deliveryService = DeliveryService(apiService: apiService);
+
+      // Update delivery status to 'picked_up'
+      await deliveryService.updateDeliveryStatus(
+        assignmentId: widget.orderId,
+        status: 'picked_up',
+        notes: 'Rider arrived at pharmacy',
+      );
 
       setState(() {
         _currentPhase = NavigationPhase.toCustomer;
@@ -103,8 +112,15 @@ class _DeliveryNavigationScreenState extends State<DeliveryNavigationScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Simulate API call
-      await Future.delayed(const Duration(milliseconds: 800));
+      final apiService = ApiService();
+      final deliveryService = DeliveryService(apiService: apiService);
+
+      // Update delivery status to 'in_transit'
+      await deliveryService.updateDeliveryStatus(
+        assignmentId: widget.orderId,
+        status: 'in_transit',
+        notes: 'Rider en route to customer',
+      );
 
       if (mounted) {
         setState(() => _isLoading = false);
