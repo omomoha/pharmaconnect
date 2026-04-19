@@ -1,78 +1,86 @@
 import { onRequest } from 'firebase-functions/v2/https';
-import * as admin from 'firebase-admin';
 import express, { Request, Response } from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
-import compression from 'compression';
-import cookieParser from 'cookie-parser';
-import config, { getAllowedOrigins } from './config/index.js';
-import logger from './utils/logger.js';
-import {
-  errorHandler,
-  notFoundHandler,
-  asyncHandler,
-} from './middleware/errorHandler.js';
 
 /**
- * DEBUG STEP 2: Core infrastructure + middleware, NO routes.
- * Minimal deploy (step 1) succeeded — now testing if firebase-admin,
- * config, logger, and middleware work in Cloud Run.
- * If this deploys, the issue is in route modules or their dependencies.
+ * DEBUG STEP 3: Diagnostic version — uses dynamic require() with try/catch
+ * to identify exactly which module import crashes the Cloud Run container.
+ * Each import is wrapped individually so we can see which one fails.
  */
 
-// Initialize Firebase Admin SDK
-try {
-  if (!admin.apps.length) {
-    admin.initializeApp();
+const loadErrors: string[] = [];
+
+function tryRequire(name: string): any {
+  try {
+    const mod = require(name);
+    console.log(`[DIAG] OK: ${name}`);
+    return mod.default || mod;
+  } catch (err: any) {
+    const msg = `[DIAG] FAIL: ${name} — ${err.message}`;
+    console.error(msg);
+    loadErrors.push(msg);
+    return null;
   }
-  logger.info('Firebase initialized for Cloud Functions');
-} catch (error) {
-  logger.error('Firebase initialization failed in Cloud Functions:', error);
 }
 
-// Warn about insecure JWT_SECRET
-if (config.JWT_SECRET === 'dev-only-jwt-secret-not-for-production') {
-  logger.warn('WARNING: JWT_SECRET is using the insecure default.');
+// Test each dependency individually
+const admin = tryRequire('firebase-admin');
+const cors = tryRequire('cors');
+const helmet = tryRequire('helmet');
+const compression = tryRequire('compression');
+const cookieParser = tryRequire('cookie-parser');
+const configModule = tryRequire('./config/index.js');
+const loggerModule = tryRequire('./utils/logger.js');
+const errorHandlerModule = tryRequire('./middleware/errorHandler.js');
+
+// Initialize Firebase Admin if loaded
+if (admin) {
+  try {
+    if (!admin.apps?.length) {
+      admin.initializeApp();
+    }
+    console.log('[DIAG] Firebase Admin initialized OK');
+  } catch (err: any) {
+    console.error(`[DIAG] Firebase Admin init FAIL: ${err.message}`);
+    loadErrors.push(`Firebase Admin init: ${err.message}`);
+  }
 }
 
 const app = express();
+app.use(express.json());
 
-app.use(helmet({
-  contentSecurityPolicy: false,
-  crossOriginEmbedderPolicy: false,
-}));
-app.use(
-  cors({
-    origin: getAllowedOrigins(),
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-  })
-);
-app.use(compression());
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
-app.use(cookieParser());
-
-// Health check
-app.get(
-  '/health',
-  asyncHandler(async (_req: Request, res: Response) => {
-    res.json({
-      success: true,
-      message: 'PharmaConnect Backend is healthy (debug step 2 — no routes)',
-      timestamp: new Date(),
-    });
-  })
-);
-
-// Stub API routes — routes disabled for deploy debugging
-app.use('/api/v1', (_req: Request, res: Response) => {
-  res.json({ message: 'Debug step 2 — routes disabled, testing core infrastructure' });
+// Health check — reports diagnostic results
+app.get('/health', (_req: Request, res: Response) => {
+  res.json({
+    success: true,
+    message: 'PharmaConnect Backend — diagnostic mode',
+    loadErrors,
+    timestamp: new Date(),
+  });
 });
 
-app.use(notFoundHandler);
-app.use(errorHandler);
+// Root — diagnostic status
+app.get('/', (_req: Request, res: Response) => {
+  res.json({
+    status: 'ok',
+    version: 'diagnostic-step-3',
+    loadErrors,
+    modulesLoaded: {
+      'firebase-admin': !!admin,
+      cors: !!cors,
+      helmet: !!helmet,
+      compression: !!compression,
+      'cookie-parser': !!cookieParser,
+      config: !!configModule,
+      logger: !!loggerModule,
+      errorHandler: !!errorHandlerModule,
+    },
+  });
+});
+
+// API stub
+app.use('/api/v1', (_req: Request, res: Response) => {
+  res.json({ message: 'Diagnostic mode — routes disabled', loadErrors });
+});
 
 export const api = onRequest(
   {
