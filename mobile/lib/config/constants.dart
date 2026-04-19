@@ -18,7 +18,7 @@ class AppConstants {
   static const String firebaseProjectId = 'marketplace-50f56';
   static const String firebaseAuthDomain = 'marketplace-50f56.firebaseapp.com';
   static const String firebaseStorageBucket =
-      'marketplace-50f56.appspot.com';
+      'marketplace-50f56.firebasestorage.app';
 
   // Timeouts
   static const Duration apiTimeout = Duration(seconds: 30);

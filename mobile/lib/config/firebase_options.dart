@@ -33,7 +33,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '598024098653',
     projectId: 'marketplace-50f56',
     authDomain: 'marketplace-50f56.firebaseapp.com',
-    storageBucket: 'marketplace-50f56.appspot.com',
+    storageBucket: 'marketplace-50f56.firebasestorage.app',
     measurementId: 'G-MEASUREMENT_ID',
   );
 
@@ -42,7 +42,7 @@ class DefaultFirebaseOptions {
     appId: '1:598024098653:android:8dcd7e8f5a4c3b2e1f0g9h',
     messagingSenderId: '598024098653',
     projectId: 'marketplace-50f56',
-    storageBucket: 'marketplace-50f56.appspot.com',
+    storageBucket: 'marketplace-50f56.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
@@ -50,7 +50,7 @@ class DefaultFirebaseOptions {
     appId: '1:598024098653:ios:8dcd7e8f5a4c3b2e1f0g9h',
     messagingSenderId: '598024098653',
     projectId: 'marketplace-50f56',
-    storageBucket: 'marketplace-50f56.appspot.com',
+    storageBucket: 'marketplace-50f56.firebasestorage.app',
     iosClientId: 'ios-client-id',
     iosBundleId: 'com.pharmaconnect.app',
   );
@@ -60,7 +60,7 @@ class DefaultFirebaseOptions {
     appId: '1:598024098653:macos:8dcd7e8f5a4c3b2e1f0g9h',
     messagingSenderId: '598024098653',
     projectId: 'marketplace-50f56',
-    storageBucket: 'marketplace-50f56.appspot.com',
+    storageBucket: 'marketplace-50f56.firebasestorage.app',
     iosClientId: 'macos-client-id',
     iosBundleId: 'com.pharmaconnect.app.macos',
   );
@@ -70,6 +70,6 @@ class DefaultFirebaseOptions {
     appId: '1:598024098653:windows:8dcd7e8f5a4c3b2e1f0g9h',
     messagingSenderId: '598024098653',
     projectId: 'marketplace-50f56',
-    storageBucket: 'marketplace-50f56.appspot.com',
+    storageBucket: 'marketplace-50f56.firebasestorage.app',
   );
 }
