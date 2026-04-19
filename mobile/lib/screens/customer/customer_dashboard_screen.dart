@@ -82,13 +82,14 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
   // HOME TAB - Dashboard Overview
   // ============================================
   Widget _buildHomeTab() {
-    return RefreshIndicator(
-      onRefresh: () async {
-        setState(() {});
-        await Future.delayed(const Duration(milliseconds: 500));
-      },
-      child: CustomScrollView(
-        slivers: [
+    return SafeArea(
+      child: RefreshIndicator(
+        onRefresh: () async {
+          setState(() {});
+          await Future.delayed(const Duration(milliseconds: 500));
+        },
+        child: CustomScrollView(
+          slivers: [
           // App Bar with Status
           SliverAppBar(
             floating: true,
@@ -144,6 +145,7 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
             ),
           ),
         ],
+      ),
       ),
     );
   }
@@ -309,6 +311,8 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
                   const SizedBox(height: 4),
                   Text(
                     pharmacyName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: AppColors.neutral600,
                         ),
@@ -787,6 +791,8 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
               children: [
                 Text(
                   name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),

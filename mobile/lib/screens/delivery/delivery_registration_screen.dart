@@ -830,11 +830,14 @@ class _DeliveryRegistrationScreenState
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      label,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppColors.neutral600,
-                          ) ?? const TextStyle(),
+                    Flexible(
+                      child: Text(
+                        label,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: AppColors.neutral600,
+                            ) ?? const TextStyle(),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                     Expanded(
                       child: Padding(

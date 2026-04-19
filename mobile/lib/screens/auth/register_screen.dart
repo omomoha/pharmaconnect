@@ -266,6 +266,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               children: [
                                 Text(
                                   'Also register on MalPay',
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
                                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -273,6 +275,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 const SizedBox(height: 4),
                                 Text(
                                   'Get a free MalPay wallet for easy payments. You\'ll receive an email to set your MalPay password.',
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 2,
                                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                     color: AppColors.neutral600,
                                   ),
@@ -313,9 +317,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    'Already have an account? ',
-                    style: Theme.of(context).textTheme.bodyMedium,
+                  Flexible(
+                    child: Text(
+                      'Already have an account? ',
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
                   ),
                   TextButton(
                     onPressed: () => context.go('/login'),

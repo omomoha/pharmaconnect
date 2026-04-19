@@ -238,6 +238,8 @@ class _PharmacyRegistrationScreenState
                 color: AppColors.neutral900,
                 fontWeight: FontWeight.w600,
               ) ?? const TextStyle(),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
         centerTitle: true,
       ),
@@ -648,13 +650,17 @@ class _PharmacyRegistrationScreenState
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       label,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: AppColors.neutral600,
                           ) ?? const TextStyle(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
+                    const SizedBox(width: UIConstants.paddingSmall),
                     Expanded(
                       child: Padding(
                         padding: const EdgeInsets.only(

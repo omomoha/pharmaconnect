@@ -71,14 +71,25 @@ class _PharmacyProductsScreenState extends State<PharmacyProductsScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Product'),
-        content: const Text(
-          'Are you sure you want to delete this product? This action cannot be undone.',
+        title: const Text(
+          'Delete Product',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        content: SingleChildScrollView(
+          child: Text(
+            'Are you sure you want to delete this product? This action cannot be undone.',
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: const Text(
+              'Cancel',
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
           TextButton(
             onPressed: () async {
@@ -112,6 +123,7 @@ class _PharmacyProductsScreenState extends State<PharmacyProductsScreen> {
             child: const Text(
               'Delete',
               style: TextStyle(color: AppColors.error),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
@@ -123,7 +135,11 @@ class _PharmacyProductsScreenState extends State<PharmacyProductsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Products'),
+        title: const Text(
+          'My Products',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
         elevation: 0,
         actions: [
           if (!_showSearch)
@@ -391,7 +407,7 @@ class _ProductCard extends StatelessWidget {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
+                        Flexible(
                           child: Text(
                             product.name,
                             maxLines: 2,
@@ -433,48 +449,58 @@ class _ProductCard extends StatelessWidget {
                     // Category and rating
                     Row(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: UIConstants.paddingSmall,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.secondary100,
-                            borderRadius: BorderRadius.circular(
-                              UIConstants.borderRadiusSmall,
+                        Flexible(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: UIConstants.paddingSmall,
+                              vertical: 2,
                             ),
-                          ),
-                          child: Text(
-                            product.category,
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelSmall
-                                ?.copyWith(
-                                  color: AppColors.secondary700,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                            decoration: BoxDecoration(
+                              color: AppColors.secondary100,
+                              borderRadius: BorderRadius.circular(
+                                UIConstants.borderRadiusSmall,
+                              ),
+                            ),
+                            child: Text(
+                              product.category,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(
+                                    color: AppColors.secondary700,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ),
                         const SizedBox(width: UIConstants.paddingSmall),
                         if (product.rating > 0)
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.star_rounded,
-                                size: 14,
-                                color: AppColors.warning,
-                              ),
-                              const SizedBox(width: 2),
-                              Text(
-                                '${product.rating.toStringAsFixed(1)} (${product.reviewCount})',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .labelSmall
-                                    ?.copyWith(
-                                      color: AppColors.neutral600,
-                                    ),
-                              ),
-                            ],
+                          Flexible(
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.star_rounded,
+                                  size: 14,
+                                  color: AppColors.warning,
+                                ),
+                                const SizedBox(width: 2),
+                                Flexible(
+                                  child: Text(
+                                    '${product.rating.toStringAsFixed(1)} (${product.reviewCount})',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(
+                                          color: AppColors.neutral600,
+                                        ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                       ],
                     ),

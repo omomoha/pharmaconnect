@@ -80,7 +80,9 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
             ),
         ],
       ),
-      body: _buildBody(),
+      body: SafeArea(
+        child: _buildBody(),
+      ),
     );
   }
 

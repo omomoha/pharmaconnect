@@ -23,14 +23,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         elevation: 0,
         backgroundColor: AppColors.neutralWhite,
       ),
-      body: IndexedStack(
-        index: _currentIndex,
-        children: [
-          _buildOverviewTab(),
-          _buildUsersTab(),
-          _buildModerationTab(),
-          _buildAccountTab(),
-        ],
+      body: SafeArea(
+        child: IndexedStack(
+          index: _currentIndex,
+          children: [
+            _buildOverviewTab(),
+            _buildUsersTab(),
+            _buildModerationTab(),
+            _buildAccountTab(),
+          ],
+        ),
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
@@ -62,6 +64,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Widget _buildOverviewTab() {
+    final cardHeight = MediaQuery.of(context).size.height * 0.2;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -78,6 +82,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             physics: const NeverScrollableScrollPhysics(),
             mainAxisSpacing: 16,
             crossAxisSpacing: 16,
+            childAspectRatio: 1.0,
             children: [
               _buildStatCard('Users', '1,234', Icons.people_outlined),
               _buildStatCard('Orders', '5,678', Icons.receipt_outlined),
@@ -107,6 +112,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                         color: AppColors.neutral900,
                       ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -114,6 +121,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: AppColors.neutral600,
                       ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
@@ -132,10 +141,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'User Management',
-                style: Theme.of(context).textTheme.headlineSmall,
+              Expanded(
+                child: Text(
+                  'User Management',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
+              const SizedBox(width: 8),
               ElevatedButton.icon(
                 onPressed: () {},
                 icon: const Icon(Icons.add),
@@ -156,7 +170,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     backgroundColor: AppColors.primary100,
                     child: Text('U${index + 1}'),
                   ),
-                  title: Text('User ${index + 1}'),
+                  title: Text(
+                    'User ${index + 1}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   subtitle: const Text('customer'),
                   trailing: PopupMenuButton(
                     itemBuilder: (context) => [
@@ -194,10 +212,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Pending Reviews',
-                        style: Theme.of(context).textTheme.titleMedium,
+                      Expanded(
+                        child: Text(
+                          'Pending Reviews',
+                          style: Theme.of(context).textTheme.titleMedium,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
+                      const SizedBox(width: 8),
                       Chip(label: const Text('7')),
                     ],
                   ),
@@ -239,15 +262,22 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('Flag ${index + 1}'),
+                                  Text(
+                                    'Flag ${index + 1}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                   const SizedBox(height: 4),
                                   Text(
                                     'Flagged 2 hours ago',
                                     style: Theme.of(context).textTheme.bodySmall,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ],
                               ),
                             ),
+                            const SizedBox(width: 8),
                             TextButton(
                               onPressed: () {},
                               child: const Text('Review'),
@@ -293,6 +323,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 Text(
                   authProvider.user?.displayName ?? 'Admin',
                   style: Theme.of(context).textTheme.headlineSmall,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -300,6 +332,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: AppColors.neutral600,
                       ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),

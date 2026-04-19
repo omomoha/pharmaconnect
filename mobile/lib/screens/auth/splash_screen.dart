@@ -61,10 +61,11 @@ class _SplashScreenState extends State<SplashScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.neutralWhite,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
+      body: SafeArea(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
             SlideTransition(
               position: _slideAnimation,
               child: FadeTransition(
@@ -101,6 +102,8 @@ class _SplashScreenState extends State<SplashScreen>
                     const SizedBox(height: 32),
                     Text(
                       'PharmaConnect',
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                       style: Theme.of(context).textTheme.displayMedium?.copyWith(
                             color: AppColors.neutral900,
                             fontWeight: FontWeight.bold,
@@ -109,6 +112,8 @@ class _SplashScreenState extends State<SplashScreen>
                     const SizedBox(height: 8),
                     Text(
                       'Online Pharmacy Marketplace',
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: AppColors.neutral600,
                           ),
@@ -133,7 +138,8 @@ class _SplashScreenState extends State<SplashScreen>
                 ),
               ),
             ),
-          ],
+            ],
+          ),
         ),
       ),
     );

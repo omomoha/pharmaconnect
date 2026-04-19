@@ -32,9 +32,11 @@ class _CartScreenState extends State<CartScreen> {
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         title: const Text('Switch Pharmacy?'),
-        content: const Text(
-          'Your cart contains items from a different pharmacy. '
-          'Would you like to clear your cart and add this item instead?',
+        content: SingleChildScrollView(
+          child: const Text(
+            'Your cart contains items from a different pharmacy. '
+            'Would you like to clear your cart and add this item instead?',
+          ),
         ),
         actions: [
           TextButton(
@@ -573,9 +575,11 @@ class _CartScreenState extends State<CartScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Clear Cart?'),
-        content: const Text(
-          'Are you sure you want to remove all items from your cart? '
-          'This action cannot be undone.',
+        content: SingleChildScrollView(
+          child: const Text(
+            'Are you sure you want to remove all items from your cart? '
+            'This action cannot be undone.',
+          ),
         ),
         actions: [
           TextButton(

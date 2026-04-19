@@ -270,6 +270,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           // Product Name
           Text(
             product.name,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
@@ -364,13 +366,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         color: AppColors.warning,
                       ),
                       const SizedBox(width: 4),
-                      Text(
-                        'Requires Prescription',
-                        style:
-                            Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: AppColors.warning,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                      Expanded(
+                        child: Text(
+                          'Requires Prescription',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: AppColors.warning,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                        ),
                       ),
                     ],
                   ),
@@ -492,11 +498,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        product.pharmacyName,
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(
-                          fontWeight: FontWeight.w600,
+                      Expanded(
+                        child: Text(
+                          product.pharmacyName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 4),

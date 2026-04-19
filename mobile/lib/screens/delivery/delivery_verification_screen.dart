@@ -217,20 +217,22 @@ class _DeliveryVerificationScreenState extends State<DeliveryVerificationScreen>
         ),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(UIConstants.paddingLarge),
-          child: Column(
-            children: [
-              // Timer Section
-              _buildTimerSection(),
-              const SizedBox(height: UIConstants.paddingXLarge),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(UIConstants.paddingLarge),
+            child: Column(
+              children: [
+                // Timer Section
+                _buildTimerSection(),
+                const SizedBox(height: UIConstants.paddingXLarge),
 
-              // Content based on current step
-              if (_currentStep == 1) _buildCustomerCodeStep(),
-              if (_currentStep == 2) _buildRiderCodeStep(),
-              if (_currentStep == 3) _buildCompletionStep(),
-            ],
+                // Content based on current step
+                if (_currentStep == 1) _buildCustomerCodeStep(),
+                if (_currentStep == 2) _buildRiderCodeStep(),
+                if (_currentStep == 3) _buildCompletionStep(),
+              ],
+            ),
           ),
         ),
       ),

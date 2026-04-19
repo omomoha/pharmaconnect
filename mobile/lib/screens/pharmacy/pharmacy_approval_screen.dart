@@ -141,6 +141,7 @@ class _PharmacyApprovalScreenState extends State<PharmacyApprovalScreen> {
         children: [
           // Status header with icon and text
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildStatusIcon(status),
               const SizedBox(width: UIConstants.paddingMedium),
@@ -155,6 +156,8 @@ class _PharmacyApprovalScreenState extends State<PharmacyApprovalScreen> {
                             fontWeight: FontWeight.w600,
                           ) ??
                           const TextStyle(),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -305,6 +308,8 @@ class _PharmacyApprovalScreenState extends State<PharmacyApprovalScreen> {
                           : FontWeight.w400,
                     ) ??
                     const TextStyle(),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -374,6 +379,8 @@ class _PharmacyApprovalScreenState extends State<PharmacyApprovalScreen> {
                         fontWeight: FontWeight.w500,
                       ) ??
                       const TextStyle(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: UIConstants.paddingXSmall),
                 Text(
@@ -382,6 +389,8 @@ class _PharmacyApprovalScreenState extends State<PharmacyApprovalScreen> {
                         color: AppColors.neutral600,
                       ) ??
                       const TextStyle(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
@@ -407,6 +416,8 @@ class _PharmacyApprovalScreenState extends State<PharmacyApprovalScreen> {
                 fontWeight: FontWeight.w600,
               ) ??
               const TextStyle(),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
         elevation: 0,
       ),

@@ -372,6 +372,8 @@ class _OrderCard extends StatelessWidget {
               // Pharmacy name
               Text(
                 order.pharmacyName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: AppColors.neutral700,
                   fontWeight: FontWeight.w500,

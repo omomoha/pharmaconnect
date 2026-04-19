@@ -49,21 +49,37 @@ class _PharmacyOrdersScreenState extends State<PharmacyOrdersScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Confirm Status Change'),
-        content: Text(
-          'Update order status to ${newStatus.displayName}?',
+        title: const Text(
+          'Confirm Status Change',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        content: SingleChildScrollView(
+          child: Text(
+            'Update order status to ${newStatus.displayName}?',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: const Text(
+              'Cancel',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
               _updateOrderStatus(order.id, newStatus);
             },
-            child: const Text('Confirm'),
+            child: const Text(
+              'Confirm',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),
@@ -96,7 +112,11 @@ class _PharmacyOrdersScreenState extends State<PharmacyOrdersScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Orders'),
+        title: const Text(
+          'Orders',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
         elevation: 0,
         backgroundColor: AppColors.neutralWhite,
         foregroundColor: AppColors.neutral900,
@@ -303,6 +323,8 @@ class _OrderCard extends StatelessWidget {
                             fontWeight: FontWeight.w600,
                             color: AppColors.neutral900,
                           ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: UIConstants.paddingXSmall),
                     Text(
@@ -310,16 +332,20 @@ class _OrderCard extends StatelessWidget {
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: AppColors.neutral600,
                           ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: UIConstants.paddingSmall),
               _getStatusBadge(),
             ],
           ),
           const SizedBox(height: UIConstants.paddingMedium),
           // Customer Info
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Icon(
                 Icons.person_outline,
@@ -333,6 +359,8 @@ class _OrderCard extends StatelessWidget {
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: AppColors.neutral700,
                       ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
@@ -341,13 +369,19 @@ class _OrderCard extends StatelessWidget {
           // Items & Price Row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                '${order.items.length} item${order.items.length != 1 ? 's' : ''}',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.neutral600,
-                    ),
+              Expanded(
+                child: Text(
+                  '${order.items.length} item${order.items.length != 1 ? 's' : ''}',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.neutral600,
+                      ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
+              const SizedBox(width: UIConstants.paddingSmall),
               Text(
                 '₦${order.total.toStringAsFixed(2)}',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -449,21 +483,37 @@ class _PharmacyOrderDetailScreenState extends State<PharmacyOrderDetailScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Confirm Status Change'),
-        content: Text(
-          'Update order status to ${newStatus.displayName}?',
+        title: const Text(
+          'Confirm Status Change',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        content: SingleChildScrollView(
+          child: Text(
+            'Update order status to ${newStatus.displayName}?',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: const Text(
+              'Cancel',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
               _updateOrderStatus(newStatus);
             },
-            child: const Text('Confirm'),
+            child: const Text(
+              'Confirm',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),
@@ -614,6 +664,8 @@ class _PharmacyOrderDetailScreenState extends State<PharmacyOrderDetailScreen> {
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.success,
                               ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: UIConstants.paddingXSmall),
                     Text(
@@ -621,6 +673,8 @@ class _PharmacyOrderDetailScreenState extends State<PharmacyOrderDetailScreen> {
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: AppColors.success,
                           ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -666,25 +720,33 @@ class _OrderHeader extends StatelessWidget {
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Order #${order.id.toUpperCase().substring(0, 8)}',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                  ),
-                  const SizedBox(height: UIConstants.paddingXSmall),
-                  Text(
-                    'Placed on ${_formatDate(order.createdAt)}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.neutral600,
-                        ),
-                  ),
-                ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Order #${order.id.toUpperCase().substring(0, 8)}',
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: UIConstants.paddingXSmall),
+                    Text(
+                      'Placed on ${_formatDate(order.createdAt)}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppColors.neutral600,
+                          ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: UIConstants.paddingSmall),
               _getStatusBadge(),
             ],
           ),
@@ -747,6 +809,8 @@ class _CustomerInfoSection extends StatelessWidget {
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w500,
                     ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
@@ -784,6 +848,7 @@ class _OrderItemsSection extends StatelessWidget {
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
                           child: Column(
@@ -797,6 +862,8 @@ class _OrderItemsSection extends StatelessWidget {
                                     ?.copyWith(
                                       fontWeight: FontWeight.w500,
                                     ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                               const SizedBox(
                                 height: UIConstants.paddingXSmall,
@@ -809,10 +876,13 @@ class _OrderItemsSection extends StatelessWidget {
                                     ?.copyWith(
                                       color: AppColors.neutral600,
                                     ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ],
                           ),
                         ),
+                        const SizedBox(width: UIConstants.paddingSmall),
                         Text(
                           '₦${item.subtotal.toStringAsFixed(2)}',
                           style: Theme.of(context)
@@ -822,6 +892,8 @@ class _OrderItemsSection extends StatelessWidget {
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.primary600,
                               ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
@@ -884,6 +956,8 @@ class _DeliveryInfoSection extends StatelessWidget {
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w500,
                     ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
               if (hasTracking && trackingInfo.vehicleInfo != null) ...[
                 const SizedBox(height: UIConstants.paddingMedium),
@@ -892,6 +966,8 @@ class _DeliveryInfoSection extends StatelessWidget {
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: AppColors.neutral600,
                       ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: UIConstants.paddingXSmall),
                 Text(
@@ -899,6 +975,8 @@ class _DeliveryInfoSection extends StatelessWidget {
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w500,
                       ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
               if (hasTracking && trackingInfo.estimatedDeliveryTime != null) ...[
@@ -908,6 +986,8 @@ class _DeliveryInfoSection extends StatelessWidget {
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: AppColors.neutral600,
                       ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: UIConstants.paddingXSmall),
                 Text(
@@ -915,6 +995,8 @@ class _DeliveryInfoSection extends StatelessWidget {
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w500,
                       ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ],
@@ -1090,6 +1172,8 @@ class ErrorStateWidget extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                     color: AppColors.neutral900,
                   ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
             if (subtitle != null) ...[
               const SizedBox(height: UIConstants.paddingSmall),
@@ -1099,6 +1183,8 @@ class ErrorStateWidget extends StatelessWidget {
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: AppColors.neutral600,
                     ),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
             if (onRetry != null) ...[

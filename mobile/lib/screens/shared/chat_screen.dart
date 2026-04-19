@@ -216,20 +216,22 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: _buildAppBar(),
-      body: Column(
-        children: [
-          Expanded(child: _buildMessageList()),
-          if (_isOtherTyping) const TypingIndicator(),
-          ChatInput(
-            onSend: _sendMessage,
-            onAttachImage: _attachImage,
-            onTypingStarted: () =>
-                _socketService.sendTyping(widget.conversationId),
-            onTypingStopped: () =>
-                _socketService.sendStoppedTyping(widget.conversationId),
-            enabled: _conversation?.isActive ?? false,
-          ),
-        ],
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(child: _buildMessageList()),
+            if (_isOtherTyping) const TypingIndicator(),
+            ChatInput(
+              onSend: _sendMessage,
+              onAttachImage: _attachImage,
+              onTypingStarted: () =>
+                  _socketService.sendTyping(widget.conversationId),
+              onTypingStopped: () =>
+                  _socketService.sendStoppedTyping(widget.conversationId),
+              enabled: _conversation?.isActive ?? false,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -424,8 +426,10 @@ class _ChatScreenState extends State<ChatScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Close Conversation'),
-        content: const Text(
-            'Are you sure you want to close this conversation? You can still view the message history.'),
+        content: SingleChildScrollView(
+          child: const Text(
+              'Are you sure you want to close this conversation? You can still view the message history.'),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),

@@ -49,24 +49,26 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ),
         ],
       ),
-      body: notifications.isEmpty
-          ? const EmptyState(
-              icon: Icons.notifications_none,
-              title: 'No notifications',
-              subtitle: 'You\'ll see order updates, messages, and delivery alerts here.',
-            )
-          : ListView.separated(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: notifications.length,
-              separatorBuilder: (_, __) =>
-                  const Divider(height: 1, indent: 72, endIndent: 16),
-              itemBuilder: (context, index) {
-                return _NotificationTile(
-                  notification: notifications[index],
-                  onTap: () => _handleTap(notifications[index]),
-                );
-              },
-            ),
+      body: SafeArea(
+        child: notifications.isEmpty
+            ? const EmptyState(
+                icon: Icons.notifications_none,
+                title: 'No notifications',
+                subtitle: 'You\'ll see order updates, messages, and delivery alerts here.',
+              )
+            : ListView.separated(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                itemCount: notifications.length,
+                separatorBuilder: (_, __) =>
+                    const Divider(height: 1, indent: 72, endIndent: 16),
+                itemBuilder: (context, index) {
+                  return _NotificationTile(
+                    notification: notifications[index],
+                    onTap: () => _handleTap(notifications[index]),
+                  );
+                },
+              ),
+      ),
     );
   }
 
@@ -152,6 +154,8 @@ class _NotificationTile extends StatelessWidget {
               color: AppColors.neutral400,
               fontSize: 11,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),

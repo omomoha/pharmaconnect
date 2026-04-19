@@ -95,7 +95,9 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
       builder: (ctx) => AlertDialog(
         icon: const Icon(Icons.check_circle, color: AppColors.success, size: 48),
         title: const Text('Delivery Complete!'),
-        content: const Text('Your order has been delivered successfully.'),
+        content: SingleChildScrollView(
+          child: const Text('Your order has been delivered successfully.'),
+        ),
         actions: [
           ElevatedButton(
             onPressed: () {
@@ -128,58 +130,60 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          // Map
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: _riderLocation ?? _deliveryCenter,
-              initialZoom: 14.0,
-            ),
-            children: [
-              TileLayer(
-                urlTemplate:
-                    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.pharmaconnect.app',
+      body: SafeArea(
+        child: Stack(
+          children: [
+            // Map
+            FlutterMap(
+              mapController: _mapController,
+              options: MapOptions(
+                initialCenter: _riderLocation ?? _deliveryCenter,
+                initialZoom: 14.0,
               ),
-              MarkerLayer(
-                markers: _buildMarkers(),
-              ),
-              if (_routePoints.length > 1)
-                PolylineLayer(
-                  polylines: [
-                    Polyline(
-                      points: _routePoints,
-                      strokeWidth: 3.0,
-                      color: AppColors.primary600,
-                    ),
-                  ],
+              children: [
+                TileLayer(
+                  urlTemplate:
+                      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.pharmaconnect.app',
                 ),
-            ],
-          ),
+                MarkerLayer(
+                  markers: _buildMarkers(),
+                ),
+                if (_routePoints.length > 1)
+                  PolylineLayer(
+                    polylines: [
+                      Polyline(
+                        points: _routePoints,
+                        strokeWidth: 3.0,
+                        color: AppColors.primary600,
+                      ),
+                    ],
+                  ),
+              ],
+            ),
 
-          // Back button
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 8,
-            left: 12,
-            child: CircleAvatar(
-              backgroundColor: AppColors.neutralWhite,
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: AppColors.neutral900),
-                onPressed: () => Navigator.of(context).pop(),
+            // Back button
+            Positioned(
+              top: 8,
+              left: 12,
+              child: CircleAvatar(
+                backgroundColor: AppColors.neutralWhite,
+                child: IconButton(
+                  icon: const Icon(Icons.arrow_back, color: AppColors.neutral900),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
               ),
             ),
-          ),
 
-          // Bottom panel
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: _buildBottomPanel(),
-          ),
-        ],
+            // Bottom panel
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: _buildBottomPanel(),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -330,6 +334,8 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
                         fontWeight: FontWeight.w600,
                         fontSize: 15,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     Text(
                       _statusLabel(_currentStatus),
@@ -338,6 +344,8 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),

@@ -422,11 +422,15 @@ class _DeliveryInfo extends StatelessWidget {
                         color: AppColors.neutral600,
                       ),
                     ),
-                    Text(
-                      trackingInfo.deliveryRiderName ?? 'Unknown',
-                      style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                        color: AppColors.neutral900,
-                        fontWeight: FontWeight.w600,
+                    Expanded(
+                      child: Text(
+                        trackingInfo.deliveryRiderName ?? 'Unknown',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                          color: AppColors.neutral900,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
@@ -479,11 +483,15 @@ class _DeliveryInfo extends StatelessWidget {
                               color: AppColors.neutral600,
                             ),
                           ),
-                          Text(
-                            trackingInfo.vehicleInfo!,
-                            style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                              color: AppColors.neutral900,
-                              fontWeight: FontWeight.w600,
+                          Expanded(
+                            child: Text(
+                              trackingInfo.vehicleInfo!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                                color: AppColors.neutral900,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ],
@@ -560,6 +568,8 @@ class _ItemsSection extends StatelessWidget {
                       children: [
                         Text(
                           item.productName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.bodySmall!.copyWith(
                             color: AppColors.neutral900,
                             fontWeight: FontWeight.w500,
@@ -801,10 +811,12 @@ class _ActionsSection extends StatelessWidget {
             fontWeight: FontWeight.w600,
           ),
         ),
-        content: Text(
-          'Are you sure you want to cancel this order? This action cannot be undone.',
-          style: Theme.of(context).textTheme.bodySmall!.copyWith(
-            color: AppColors.neutral700,
+        content: SingleChildScrollView(
+          child: Text(
+            'Are you sure you want to cancel this order? This action cannot be undone.',
+            style: Theme.of(context).textTheme.bodySmall!.copyWith(
+              color: AppColors.neutral700,
+            ),
           ),
         ),
         actions: [

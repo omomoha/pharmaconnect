@@ -424,6 +424,7 @@ class _PharmacyDashboardScreenState extends State<PharmacyDashboardScreen> {
           // Header row: Order ID and Status
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Column(
@@ -435,6 +436,8 @@ class _PharmacyDashboardScreenState extends State<PharmacyDashboardScreen> {
                             color: AppColors.neutral900,
                             fontWeight: FontWeight.w600,
                           ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -442,10 +445,13 @@ class _PharmacyDashboardScreenState extends State<PharmacyDashboardScreen> {
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: AppColors.neutral600,
                           ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: UIConstants.paddingSmall),
               _buildStatusBadge(order['status']),
             ],
           ),
@@ -683,6 +689,8 @@ class _PharmacyDashboardScreenState extends State<PharmacyDashboardScreen> {
                         color: AppColors.neutral900,
                         fontWeight: FontWeight.w600,
                       ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -690,6 +698,8 @@ class _PharmacyDashboardScreenState extends State<PharmacyDashboardScreen> {
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: AppColors.neutral600,
                       ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
@@ -791,7 +801,7 @@ class _PharmacyDashboardScreenState extends State<PharmacyDashboardScreen> {
                         physics: const AlwaysScrollableScrollPhysics(),
                         children: [
                           SizedBox(
-                            height: 300,
+                            height: MediaQuery.of(context).size.height * 0.5,
                             child: EmptyState(
                               icon: Icons.receipt_outlined,
                               title: 'No Orders',

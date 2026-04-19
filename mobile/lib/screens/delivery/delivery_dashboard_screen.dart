@@ -67,15 +67,17 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.neutralWhite,
-      body: IndexedStack(
-        index: _currentIndex,
-        children: [
-          _buildDashboardTab(),
-          _buildAvailableTab(),
-          _buildActiveTab(),
-          _buildEarningsTab(),
-          _buildProfileTab(),
-        ],
+      body: SafeArea(
+        child: IndexedStack(
+          index: _currentIndex,
+          children: [
+            _buildDashboardTab(),
+            _buildAvailableTab(),
+            _buildActiveTab(),
+            _buildEarningsTab(),
+            _buildProfileTab(),
+          ],
+        ),
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,

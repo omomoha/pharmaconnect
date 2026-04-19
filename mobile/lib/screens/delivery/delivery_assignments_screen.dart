@@ -594,20 +594,21 @@ class _DeliveryAssignmentsScreenState extends State<DeliveryAssignmentsScreen> {
           ),
         ],
       ),
-      body: FutureBuilder<List<Map<String, dynamic>>>(
-        future: _deliveriesFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.all(UIConstants.paddingMedium),
-                child: ShimmerLoading(
-                  variant: ShimmerVariant.card,
-                  itemCount: 5,
+      body: SafeArea(
+        child: FutureBuilder<List<Map<String, dynamic>>>(
+          future: _deliveriesFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.all(UIConstants.paddingMedium),
+                  child: ShimmerLoading(
+                    variant: ShimmerVariant.card,
+                    itemCount: 5,
+                  ),
                 ),
-              ),
-            );
-          }
+              );
+            }
 
           if (snapshot.hasError) {
             return Center(
@@ -714,7 +715,8 @@ class _DeliveryAssignmentsScreenState extends State<DeliveryAssignmentsScreen> {
               ],
             ),
           );
-        },
+          },
+        ),
       ),
     );
   }

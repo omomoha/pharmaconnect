@@ -252,7 +252,10 @@ class _DeliveryNavigationScreenState extends State<DeliveryNavigationScreen> {
                     ),
                     child: _buildOrderDetailsSection(),
                   ),
-                  const SizedBox(height: 120),
+                  // Dynamic bottom spacer based on screen height
+                  SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.15,
+                  ),
                 ],
               ),
             ),
@@ -344,6 +347,8 @@ class _DeliveryNavigationScreenState extends State<DeliveryNavigationScreen> {
                   fontWeight: FontWeight.w600,
                   color: AppColors.neutral900,
                 ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: UIConstants.paddingSmall),
 
@@ -363,6 +368,8 @@ class _DeliveryNavigationScreenState extends State<DeliveryNavigationScreen> {
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: AppColors.neutral600,
                       ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
@@ -618,6 +625,8 @@ class _DeliveryNavigationScreenState extends State<DeliveryNavigationScreen> {
                                   fontWeight: FontWeight.w500,
                                   color: AppColors.neutral900,
                                 ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: UIConstants.paddingXSmall),
                           Text(
@@ -632,6 +641,7 @@ class _DeliveryNavigationScreenState extends State<DeliveryNavigationScreen> {
                         ],
                       ),
                     ),
+                    const SizedBox(width: UIConstants.paddingSmall),
                     Text(
                       '₦${(item['price'] as num).toStringAsFixed(2)}',
                       style: Theme.of(context)
@@ -727,62 +737,64 @@ class _DeliveryNavigationScreenState extends State<DeliveryNavigationScreen> {
         ],
       ),
       child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(UIConstants.paddingMedium),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Call & Message Buttons
-              Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        border: Border.all(color: AppColors.neutral300),
-                        borderRadius:
-                            BorderRadius.circular(UIConstants.borderRadiusMedium),
-                      ),
-                      child: IconButton(
-                        icon: const Icon(Icons.phone),
-                        color: AppColors.primary600,
-                        onPressed: _handleCall,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: UIConstants.paddingSmall),
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        border: Border.all(color: AppColors.neutral300),
-                        borderRadius:
-                            BorderRadius.circular(UIConstants.borderRadiusMedium),
-                      ),
-                      child: IconButton(
-                        icon: const Icon(Icons.message),
-                        color: AppColors.secondary600,
-                        onPressed: _handleMessage,
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(UIConstants.paddingMedium),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Call & Message Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: AppColors.neutral300),
+                          borderRadius:
+                              BorderRadius.circular(UIConstants.borderRadiusMedium),
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.phone),
+                          color: AppColors.primary600,
+                          onPressed: _handleCall,
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: UIConstants.paddingMedium),
-
-              // Main Action Button
-              SizedBox(
-                width: double.infinity,
-                child: PharmaButton(
-                  label: _getMainActionLabel(),
-                  onPressed: _currentPhase == NavigationPhase.toPharmacy
-                      ? _handleArrivedAtPharmacy
-                      : _handleArrivedAtCustomer,
-                  isLoading: _isLoading,
-                  variant: ButtonVariant.primary,
-                  size: ButtonSize.large,
-                  fullWidth: true,
+                    const SizedBox(width: UIConstants.paddingSmall),
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: AppColors.neutral300),
+                          borderRadius:
+                              BorderRadius.circular(UIConstants.borderRadiusMedium),
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.message),
+                          color: AppColors.secondary600,
+                          onPressed: _handleMessage,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
+                const SizedBox(height: UIConstants.paddingMedium),
+
+                // Main Action Button
+                SizedBox(
+                  width: double.infinity,
+                  child: PharmaButton(
+                    label: _getMainActionLabel(),
+                    onPressed: _currentPhase == NavigationPhase.toPharmacy
+                        ? _handleArrivedAtPharmacy
+                        : _handleArrivedAtCustomer,
+                    isLoading: _isLoading,
+                    variant: ButtonVariant.primary,
+                    size: ButtonSize.large,
+                    fullWidth: true,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

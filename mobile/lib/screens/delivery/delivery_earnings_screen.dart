@@ -143,30 +143,32 @@ class _DeliveryEarningsScreenState extends State<DeliveryEarningsScreen> {
           onPressed: () => context.pop(),
         ),
       ),
-      body: RefreshIndicator(
-        onRefresh: () async => _refreshData(),
-        color: AppColors.primary600,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: Column(
-            children: [
-              // Summary Section
-              _buildSummarySection(),
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: () async => _refreshData(),
+          color: AppColors.primary600,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
+              children: [
+                // Summary Section
+                _buildSummarySection(),
 
-              // Period Selector
-              _buildPeriodSelector(),
+                // Period Selector
+                _buildPeriodSelector(),
 
-              // Earnings Chart Placeholder
-              _buildChartSection(),
+                // Earnings Chart Placeholder
+                _buildChartSection(),
 
-              // Payout Section
-              _buildPayoutSection(),
+                // Payout Section
+                _buildPayoutSection(),
 
-              // Transaction History Section
-              _buildTransactionHistorySection(),
+                // Transaction History Section
+                _buildTransactionHistorySection(),
 
-              const SizedBox(height: UIConstants.paddingXLarge),
-            ],
+                const SizedBox(height: UIConstants.paddingXLarge),
+              ],
+            ),
           ),
         ),
       ),
@@ -694,6 +696,8 @@ class _DeliveryEarningsScreenState extends State<DeliveryEarningsScreen> {
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: AppColors.neutral600,
                           ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),

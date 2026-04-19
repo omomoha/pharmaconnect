@@ -224,9 +224,12 @@ class _LoginScreenState extends State<LoginScreen>
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    "Don't have an account? ",
-                    style: Theme.of(context).textTheme.bodyMedium,
+                  Flexible(
+                    child: Text(
+                      "Don't have an account? ",
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
                   ),
                   TextButton(
                     onPressed: () => context.go('/register'),
@@ -436,6 +439,8 @@ class _LoginScreenState extends State<LoginScreen>
             const SizedBox(height: 8),
             Text(
               'We sent a 6-digit code to ${_phoneController.text}',
+              overflow: TextOverflow.ellipsis,
+              maxLines: 2,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: AppColors.neutral600,
                   ),
@@ -506,6 +511,8 @@ class _LoginScreenState extends State<LoginScreen>
                 if (_resendCountdown > 0)
                   Text(
                     'Resend in ${_resendCountdown}s',
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: AppColors.neutral500,
                         ),
