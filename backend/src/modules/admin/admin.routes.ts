@@ -110,4 +110,25 @@ router.get(
   asyncHandler((req, res) => AdminController.getTransactions(req, res))
 );
 
+// GET /api/v1/admin/analytics - Get analytics with date-range support
+router.get(
+  "/analytics",
+  ...adminAuth,
+  asyncHandler((req, res) => AdminController.getAnalytics(req, res))
+);
+
+// POST /api/v1/admin/users/:userId/suspend - Suspend user
+router.post(
+  "/users/:userId/suspend",
+  ...adminAuth,
+  asyncHandler((req, res) => AdminController.suspendUser(req, res))
+);
+
+// POST /api/v1/admin/users/:userId/activate - Activate user
+router.post(
+  "/users/:userId/activate",
+  ...adminAuth,
+  asyncHandler((req, res) => AdminController.activateUser(req, res))
+);
+
 export default router;

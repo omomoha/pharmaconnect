@@ -5,7 +5,7 @@ import PageHeader from '@/components/ui/PageHeader';
 import Button from '@/components/ui/Button';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import StatsCard from '@/components/ui/StatsCard';
-import { getDashboard, getTransactions } from '@/lib/services/admin.service';
+import { getAnalytics } from '@/lib/services/admin.service';
 
 interface TopEntity {
   id: string;
@@ -15,13 +15,18 @@ interface TopEntity {
   metric3?: string;
 }
 
+interface ChartPoint {
+  label: string;
+  value: number;
+}
+
 interface DashboardData {
-  revenue: string;
-  commission: string;
-  users: string;
-  registrations: string;
-  revenueChartData: number[];
-  userChartData: number[];
+  revenue: number;
+  commission: number;
+  activeUsers: number;
+  newRegistrations: number;
+  revenueChartData: ChartPoint[];
+  userChartData: ChartPoint[];
 }
 
 interface ActivityData {
@@ -41,58 +46,64 @@ export default function AnalyticsPage() {
 
   const periods = ['Today', 'This Week', 'This Month', 'This Year'];
 
-  // Fetch dashboard data
+  // Map UI period labels to API params
+  const periodMap: Record<string, 'today' | 'week' | 'month' | 'year'> = {
+    'Today': 'today',
+    'This Week': 'week',
+    'This Month': 'month',
+    'This Year': 'year',
+  };
+
+  // Fetch analytics data
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       setError(null);
       try {
-        // Fetch dashboard stats
-        const dashboardRes = await getDashboard();
-        if (dashboardRes.success && dashboardRes.data) {
-          // Map period to data - assuming backend returns period-specific stats
-          const dashData: DashboardData = {
-            revenue: dashboardRes.data.revenue || '₦0',
-            commission: dashboardRes.data.commission || '₦0',
-            users: dashboardRes.data.activeUsers?.toString() || '0',
-            registrations: dashboardRes.data.newRegistrations?.toString() || '0',
-            revenueChartData: dashboardRes.data.revenueChartData || [],
-            userChartData: dashboardRes.data.userChartData || [],
-          };
-          setAnalyticsData(dashData);
+        const apiPeriod = periodMap[timePeriod] || 'month';
+        const res = await getAnalytics(apiPeriod);
+
+        if (res.success && res.data) {
+          const d = res.data;
+
+          setAnalyticsData({
+            revenue: d.revenue || 0,
+            commission: d.commission || 0,
+            activeUsers: d.activeUsers || 0,
+            newRegistrations: d.newRegistrations || 0,
+            revenueChartData: d.revenueChartData || [],
+            userChartData: d.userChartData || [],
+          });
 
           // Map top pharmacies
-          const pharmacies = (dashboardRes.data.topPharmacies || []).map((p: any, idx: number) => ({
-            id: p.id || idx.toString(),
+          const pharmacies = (d.topPharmacies || []).map((p: any, idx: number) => ({
+            id: idx.toString(),
             name: p.name || 'Unknown Pharmacy',
-            value: `${p.totalOrders || 0} orders`,
+            value: `${p.orders || 0} orders`,
             metric2: `₦${(p.revenue || 0).toLocaleString()} revenue`,
             metric3: `${p.rating || 0} rating`,
           }));
           setTopPharmacies(pharmacies);
 
           // Map top delivery providers
-          const providers = (dashboardRes.data.topDeliveryProviders || []).map((p: any, idx: number) => ({
-            id: p.id || idx.toString(),
+          const providers = (d.topDeliveryProviders || []).map((p: any, idx: number) => ({
+            id: idx.toString(),
             name: p.name || 'Unknown Provider',
-            value: `${p.totalDeliveries || 0} deliveries`,
+            value: `${p.deliveries || 0} deliveries`,
             metric2: `${p.rating || 0} rating`,
             metric3: `₦${(p.earnings || 0).toLocaleString()} earnings`,
           }));
           setTopDeliveryProviders(providers);
-        } else {
-          setError(dashboardRes.error?.message || 'Failed to fetch dashboard data');
-        }
 
-        // Fetch transaction history for activity feed
-        const transactionsRes = await getTransactions({ limit: 10 });
-        if (transactionsRes.success && transactionsRes.data) {
-          const activities = transactionsRes.data.map((t: any, idx: number) => ({
-            id: t.id || idx.toString(),
-            activity: t.description || 'Transaction processed',
-            time: formatRelativeTime(t.createdAt || new Date().toISOString()),
+          // Map recent activity
+          const activities = (d.recentActivity || []).map((a: any, idx: number) => ({
+            id: a.id || idx.toString(),
+            activity: a.description || 'Activity',
+            time: a.time || 'Unknown time',
           }));
           setRecentActivity(activities);
+        } else {
+          setError(res.error?.message || 'Failed to fetch analytics data');
         }
       } catch (err) {
         console.error('Failed to fetch analytics data:', err);
@@ -104,26 +115,6 @@ export default function AnalyticsPage() {
 
     fetchData();
   }, [timePeriod]);
-
-  // Helper to format relative time
-  const formatRelativeTime = (dateString: string): string => {
-    try {
-      const date = new Date(dateString);
-      const now = new Date();
-      const diffMs = now.getTime() - date.getTime();
-      const diffMins = Math.floor(diffMs / 60000);
-      const diffHours = Math.floor(diffMs / 3600000);
-      const diffDays = Math.floor(diffMs / 86400000);
-
-      if (diffMins < 1) return 'just now';
-      if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
-      if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-      if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-      return date.toLocaleDateString();
-    } catch {
-      return 'Unknown time';
-    }
-  };
 
   if (loading) {
     return (
@@ -182,8 +173,10 @@ export default function AnalyticsPage() {
     );
   }
 
-  const maxRevenue = Math.max(...analyticsData.revenueChartData);
-  const maxUsers = Math.max(...analyticsData.userChartData);
+  const revenueValues = analyticsData.revenueChartData.map((d) => d.value);
+  const userValues = analyticsData.userChartData.map((d) => d.value);
+  const maxRevenue = revenueValues.length > 0 ? Math.max(...revenueValues) : 1;
+  const maxUsers = userValues.length > 0 ? Math.max(...userValues) : 1;
 
   return (
     <div className="space-y-6">
@@ -210,22 +203,22 @@ export default function AnalyticsPage() {
       <div className="grid md:grid-cols-4 gap-6">
         <StatsCard
           label="Total Revenue"
-          value={analyticsData.revenue}
+          value={`₦${analyticsData.revenue.toLocaleString()}`}
           icon="💰"
         />
         <StatsCard
           label="Platform Commission"
-          value={analyticsData.commission}
+          value={`₦${analyticsData.commission.toLocaleString()}`}
           icon="📈"
         />
         <StatsCard
           label="Active Users"
-          value={analyticsData.users}
+          value={analyticsData.activeUsers.toLocaleString()}
           icon="👥"
         />
         <StatsCard
           label="New Registrations"
-          value={analyticsData.registrations}
+          value={analyticsData.newRegistrations.toLocaleString()}
           icon="📝"
         />
       </div>
@@ -239,15 +232,15 @@ export default function AnalyticsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-end gap-2 h-40 px-2">
-              {analyticsData.revenueChartData.map((value: number, index: number) => (
+              {analyticsData.revenueChartData.map((point, index) => (
                 <div
                   key={index}
                   className="flex-1 bg-gradient-to-t from-primary-500 to-primary-400 rounded-t-lg transition-all hover:from-primary-600 hover:to-primary-500 cursor-pointer group relative"
-                  style={{ height: `${(value / maxRevenue) * 100}%` }}
-                  title={`₦${(value * 1000).toLocaleString()}`}
+                  style={{ height: `${(point.value / maxRevenue) * 100}%`, minHeight: point.value > 0 ? '4px' : '0' }}
+                  title={`${point.label}: ₦${point.value.toLocaleString()}`}
                 >
                   <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
-                    ₦{(value * 1000).toLocaleString()}
+                    {point.label}: ₦{point.value.toLocaleString()}
                   </div>
                 </div>
               ))}
@@ -268,15 +261,15 @@ export default function AnalyticsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-end gap-2 h-40 px-2">
-              {analyticsData.userChartData.map((value: number, index: number) => (
+              {analyticsData.userChartData.map((point, index) => (
                 <div
                   key={index}
                   className="flex-1 bg-gradient-to-t from-secondary-500 to-secondary-400 rounded-t-lg transition-all hover:from-secondary-600 hover:to-secondary-500 cursor-pointer group relative"
-                  style={{ height: `${(value / maxUsers) * 100}%` }}
-                  title={`${value.toLocaleString()} users`}
+                  style={{ height: `${(point.value / maxUsers) * 100}%`, minHeight: point.value > 0 ? '4px' : '0' }}
+                  title={`${point.label}: ${point.value.toLocaleString()} users`}
                 >
                   <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
-                    {value.toLocaleString()}
+                    {point.label}: {point.value.toLocaleString()}
                   </div>
                 </div>
               ))}

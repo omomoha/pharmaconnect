@@ -8,7 +8,8 @@ import Input from '@/components/ui/Input';
 import Tabs from '@/components/ui/Tabs';
 import Modal from '@/components/ui/Modal';
 import StatusBadge from '@/components/ui/StatusBadge';
-import { getUsers } from '@/lib/services/admin.service';
+import { getUsers, suspendUser, activateUser } from '@/lib/services/admin.service';
+import toast from 'react-hot-toast';
 
 interface User {
   id: string;
@@ -168,10 +169,45 @@ export default function UserManagementPage() {
     setIsActionModalOpen(true);
   };
 
-  const handleConfirmAction = () => {
-    setIsActionModalOpen(false);
-    setSelectedUser(null);
-    setActionType(null);
+  const [actionLoading, setActionLoading] = useState(false);
+
+  const handleConfirmAction = async () => {
+    if (!selectedUser || !actionType) return;
+
+    setActionLoading(true);
+    try {
+      let response;
+      if (actionType === 'suspend') {
+        response = await suspendUser(selectedUser.id);
+      } else {
+        response = await activateUser(selectedUser.id);
+      }
+
+      if (response.success) {
+        // Update local state
+        setUsers((prev) =>
+          prev.map((u) =>
+            u.id === selectedUser.id
+              ? { ...u, status: actionType === 'suspend' ? 'Suspended' as const : 'Active' as const }
+              : u
+          )
+        );
+        toast.success(
+          actionType === 'suspend'
+            ? `${selectedUser.name} has been suspended`
+            : `${selectedUser.name} has been activated`
+        );
+      } else {
+        toast.error(response.error?.message || `Failed to ${actionType} user`);
+      }
+    } catch (err) {
+      toast.error(`Failed to ${actionType} user`);
+    } finally {
+      setActionLoading(false);
+      setIsActionModalOpen(false);
+      setSelectedUser(null);
+      setActionType(null);
+    }
   };
 
   const getRoleBadgeColor = (role: string) => {
@@ -533,11 +569,12 @@ export default function UserManagementPage() {
               Cancel
             </Button>
             <Button
-              variant={actionType === 'suspend' ? 'primary' : 'primary'}
+              variant="primary"
               onClick={handleConfirmAction}
               className="flex-1"
+              disabled={actionLoading}
             >
-              {actionType === 'suspend' ? 'Suspend' : 'Activate'}
+              {actionLoading ? 'Processing...' : actionType === 'suspend' ? 'Suspend' : 'Activate'}
             </Button>
           </div>
         </div>

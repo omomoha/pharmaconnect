@@ -515,4 +515,102 @@ export class AdminController {
       );
     }
   }
+
+  /**
+   * GET /analytics
+   * Get analytics with date-range support
+   */
+  static async getAnalytics(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
+    try {
+      const schema = z.object({
+        period: z.enum(["today", "week", "month", "year"]).optional().default("month"),
+      });
+
+      const validated = schema.parse(req.query);
+      const analytics = await AdminService.getAnalytics(validated.period);
+
+      res.json(apiResponse(true, analytics));
+    } catch (error) {
+      logger.error("Get analytics error:", error);
+      res.status(500).json(
+        apiResponse(false, undefined, {
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to retrieve analytics",
+        })
+      );
+    }
+  }
+
+  /**
+   * POST /users/:userId/suspend
+   * Suspend a user account
+   */
+  static async suspendUser(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
+    try {
+      const { userId } = req.params;
+      if (!userId) {
+        res.status(400).json(
+          apiResponse(false, undefined, {
+            code: "VALIDATION_ERROR",
+            message: "User ID is required",
+          })
+        );
+        return;
+      }
+
+      const adminId = req.user?.uid || "unknown";
+      const user = await AdminService.suspendUser(userId, adminId);
+
+      res.json(apiResponse(true, user));
+    } catch (error) {
+      logger.error("Suspend user error:", error);
+      res.status(500).json(
+        apiResponse(false, undefined, {
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to suspend user",
+        })
+      );
+    }
+  }
+
+  /**
+   * POST /users/:userId/activate
+   * Activate a user account
+   */
+  static async activateUser(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
+    try {
+      const { userId } = req.params;
+      if (!userId) {
+        res.status(400).json(
+          apiResponse(false, undefined, {
+            code: "VALIDATION_ERROR",
+            message: "User ID is required",
+          })
+        );
+        return;
+      }
+
+      const adminId = req.user?.uid || "unknown";
+      const user = await AdminService.activateUser(userId, adminId);
+
+      res.json(apiResponse(true, user));
+    } catch (error) {
+      logger.error("Activate user error:", error);
+      res.status(500).json(
+        apiResponse(false, undefined, {
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to activate user",
+        })
+      );
+    }
+  }
 }

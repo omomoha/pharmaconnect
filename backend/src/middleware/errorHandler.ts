@@ -98,11 +98,14 @@ export const notFoundHandler = (
   res: Response,
   _next: NextFunction
 ): void => {
+  // Log the actual path server-side for debugging, but don't reflect
+  // the full path to the client (prevents endpoint enumeration)
+  logger.debug(`404: ${req.method} ${req.path}`);
   res.status(404).json({
     success: false,
     error: {
       code: "NOT_FOUND",
-      message: `Route ${req.method} ${req.path} not found`,
+      message: "The requested resource was not found",
     },
   });
 };

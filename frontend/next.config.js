@@ -64,8 +64,11 @@ const nextConfig = {
             value: 'max-age=63072000; includeSubDomains; preload',
           },
           {
+            // Note: 'unsafe-inline' in script-src is required by Next.js for inline hydration scripts.
+            // TODO: Migrate to nonce-based CSP when Next.js supports it natively (see RFC #15168).
+            // 'unsafe-inline' in style-src is required by styled-jsx.
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; connect-src 'self' *.firebaseio.com firebasestorage.googleapis.com *.cloudfunctions.net identitytoolkit.googleapis.com securetoken.googleapis.com firestore.googleapis.com https://api.paystack.co; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests",
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' https://apis.google.com https://js.paystack.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; connect-src 'self' https://*.firebaseio.com https://firebasestorage.googleapis.com https://*.cloudfunctions.net https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://api.paystack.co wss://*.firebaseio.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data:; frame-src 'self' https://js.paystack.co; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests; object-src 'none'",
           },
         ],
       },

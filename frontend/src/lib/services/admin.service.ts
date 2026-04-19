@@ -290,3 +290,62 @@ export async function getTransactions(
     };
   }
 }
+
+/**
+ * Get analytics with date-range filtering
+ */
+export async function getAnalytics(
+  period: 'today' | 'week' | 'month' | 'year' = 'month'
+): Promise<ApiResponse<any>> {
+  try {
+    const response = await apiClient.get(`/admin/analytics?period=${period}`);
+    return response;
+  } catch (error) {
+    console.error('Failed to fetch analytics:', error);
+    return {
+      success: false,
+      error: {
+        code: 'FETCH_ANALYTICS_ERROR',
+        message: 'Failed to fetch analytics',
+      },
+    };
+  }
+}
+
+/**
+ * Suspend a user account
+ */
+export async function suspendUser(userId: string): Promise<ApiResponse<any>> {
+  try {
+    const response = await apiClient.post(`/admin/users/${userId}/suspend`, {});
+    return response;
+  } catch (error) {
+    console.error('Failed to suspend user:', error);
+    return {
+      success: false,
+      error: {
+        code: 'SUSPEND_USER_ERROR',
+        message: 'Failed to suspend user',
+      },
+    };
+  }
+}
+
+/**
+ * Activate a user account
+ */
+export async function activateUser(userId: string): Promise<ApiResponse<any>> {
+  try {
+    const response = await apiClient.post(`/admin/users/${userId}/activate`, {});
+    return response;
+  } catch (error) {
+    console.error('Failed to activate user:', error);
+    return {
+      success: false,
+      error: {
+        code: 'ACTIVATE_USER_ERROR',
+        message: 'Failed to activate user',
+      },
+    };
+  }
+}

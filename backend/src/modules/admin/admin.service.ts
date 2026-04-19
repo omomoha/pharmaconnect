@@ -384,4 +384,215 @@ export class AdminService {
       throw error;
     }
   }
+
+  /**
+   * Get analytics with date-range filtering, time-series data, and top performers
+   */
+  static async getAnalytics(period: string = "month"): Promise<{
+    revenue: number;
+    commission: number;
+    activeUsers: number;
+    newRegistrations: number;
+    revenueChartData: { label: string; value: number }[];
+    userChartData: { label: string; value: number }[];
+    topPharmacies: { name: string; orders: number; revenue: number; rating: number }[];
+    topDeliveryProviders: { name: string; deliveries: number; rating: number; earnings: number }[];
+    recentActivity: { id: string; description: string; amount: number; time: string }[];
+  }> {
+    try {
+      const db = getFirestore();
+      const now = new Date();
+      let startDate: Date;
+
+      // Determine date range based on period
+      switch (period) {
+        case "today":
+          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          break;
+        case "week":
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case "year":
+          startDate = new Date(now.getFullYear(), 0, 1);
+          break;
+        case "month":
+        default:
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          break;
+      }
+
+      // Fetch orders within date range
+      const ordersSnapshot = await db
+        .collection(FIRESTORE_COLLECTIONS.ORDERS)
+        .where("createdAt", ">=", startDate)
+        .orderBy("createdAt", "desc")
+        .get();
+      const orders = ordersSnapshot.docs.map((d) => ({ id: d.id, ...d.data() } as any));
+
+      // Revenue and commission
+      const revenue = orders.reduce((sum: number, o: any) => sum + (o.total || 0), 0);
+      const commission = revenue * 0.05; // 5% platform commission
+
+      // Fetch users within date range for new registrations
+      const usersSnapshot = await db
+        .collection(FIRESTORE_COLLECTIONS.USERS)
+        .where("createdAt", ">=", startDate)
+        .get();
+      const newRegistrations = usersSnapshot.size;
+
+      // Active users (all users)
+      const allUsersSnapshot = await db.collection(FIRESTORE_COLLECTIONS.USERS).get();
+      const activeUsers = allUsersSnapshot.docs.filter((d) => {
+        const data = d.data();
+        return data.isActive !== false;
+      }).length;
+
+      // Build time-series chart data
+      const revenueByLabel: Record<string, number> = {};
+      const usersByLabel: Record<string, number> = {};
+
+      orders.forEach((order: any) => {
+        const date = order.createdAt?.toDate?.() || (order.createdAt?._seconds ? new Date(order.createdAt._seconds * 1000) : new Date());
+        let label: string;
+        if (period === "today") {
+          label = `${date.getHours()}:00`;
+        } else if (period === "week") {
+          label = date.toLocaleDateString("en-US", { weekday: "short" });
+        } else if (period === "year") {
+          label = date.toLocaleDateString("en-US", { month: "short" });
+        } else {
+          label = date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        }
+        revenueByLabel[label] = (revenueByLabel[label] || 0) + (order.total || 0);
+      });
+
+      usersSnapshot.docs.forEach((doc) => {
+        const data = doc.data();
+        const date = data.createdAt?.toDate?.() || (data.createdAt?._seconds ? new Date(data.createdAt._seconds * 1000) : new Date());
+        let label: string;
+        if (period === "today") {
+          label = `${date.getHours()}:00`;
+        } else if (period === "week") {
+          label = date.toLocaleDateString("en-US", { weekday: "short" });
+        } else if (period === "year") {
+          label = date.toLocaleDateString("en-US", { month: "short" });
+        } else {
+          label = date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        }
+        usersByLabel[label] = (usersByLabel[label] || 0) + 1;
+      });
+
+      const revenueChartData = Object.entries(revenueByLabel).map(([label, value]) => ({ label, value }));
+      const userChartData = Object.entries(usersByLabel).map(([label, value]) => ({ label, value }));
+
+      // Top pharmacies by order count and revenue
+      const pharmacyStats: Record<string, { name: string; orders: number; revenue: number; rating: number }> = {};
+      orders.forEach((order: any) => {
+        const pid = order.pharmacyId || "unknown";
+        if (!pharmacyStats[pid]) {
+          pharmacyStats[pid] = { name: order.pharmacyName || `Pharmacy ${pid.slice(0, 6)}`, orders: 0, revenue: 0, rating: 0 };
+        }
+        pharmacyStats[pid].orders++;
+        pharmacyStats[pid].revenue += order.total || 0;
+      });
+      const topPharmacies = Object.values(pharmacyStats)
+        .sort((a, b) => b.revenue - a.revenue)
+        .slice(0, 5);
+
+      // Top delivery providers (from delivery assignments or orders with rider info)
+      const providerStats: Record<string, { name: string; deliveries: number; rating: number; earnings: number }> = {};
+      orders.forEach((order: any) => {
+        if (order.riderId || order.deliveryProviderId) {
+          const rid = order.riderId || order.deliveryProviderId || "unknown";
+          if (!providerStats[rid]) {
+            providerStats[rid] = { name: order.riderName || `Rider ${rid.slice(0, 6)}`, deliveries: 0, rating: 0, earnings: 0 };
+          }
+          providerStats[rid].deliveries++;
+          providerStats[rid].earnings += (order.deliveryFee || 0);
+        }
+      });
+      const topDeliveryProviders = Object.values(providerStats)
+        .sort((a, b) => b.deliveries - a.deliveries)
+        .slice(0, 5);
+
+      // Recent activity (latest 10 orders)
+      const recentActivity = orders.slice(0, 10).map((o: any) => {
+        const date = o.createdAt?.toDate?.() || (o.createdAt?._seconds ? new Date(o.createdAt._seconds * 1000) : new Date());
+        const diffMs = now.getTime() - date.getTime();
+        const diffMins = Math.floor(diffMs / 60000);
+        let timeStr: string;
+        if (diffMins < 60) timeStr = `${diffMins} min ago`;
+        else if (diffMins < 1440) timeStr = `${Math.floor(diffMins / 60)} hours ago`;
+        else timeStr = `${Math.floor(diffMins / 1440)} days ago`;
+
+        return {
+          id: o.id,
+          description: `Order from ${o.customerName || "Customer"} at ${o.pharmacyName || "Pharmacy"}`,
+          amount: o.total || 0,
+          time: timeStr,
+        };
+      });
+
+      return {
+        revenue,
+        commission,
+        activeUsers,
+        newRegistrations,
+        revenueChartData,
+        userChartData,
+        topPharmacies,
+        topDeliveryProviders,
+        recentActivity,
+      };
+    } catch (error) {
+      logger.error("Failed to get analytics:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Suspend a user account
+   */
+  static async suspendUser(userId: string, adminId: string): Promise<any> {
+    try {
+      const db = getFirestore();
+
+      await db.collection(FIRESTORE_COLLECTIONS.USERS).doc(userId).update({
+        isActive: false,
+        suspendedAt: new Date(),
+        suspendedBy: adminId,
+        updatedAt: new Date(),
+      });
+
+      const doc = await db.collection(FIRESTORE_COLLECTIONS.USERS).doc(userId).get();
+      logger.info(`User suspended: ${userId} by admin ${adminId}`);
+      return { id: doc.id, ...doc.data() };
+    } catch (error) {
+      logger.error(`Failed to suspend user ${userId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Activate (un-suspend) a user account
+   */
+  static async activateUser(userId: string, adminId: string): Promise<any> {
+    try {
+      const db = getFirestore();
+
+      await db.collection(FIRESTORE_COLLECTIONS.USERS).doc(userId).update({
+        isActive: true,
+        suspendedAt: null,
+        suspendedBy: null,
+        updatedAt: new Date(),
+      });
+
+      const doc = await db.collection(FIRESTORE_COLLECTIONS.USERS).doc(userId).get();
+      logger.info(`User activated: ${userId} by admin ${adminId}`);
+      return { id: doc.id, ...doc.data() };
+    } catch (error) {
+      logger.error(`Failed to activate user ${userId}:`, error);
+      throw error;
+    }
+  }
 }

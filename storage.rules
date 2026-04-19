@@ -30,24 +30,30 @@ service firebase.storage {
           || request.resource.contentType == 'application/pdf';
     }
 
+    // Helper: check if user has pharmacy_admin role
+    function isPharmacyAdmin() {
+      return isAuthenticated() && request.auth.token.role == 'pharmacy_admin';
+    }
+
     // ========== PHARMACY IMAGES ==========
     // Public read for pharmacy logos and product images
-    // Only pharmacy admins and platform admins can upload
+    // Only the pharmacy owner (pharmacyId matches UID) or platform admins can upload
     match /pharmacies/{pharmacyId}/{allPaths=**} {
       allow read: if true;
-      allow write: if isAuthenticated()
-                   && isImage()
-                   && isValidFileSize();
-      allow delete: if isAuthenticated() || isAdmin();
+      allow write: if isImage()
+                   && isValidFileSize()
+                   && ((isPharmacyAdmin() && request.auth.uid == pharmacyId) || isAdmin());
+      allow delete: if (isPharmacyAdmin() && request.auth.uid == pharmacyId) || isAdmin();
     }
 
     // ========== PRODUCT IMAGES ==========
+    // Only pharmacy admins or platform admins can upload product images
     match /products/{productId}/{allPaths=**} {
       allow read: if true;
-      allow write: if isAuthenticated()
-                   && isImage()
-                   && isValidFileSize();
-      allow delete: if isAuthenticated() || isAdmin();
+      allow write: if isImage()
+                   && isValidFileSize()
+                   && (isPharmacyAdmin() || isAdmin());
+      allow delete: if isPharmacyAdmin() || isAdmin();
     }
 
     // ========== USER PROFILE IMAGES ==========
@@ -72,11 +78,15 @@ service firebase.storage {
     }
 
     // ========== CHAT ATTACHMENTS ==========
-    // Authenticated users can upload; participants can read
+    // Only authenticated users can upload (file size enforced)
+    // Note: Conversation membership is validated server-side via Socket.IO;
+    // Storage rules cannot cross-reference Firestore conversation docs.
+    // Read restricted to authenticated users; write restricted to authenticated + size limit.
     match /chat/{conversationId}/{allPaths=**} {
       allow read: if isAuthenticated();
       allow write: if isAuthenticated()
-                   && isValidFileSize();
+                   && isValidFileSize()
+                   && (isImage() || request.resource.contentType == 'application/pdf');
       allow delete: if isAdmin();
     }
 

@@ -4,11 +4,13 @@ import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
-import { useAdminDashboard } from '@/hooks';
+import { useAdminDashboard, usePendingApprovals, useFlaggedAlerts } from '@/hooks';
 import toast from 'react-hot-toast';
 
 export default function AdminDashboard() {
   const { stats, loading: dashboardLoading, error: dashboardError } = useAdminDashboard();
+  const { pharmacies: pendingPharmacies, providers: pendingProviders, loading: approvalsLoading } = usePendingApprovals();
+  const { alerts: flaggedAlerts, loading: alertsLoading } = useFlaggedAlerts();
 
   // Show error toast if dashboard fails to load
   useEffect(() => {
@@ -17,51 +19,45 @@ export default function AdminDashboard() {
     }
   }, [dashboardError]);
 
-  // Sample data
-  const samplePlatformStats = [
-    { label: 'Total Users', value: '2,834', change: '+125 this week' },
-    { label: 'Total Orders', value: '12,456', change: '+8% from last week' },
-    { label: 'Total Revenue', value: '₦5.2M', change: '+12% from last week' },
-    { label: 'Flagged Chats', value: '23', change: '8 pending review' },
-  ];
+  // Build stats from real API data
+  const displayStats = stats ? [
+    { label: 'Total Pharmacies', value: String(stats.totalPharmacies || 0), change: `${stats.pendingPharmacies || 0} pending approval` },
+    { label: 'Total Orders', value: String(stats.totalOrders || 0), change: `₦${((stats.totalRevenue || 0) / 1000).toFixed(0)}K revenue` },
+    { label: 'Delivery Providers', value: String(stats.totalDeliveryProviders || 0), change: `${stats.pendingProviders || 0} pending approval` },
+    { label: 'Flagged Alerts', value: String(stats.flaggedAlerts || 0), change: `${flaggedAlerts.length} active` },
+  ] : [];
 
-  // Use API stats if available, otherwise fallback to sample
-  const displayStats = stats && Object.keys(stats).length > 0 ? stats : samplePlatformStats;
+  // Build pending approvals from real data
+  const displayPendingApprovals = [
+    ...pendingPharmacies.map((p: any) => ({
+      id: p.id,
+      type: 'Pharmacy',
+      name: p.name || p.businessName || 'Unnamed Pharmacy',
+      date: p.createdAt?._seconds
+        ? new Date(p.createdAt._seconds * 1000).toISOString().split('T')[0]
+        : 'N/A',
+    })),
+    ...pendingProviders.map((p: any) => ({
+      id: p.id,
+      type: 'Delivery Provider',
+      name: p.name || p.businessName || 'Unnamed Provider',
+      date: p.createdAt?._seconds
+        ? new Date(p.createdAt._seconds * 1000).toISOString().split('T')[0]
+        : 'N/A',
+    })),
+  ].sort((a, b) => (b.date > a.date ? 1 : -1)).slice(0, 5);
 
-  const sampleRecentFlags = [
-    {
-      id: '1',
-      type: 'Prescription Drug Detection',
-      message: 'User mentioned prescription drug in chat',
-      severity: 'High',
-      date: '2026-03-24 14:30',
-      status: 'Pending',
-    },
-    {
-      id: '2',
-      type: 'Suspicious Activity',
-      message: 'Multiple failed payment attempts',
-      severity: 'Medium',
-      date: '2026-03-24 12:15',
-      status: 'Reviewing',
-    },
-    {
-      id: '3',
-      type: 'Harassment Report',
-      message: 'Customer reported pharmacy staff behavior',
-      severity: 'High',
-      date: '2026-03-24 10:00',
-      status: 'Pending',
-    },
-  ];
-
-  const samplePendingApprovals = [
-    { id: '1', type: 'Pharmacy', name: 'HealthCare Plus', date: '2026-03-23' },
-    { id: '2', type: 'Delivery Provider', name: 'Swift Logistics', date: '2026-03-22' },
-  ];
-
-  const displayRecentFlags = sampleRecentFlags;
-  const displayPendingApprovals = samplePendingApprovals;
+  // Use real flagged alerts (show latest 5)
+  const displayRecentFlags = flaggedAlerts.slice(0, 5).map((alert: any) => ({
+    id: alert.id,
+    type: alert.category || alert.type || 'Unknown',
+    message: alert.message || alert.reason || 'No details',
+    severity: alert.severity || 'Medium',
+    date: alert.createdAt?._seconds
+      ? new Date(alert.createdAt._seconds * 1000).toLocaleString()
+      : 'N/A',
+    status: alert.status || 'Pending',
+  }));
 
   return (
     <div className="space-y-6">
@@ -103,12 +99,12 @@ export default function AdminDashboard() {
           <CardContent className="space-y-3">
             <Link href="/dashboard/admin/approvals">
               <Button variant="primary" className="w-full justify-start">
-                View Pending Approvals ({displayPendingApprovals.length})
+                View Pending Approvals ({approvalsLoading ? '...' : displayPendingApprovals.length})
               </Button>
             </Link>
             <Link href="/dashboard/admin/flags">
               <Button variant="secondary" className="w-full justify-start">
-                Review Flagged Chats (23)
+                Review Flagged Chats ({alertsLoading ? '...' : flaggedAlerts.length})
               </Button>
             </Link>
             <Link href="/dashboard/admin/users">
@@ -162,41 +158,42 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        {/* System Health */}
+        {/* Platform Summary */}
         <Card>
           <CardHeader>
-            <h2 className="text-lg font-bold text-gray-900">System Health</h2>
+            <h2 className="text-lg font-bold text-gray-900">Platform Summary</h2>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <p className="text-sm text-gray-600">API Status</p>
-                <span className="text-xs font-medium text-green-600">Healthy</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div className="bg-green-500 h-2 rounded-full" style={{ width: '100%' }} />
-              </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <p className="text-sm text-gray-600">Database Load</p>
-                <span className="text-xs font-medium text-green-600">45%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div className="bg-blue-500 h-2 rounded-full" style={{ width: '45%' }} />
-              </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <p className="text-sm text-gray-600">Storage Usage</p>
-                <span className="text-xs font-medium text-green-600">62%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div className="bg-secondary-500 h-2 rounded-full" style={{ width: '62%' }} />
-              </div>
-            </div>
+            {stats ? (
+              <>
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <p className="text-sm text-gray-600">Approved Pharmacies</p>
+                    <span className="text-sm font-medium text-gray-900">{stats.approvedPharmacies || 0}</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="bg-green-500 h-2 rounded-full" style={{ width: stats.totalPharmacies ? `${((stats.approvedPharmacies || 0) / stats.totalPharmacies) * 100}%` : '0%' }} />
+                  </div>
+                </div>
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <p className="text-sm text-gray-600">Approved Providers</p>
+                    <span className="text-sm font-medium text-gray-900">{stats.approvedProviders || 0}</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="bg-blue-500 h-2 rounded-full" style={{ width: stats.totalDeliveryProviders ? `${((stats.approvedProviders || 0) / stats.totalDeliveryProviders) * 100}%` : '0%' }} />
+                  </div>
+                </div>
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <p className="text-sm text-gray-600">Total Revenue</p>
+                    <span className="text-sm font-medium text-gray-900">{`₦${((stats.totalRevenue || 0)).toLocaleString()}`}</span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <p className="text-gray-500 text-sm text-center py-4">Loading...</p>
+            )}
           </CardContent>
         </Card>
       </div>
