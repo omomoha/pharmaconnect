@@ -94,7 +94,7 @@ class ApiService {
 
         // Don't retry on 4xx (except 401 which we handled above)
         rethrow;
-      } on SocketException catch (e) {
+      } on SocketException catch (_) {
         // Network error - retry with backoff
         attempt++;
         if (attempt < _maxRetries) {

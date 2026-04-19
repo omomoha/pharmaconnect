@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:go_router/go_router.dart';
-import 'package:pharmaconnect/config/theme.dart';
+import 'package:pharmaconnect/models/user_model.dart';
 import 'package:pharmaconnect/providers/auth_provider.dart';
 import 'package:pharmaconnect/screens/auth/splash_screen.dart';
+import 'package:pharmaconnect/services/auth_service.dart';
 import 'package:provider/provider.dart';
 
 void main() {
   group('SplashScreen', () {
-    // Mock AuthProvider for testing
     late MockAuthProvider mockAuthProvider;
 
     setUp(() {
@@ -155,7 +154,6 @@ void main() {
         createWidgetUnderTest(authProvider: mockAuthProvider),
       );
 
-      // Check for main content
       expect(find.byIcon(Icons.local_pharmacy_outlined), findsOneWidget);
       expect(find.text('PharmaConnect'), findsOneWidget);
       expect(find.text('Online Pharmacy Marketplace'), findsOneWidget);
@@ -168,10 +166,8 @@ void main() {
         createWidgetUnderTest(authProvider: mockAuthProvider),
       );
 
-      // Pump to advance animations
       await tester.pump(const Duration(milliseconds: 500));
 
-      // Verify content is still visible
       expect(find.text('PharmaConnect'), findsOneWidget);
     });
 
@@ -181,63 +177,100 @@ void main() {
         createWidgetUnderTest(authProvider: mockAuthProvider),
       );
 
-      // Animate forward
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
-      // Verify no exceptions occurred
       expect(find.byType(SplashScreen), findsOneWidget);
     });
   });
 }
 
-// Mock AuthProvider for testing
+/// Mock AuthProvider that implements the AuthProvider interface
+/// without requiring Firebase dependencies.
 class MockAuthProvider extends ChangeNotifier implements AuthProvider {
+  @override
+  AuthService get authService => throw UnimplementedError();
+
   @override
   bool get isAuthenticated => false;
 
   @override
-  String getDashboardRoute() => '/customer-dashboard';
-
-  @override
-  Future<void> login(String email, String password) async {}
-
-  @override
-  Future<void> register(String email, String password, String displayName,
-      String phoneNumber, String role) async {}
-
-  @override
-  Future<void> logout() async {}
-
-  @override
-  Future<void> verifyOtp(String otp) async {}
-
-  @override
-  Future<void> resendOtp() async {}
-
-  @override
-  String? get currentUserId => null;
-
-  @override
-  String? get currentUserEmail => null;
-
-  @override
-  String? get currentUserRole => null;
+  UserModel? get user => null;
 
   @override
   bool get isLoading => false;
 
   @override
-  String get errorMessage => '';
+  String? get error => null;
 
   @override
-  Future<void> checkAuthStatus() async {}
+  bool get isCustomer => false;
 
   @override
-  Future<void> refreshToken() async {}
+  bool get isPharmacyAdmin => false;
 
   @override
-  Future<void> forgotPassword(String email) async {}
+  bool get isDeliveryAdmin => false;
 
   @override
-  Future<void> resetPassword(String code, String newPassword) async {}
+  bool get isPlatformAdmin => false;
+
+  @override
+  bool get isSupportAdmin => false;
+
+  @override
+  String getDashboardRoute() => '/login';
+
+  @override
+  Future<void> login({
+    required String email,
+    required String password,
+  }) async {}
+
+  @override
+  Future<void> register({
+    required String email,
+    required String password,
+    required String displayName,
+    required String phoneNumber,
+    required UserRole role,
+    bool registerOnMalPay = false,
+  }) async {}
+
+  @override
+  Future<void> signInWithPhone({
+    required String phoneNumber,
+    required void Function(String, int?) onCodeSent,
+    required void Function(String) onCodeAutoRetrievalTimeout,
+  }) async {}
+
+  @override
+  Future<void> verifyPhoneOTP(String otp) async {}
+
+  @override
+  Future<void> logout() async {}
+
+  @override
+  Future<void> updateProfile({
+    String? displayName,
+    String? phoneNumber,
+    String? photoUrl,
+  }) async {}
+
+  @override
+  Future<void> sendPasswordResetEmail(String email) async {}
+
+  @override
+  Future<void> updatePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {}
+
+  @override
+  Future<void> sendEmailVerification() async {}
+
+  @override
+  Future<void> deleteAccount(String password) async {}
+
+  @override
+  void clearError() {}
 }

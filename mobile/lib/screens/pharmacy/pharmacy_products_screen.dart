@@ -575,7 +575,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   bool _requiresPrescription = false;
   List<String> _images = [];
   bool _isLoading = false;
-  List<String> _availableCategories = [];
+  // Categories loaded from API (used to populate dropdown)
 
   final _formKey = GlobalKey<FormState>();
 
@@ -617,7 +617,6 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       final productService = ProductService(apiService: apiService);
       final categories = await productService.getCategories();
       setState(() {
-        _availableCategories = categories;
         if (_selectedCategory.isEmpty && categories.isNotEmpty) {
           _selectedCategory = categories[0];
         }

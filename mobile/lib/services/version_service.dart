@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:pharmaconnect/config/constants.dart';
 
 class VersionService {
   static const String currentVersion = '1.0.0';

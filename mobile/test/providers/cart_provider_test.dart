@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pharmaconnect/models/cart_model.dart';
 import 'package:pharmaconnect/models/product_model.dart';
 import 'package:pharmaconnect/providers/cart_provider.dart';
 

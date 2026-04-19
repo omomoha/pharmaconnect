@@ -480,8 +480,6 @@ class _PharmacyApprovalScreenState extends State<PharmacyApprovalScreen> {
             final status = pharmacy['status'] as String? ?? 'pending';
             final rejectionReason = pharmacy['rejectionReason'] as String?;
             final documents = pharmacy['documents'] as Map<String, dynamic>? ?? {};
-            final submittedAt = pharmacy['submittedAt'] as String?;
-
             // Determine timeline statuses
             String step2Status = 'pending';
             String step3Status = 'pending';

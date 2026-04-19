@@ -214,9 +214,7 @@ class _StatusBanner extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  order.updatedAt != null
-                      ? 'Updated ${_formatDateTime(order.updatedAt!)}'
-                      : 'No updates yet',
+                  'Updated ${_formatDateTime(order.updatedAt)}',
                   style: Theme.of(context).textTheme.labelSmall!.copyWith(
                     color: AppColors.neutral600,
                   ),
@@ -826,7 +824,7 @@ class _ActionsSectionState extends State<_ActionsSection> {
               ),
             ),
           ),
-        if (_canCancelOrder(order.status)) const SizedBox(height: 12),
+        if (_canCancelOrder(widget.order.status)) const SizedBox(height: 12),
 
         // Contact Pharmacy Button
         OutlinedButton(
@@ -911,11 +909,8 @@ class _ActionsSectionState extends State<_ActionsSection> {
       cartProvider.clearCart();
 
       // Add all items from current order to cart
-      for (final item in widget.order.items) {
-        // Create a ProductModel-like object to add to cart
-        // Since we need to match the CartProvider.addToCart interface
-        // We'll manually update the cart
-      }
+      // Note: Full reorder requires fetching ProductModel objects
+      // For now, navigate to the pharmacy to re-add items
 
       // Note: We need the full ProductModel objects to add to cart properly
       // For now, show a message and navigate to cart

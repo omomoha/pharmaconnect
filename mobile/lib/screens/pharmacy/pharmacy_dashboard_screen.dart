@@ -56,7 +56,6 @@ class _PharmacyDashboardScreenState extends State<PharmacyDashboardScreen> {
 
     try {
       final apiService = ApiService();
-      final authProvider = context.read<AuthProvider>();
 
       // Get current user's pharmacy
       final pharmacyResponse = await apiService.get(ApiEndpoints.pharmacies + '/mine');

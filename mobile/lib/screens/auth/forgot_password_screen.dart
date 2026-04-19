@@ -18,8 +18,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _emailController = TextEditingController();
   bool _isLoading = false;
   bool _linkSent = false;
-  String? _errorMessage;
-  String? _successMessage;
 
   @override
   void dispose() {
@@ -41,8 +39,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
     setState(() {
       _isLoading = true;
-      _errorMessage = null;
-      _successMessage = null;
     });
 
     try {
@@ -51,8 +47,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
       setState(() {
         _linkSent = true;
-        _successMessage =
-            'Reset link sent to ${_emailController.text}. Check your email.';
       });
 
       if (mounted) {
@@ -76,9 +70,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   void _showError(String message) {
-    setState(() {
-      _errorMessage = message;
-    });
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),

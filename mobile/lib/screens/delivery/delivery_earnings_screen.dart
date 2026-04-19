@@ -129,9 +129,6 @@ class _DeliveryEarningsScreenState extends State<DeliveryEarningsScreen> {
 
   void _requestPayout() async {
     try {
-      final apiService = ApiService();
-      final deliveryService = DeliveryService(apiService: apiService);
-
       // Call payout request endpoint (if available)
       // For now, just show success message
       ScaffoldMessenger.of(context).showSnackBar(

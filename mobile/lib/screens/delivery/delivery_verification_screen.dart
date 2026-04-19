@@ -31,7 +31,6 @@ class _DeliveryVerificationScreenState extends State<DeliveryVerificationScreen>
   int _currentStep = 1; // 1: Customer Code, 2: Rider Code, 3: Complete
   int _remainingSeconds = 300; // 5 minutes
   bool _customerCodeVerified = false;
-  bool _riderCodeVerified = false;
   bool _isLoading = false;
   String _riderCode = '';
 
@@ -172,7 +171,6 @@ class _DeliveryVerificationScreenState extends State<DeliveryVerificationScreen>
       );
 
       setState(() {
-        _riderCodeVerified = true;
         _isLoading = false;
         _currentStep = 3;
       });

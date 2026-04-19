@@ -135,38 +135,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       final serviceFee = _calculateServiceFee();
       final total = _calculateTotal(subtotal);
 
-      // Create order payload
-      final orderData = {
-        'customerId': authProvider.user?.id ?? '',
-        'customerEmail': authProvider.user?.email ?? '',
-        'items': cartProvider.items
-            .map((item) => {
-                  'productId': item.product.id,
-                  'productName': item.product.name,
-                  'quantity': item.quantity,
-                  'price': item.product.price,
-                  'subtotal': item.product.price * item.quantity,
-                })
-            .toList(),
-        'deliveryAddress': {
-          'street': _streetAddressController.text,
-          'city': _cityController.text,
-          'state': _stateController.text,
-          'instructions': _instructionsController.text,
-        },
-        'deliveryProvider': {
-          'name': _deliveryProviders[_selectedDeliveryProvider]['name'],
-          'estimatedTime':
-              _deliveryProviders[_selectedDeliveryProvider]['time'],
-          'fee': deliveryFee,
-        },
-        'paymentMethod': _selectedPaymentMethod,
-        'subtotal': subtotal,
-        'deliveryFee': deliveryFee,
-        'serviceFee': serviceFee,
-        'total': total,
-      };
-
       // Place order via API
       await orderService.createOrder(
         items: cartProvider.items.map((item) => {

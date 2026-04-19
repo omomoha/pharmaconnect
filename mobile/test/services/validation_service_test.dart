@@ -147,7 +147,7 @@ void main() {
       final validPasswords = [
         'ValidPass1!',
         'StrongPassword123@',
-        'Secure$Pass99',
+        'Secure\$Pass99',
         'MyPass%123word',
         'Test&Pass1',
         'Correct1*Horse',
@@ -161,7 +161,7 @@ void main() {
 
     test('validatePassword accepts special characters', () {
       expect(ValidationService.validatePassword('Pass@1word'), null);
-      expect(ValidationService.validatePassword('Pass$1word'), null);
+      expect(ValidationService.validatePassword('Pass\$1word'), null);
       expect(ValidationService.validatePassword('Pass!1word'), null);
       expect(ValidationService.validatePassword('Pass%1word'), null);
       expect(ValidationService.validatePassword('Pass*1word'), null);

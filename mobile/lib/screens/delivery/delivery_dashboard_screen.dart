@@ -57,9 +57,6 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
   Future<void> _toggleOnlineStatus() async {
     setState(() => _isLoading = true);
     try {
-      final apiService = ApiService();
-      final deliveryService = DeliveryService(apiService: apiService);
-
       // Update availability status via API
       final newStatus = _isOnline ? 'offline' : 'online';
       // Note: This endpoint may need to be added to backend if not present
@@ -1064,18 +1061,17 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
 }
 
 class RefreshController {
-  bool _isRefreshing = false;
-  bool _initialRefresh = false;
+  // ignore: unused_field
+  bool isRefreshing = false;
 
-  RefreshController({bool initialRefresh = false})
-      : _initialRefresh = initialRefresh;
+  RefreshController({bool initialRefresh = false});
 
   void refreshCompleted() {
-    _isRefreshing = false;
+    isRefreshing = false;
   }
 
   void refreshFailed() {
-    _isRefreshing = false;
+    isRefreshing = false;
   }
 
   void dispose() {
