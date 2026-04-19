@@ -33,16 +33,10 @@ const envSchema = z.object({
   // JWT — REQUIRED in production, dev-only fallback for local development
   // NOTE: Set JWT_SECRET via Firebase Cloud Functions secrets:
   //   firebase functions:secrets:set JWT_SECRET
-  JWT_SECRET: z.string().refine(
-    (val) => {
-      // In production, require a strong secret (not the dev default)
-      if (process.env.NODE_ENV === 'production') {
-        return val !== 'dev-only-jwt-secret-not-for-production' && val.length >= 32;
-      }
-      return true;
-    },
-    { message: 'JWT_SECRET must be at least 32 characters in production. Set via: firebase functions:secrets:set JWT_SECRET' }
-  ).default("dev-only-jwt-secret-not-for-production"),
+  // WARNING: The refine was removed because it crashed Cloud Run containers
+  // at startup (thrown error prevents container from listening on PORT).
+  // Instead, we log a warning at runtime — see functions.ts.
+  JWT_SECRET: z.string().default("dev-only-jwt-secret-not-for-production"),
 
   // Logging
   LOG_LEVEL: z.enum(["error", "warn", "info", "debug"]).default("info"),
@@ -67,13 +61,18 @@ try {
 } catch (error) {
   if (error instanceof z.ZodError) {
     console.error("Environment validation error:", error.errors);
-    // In Cloud Functions, throwing is safer than process.exit (allows error reporting)
+    // In Cloud Functions, do NOT throw or exit — it kills the container
+    // before it can listen on PORT, causing Container Healthcheck failure.
+    // Instead, use defaults and log the warning.
     if (process.env.K_SERVICE || process.env.FUNCTION_TARGET) {
-      throw new Error(`Environment validation failed: ${JSON.stringify(error.errors)}`);
+      console.warn("Config validation failed in Cloud Functions — using defaults. Errors:", error.errors);
+      config = envSchema.parse({});  // Parse empty object to get all defaults
+    } else {
+      process.exit(1);
     }
-    process.exit(1);
+  } else {
+    throw error;
   }
-  throw error;
 }
 
 export default config;

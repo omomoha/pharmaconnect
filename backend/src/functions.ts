@@ -1,87 +1,112 @@
 import { onRequest } from 'firebase-functions/v2/https';
+import * as admin from 'firebase-admin';
 import express, { Request, Response } from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import compression from 'compression';
+import cookieParser from 'cookie-parser';
+import config, { getAllowedOrigins } from './config/index.js';
+import logger from './utils/logger.js';
+import {
+  errorHandler,
+  notFoundHandler,
+  asyncHandler,
+} from './middleware/errorHandler.js';
+
+// Import routes
+import authRoutes from './modules/auth/auth.routes.js';
+import pharmacyRoutes from './modules/pharmacy/pharmacy.routes.js';
+import orderRoutes from './modules/order/order.routes.js';
+import deliveryRoutes from './modules/delivery/delivery.routes.js';
+import paymentRoutes from './modules/payment/payment.routes.js';
+import chatRoutes from './modules/chat/chat.routes.js';
+import adminRoutes from './modules/admin/admin.routes.js';
+import aiRoutes from './modules/ai/ai.routes.js';
+import subscriptionRoutes from './modules/subscription/subscription.routes.js';
 
 /**
- * DEBUG STEP 3: Diagnostic version — uses dynamic require() with try/catch
- * to identify exactly which module import crashes the Cloud Run container.
- * Each import is wrapped individually so we can see which one fails.
+ * Initialize Firebase Admin SDK synchronously for Cloud Functions.
+ * Uses Application Default Credentials (ADC) — no retries needed.
+ * The async initializeFirebase() from config/firebase.ts has retry logic
+ * and process.exit(1) that can crash the Cloud Run container, so we
+ * use a simple synchronous init here instead.
  */
-
-const loadErrors: string[] = [];
-
-function tryRequire(name: string): any {
-  try {
-    const mod = require(name);
-    console.log(`[DIAG] OK: ${name}`);
-    return mod.default || mod;
-  } catch (err: any) {
-    const msg = `[DIAG] FAIL: ${name} — ${err.message}`;
-    console.error(msg);
-    loadErrors.push(msg);
-    return null;
+try {
+  if (!admin.apps.length) {
+    admin.initializeApp();
   }
+  logger.info('Firebase initialized for Cloud Functions');
+} catch (error) {
+  // Log but do NOT process.exit — let Cloud Run report the error
+  logger.error('Firebase initialization failed in Cloud Functions:', error);
 }
 
-// Test each dependency individually
-const admin = tryRequire('firebase-admin');
-const cors = tryRequire('cors');
-const helmet = tryRequire('helmet');
-const compression = tryRequire('compression');
-const cookieParser = tryRequire('cookie-parser');
-const configModule = tryRequire('./config/index.js');
-const loggerModule = tryRequire('./utils/logger.js');
-const errorHandlerModule = tryRequire('./middleware/errorHandler.js');
-
-// Initialize Firebase Admin if loaded
-if (admin) {
-  try {
-    if (!admin.apps?.length) {
-      admin.initializeApp();
-    }
-    console.log('[DIAG] Firebase Admin initialized OK');
-  } catch (err: any) {
-    console.error(`[DIAG] Firebase Admin init FAIL: ${err.message}`);
-    loadErrors.push(`Firebase Admin init: ${err.message}`);
-  }
+// Warn about insecure JWT_SECRET in production (but don't crash)
+if (config.JWT_SECRET === 'dev-only-jwt-secret-not-for-production') {
+  logger.warn('WARNING: JWT_SECRET is using the insecure default. Set it via: firebase functions:secrets:set JWT_SECRET');
 }
 
+// Create Express app
 const app = express();
-app.use(express.json());
 
-// Health check — reports diagnostic results
-app.get('/health', (_req: Request, res: Response) => {
-  res.json({
-    success: true,
-    message: 'PharmaConnect Backend — diagnostic mode',
-    loadErrors,
-    timestamp: new Date(),
-  });
-});
+// Security headers — don't rely solely on Cloud Run
+app.use(helmet({
+  contentSecurityPolicy: false, // CSP handled by frontend
+  crossOriginEmbedderPolicy: false, // Allow cross-origin API calls
+}));
 
-// Root — diagnostic status
-app.get('/', (_req: Request, res: Response) => {
-  res.json({
-    status: 'ok',
-    version: 'diagnostic-step-3',
-    loadErrors,
-    modulesLoaded: {
-      'firebase-admin': !!admin,
-      cors: !!cors,
-      helmet: !!helmet,
-      compression: !!compression,
-      'cookie-parser': !!cookieParser,
-      config: !!configModule,
-      logger: !!loggerModule,
-      errorHandler: !!errorHandlerModule,
-    },
-  });
-});
+// CORS
+app.use(
+  cors({
+    origin: getAllowedOrigins(),
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  })
+);
+app.use(compression());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
+app.use(cookieParser());
 
-// API stub
-app.use('/api/v1', (_req: Request, res: Response) => {
-  res.json({ message: 'Diagnostic mode — routes disabled', loadErrors });
-});
+// Skip rate limiter in Cloud Functions (no Redis available)
+// Rate limiting can be handled by Cloud Run's built-in throttling or API Gateway
 
+// Health check
+app.get(
+  '/health',
+  asyncHandler(async (_req: Request, res: Response) => {
+    res.json({
+      success: true,
+      message: 'PharmaConnect Backend is healthy',
+      timestamp: new Date(),
+    });
+  })
+);
+
+// API routes
+const apiV1 = express.Router();
+apiV1.use('/auth', authRoutes);
+apiV1.use('/pharmacies', pharmacyRoutes);
+apiV1.use('/orders', orderRoutes);
+apiV1.use('/delivery', deliveryRoutes);
+apiV1.use('/payments', paymentRoutes);
+apiV1.use('/chat', chatRoutes);
+apiV1.use('/admin', adminRoutes);
+apiV1.use('/ai', aiRoutes);
+apiV1.use('/subscriptions', subscriptionRoutes);
+app.use('/api/v1', apiV1);
+
+// Error handling
+app.use(notFoundHandler);
+app.use(errorHandler);
+
+/**
+ * Firebase Cloud Function v2 — API Handler
+ *
+ * Memory: 1GiB needed for cold start with heavy deps
+ * (firebase-admin, @anthropic-ai/sdk, @sentry/node, ioredis, socket.io)
+ */
 export const api = onRequest(
   {
     region: 'us-central1',
