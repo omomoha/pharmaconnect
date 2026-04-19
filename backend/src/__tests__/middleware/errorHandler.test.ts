@@ -176,7 +176,7 @@ describe('Error Handler Middleware', () => {
       expect(responseBody.error.code).toBe('NOT_FOUND');
     });
 
-    it('should include route information in message', () => {
+    it('should return a generic not-found message without leaking route info', () => {
       mockReq = {
         method: 'POST',
         path: '/api/nonexistent',
@@ -189,8 +189,10 @@ describe('Error Handler Middleware', () => {
       );
 
       const responseBody = mockJsonRes.mock.calls[0][0];
-      expect(responseBody.error.message).toContain('POST');
-      expect(responseBody.error.message).toContain('/api/nonexistent');
+      // Security: error message should NOT reflect the request method or path
+      expect(responseBody.error.message).not.toContain('POST');
+      expect(responseBody.error.message).not.toContain('/api/nonexistent');
+      expect(responseBody.error.message).toContain('not found');
     });
 
     it('should set success to false', () => {
