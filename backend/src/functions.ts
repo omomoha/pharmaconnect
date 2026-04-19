@@ -1,117 +1,41 @@
 import { onRequest } from 'firebase-functions/v2/https';
-import * as admin from 'firebase-admin';
 import express, { Request, Response } from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
-import compression from 'compression';
-import cookieParser from 'cookie-parser';
-import config, { getAllowedOrigins } from './config/index.js';
-import logger from './utils/logger.js';
-import {
-  errorHandler,
-  notFoundHandler,
-  asyncHandler,
-} from './middleware/errorHandler.js';
-
-// Import routes
-import authRoutes from './modules/auth/auth.routes.js';
-import pharmacyRoutes from './modules/pharmacy/pharmacy.routes.js';
-import orderRoutes from './modules/order/order.routes.js';
-import deliveryRoutes from './modules/delivery/delivery.routes.js';
-import paymentRoutes from './modules/payment/payment.routes.js';
-import chatRoutes from './modules/chat/chat.routes.js';
-import adminRoutes from './modules/admin/admin.routes.js';
-import aiRoutes from './modules/ai/ai.routes.js';
-import subscriptionRoutes from './modules/subscription/subscription.routes.js';
 
 /**
- * Initialize Firebase Admin SDK synchronously for Cloud Functions.
- * Uses Application Default Credentials (ADC) — no retries needed.
- * The async initializeFirebase() from config/firebase.ts has retry logic
- * and process.exit(1) that can crash the Cloud Run container, so we
- * use a simple synchronous init here instead.
+ * MINIMAL Cloud Function for debugging Container Healthcheck failure.
+ * Stripped to bare minimum — no firebase-admin, no custom config, no routes.
+ * If this deploys, the issue is in our dependencies/application code.
+ * If this fails, the issue is infrastructure.
  */
-try {
-  if (!admin.apps.length) {
-    admin.initializeApp();
-  }
-  logger.info('Firebase initialized for Cloud Functions');
-} catch (error) {
-  // Log but do NOT process.exit — let Cloud Run report the error
-  logger.error('Firebase initialization failed in Cloud Functions:', error);
-}
 
-// Warn about insecure JWT_SECRET in production (but don't crash)
-if (config.JWT_SECRET === 'dev-only-jwt-secret-not-for-production') {
-  logger.warn('WARNING: JWT_SECRET is using the insecure default. Set it via: firebase functions:secrets:set JWT_SECRET');
-}
-
-// Create Express app
 const app = express();
 
-// Security headers — don't rely solely on Cloud Run
-app.use(helmet({
-  contentSecurityPolicy: false, // CSP handled by frontend
-  crossOriginEmbedderPolicy: false, // Allow cross-origin API calls
-}));
-
-// CORS
-app.use(
-  cors({
-    origin: getAllowedOrigins(),
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-  })
-);
-app.use(compression());
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
-app.use(cookieParser());
-
-// Skip rate limiter in Cloud Functions (no Redis available)
-// Rate limiting can be handled by Cloud Run's built-in throttling or API Gateway
+app.use(express.json());
 
 // Health check
-app.get(
-  '/health',
-  asyncHandler(async (_req: Request, res: Response) => {
-    res.json({
-      success: true,
-      message: 'PharmaConnect Backend is healthy',
-      timestamp: new Date(),
-    });
-  })
-);
+app.get('/health', (_req: Request, res: Response) => {
+  res.json({
+    success: true,
+    message: 'PharmaConnect Backend is healthy (minimal)',
+    timestamp: new Date(),
+  });
+});
 
-// API routes
-const apiV1 = express.Router();
-apiV1.use('/auth', authRoutes);
-apiV1.use('/pharmacies', pharmacyRoutes);
-apiV1.use('/orders', orderRoutes);
-apiV1.use('/delivery', deliveryRoutes);
-apiV1.use('/payments', paymentRoutes);
-apiV1.use('/chat', chatRoutes);
-apiV1.use('/admin', adminRoutes);
-apiV1.use('/ai', aiRoutes);
-apiV1.use('/subscriptions', subscriptionRoutes);
-app.use('/api/v1', apiV1);
+// Root handler
+app.get('/', (_req: Request, res: Response) => {
+  res.json({ status: 'ok', version: 'minimal-debug' });
+});
 
-// Error handling
-app.use(notFoundHandler);
-app.use(errorHandler);
+// API stub
+app.use('/api/v1', (_req: Request, res: Response) => {
+  res.json({ message: 'Minimal API stub — full routes disabled for deploy debugging' });
+});
 
-/**
- * Firebase Cloud Function v2 — API Handler
- *
- * Memory: 1GiB needed for cold start with heavy deps
- * (firebase-admin, @anthropic-ai/sdk, @sentry/node, ioredis, socket.io)
- */
 export const api = onRequest(
   {
     region: 'us-central1',
     timeoutSeconds: 120,
-    memory: '1GiB',
+    memory: '256MiB',
     invoker: 'public',
   },
   app
