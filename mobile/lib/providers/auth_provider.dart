@@ -115,7 +115,7 @@ class AuthProvider extends ChangeNotifier {
           final malpayService = MalPayService();
           await malpayService.registerOnMalPay();
         } catch (e) {
-          debugPrint('MalPay registration failed (non-blocking): $e');
+          // MalPay registration failed — non-blocking, silently continue
         }
       }
     } catch (e) {

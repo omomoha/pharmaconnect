@@ -65,7 +65,7 @@ const nextConfig = {
           },
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' *.firebaseio.com firebasestorage.googleapis.com *.cloudfunctions.net identitytoolkit.googleapis.com securetoken.googleapis.com firestore.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data:; frame-ancestors 'none'",
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; connect-src 'self' *.firebaseio.com firebasestorage.googleapis.com *.cloudfunctions.net identitytoolkit.googleapis.com securetoken.googleapis.com firestore.googleapis.com https://api.paystack.co; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests",
           },
         ],
       },

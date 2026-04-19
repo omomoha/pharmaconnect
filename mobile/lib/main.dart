@@ -21,7 +21,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  debugPrint('Background message: ${message.messageId}');
+  // Background message received — handled silently in production
 }
 
 void main() async {

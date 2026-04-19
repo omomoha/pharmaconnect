@@ -43,9 +43,10 @@ service cloud.firestore {
     }
 
     // ========== PHARMACIES ==========
-    // Pharmacies are public read (non-sensitive data)
+    // Pharmacies readable by authenticated users (protects admin contact details)
+    // Guest browse uses backend API which returns sanitized public fields only
     match /pharmacies/{pharmacyId} {
-      allow read: if true; // Public read
+      allow read: if isAuthenticated();
       allow create: if isAuthenticated() && isPharmacyAdmin();
       allow update: if isAuthenticated() && (isPharmacyAdmin() || isAdmin());
       allow delete: if isAdmin();
@@ -90,10 +91,17 @@ service cloud.firestore {
       );
       allow delete: if isAdmin();
 
-      // ===== ORDER ITEMS =====
+      // ===== ORDER ITEMS (subcollection) =====
       match /items/{itemId} {
-        allow read: if parent.read;
-        allow write: if parent.write;
+        allow read: if isAuthenticated() && (
+          get(/databases/$(database)/documents/orders/$(orderId)).data.customerId == request.auth.uid ||
+          get(/databases/$(database)/documents/orders/$(orderId)).data.pharmacyId == request.auth.uid ||
+          isAdmin()
+        );
+        allow write: if isAuthenticated() && (
+          get(/databases/$(database)/documents/orders/$(orderId)).data.customerId == request.auth.uid ||
+          isAdmin()
+        );
       }
     }
 

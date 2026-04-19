@@ -12,7 +12,11 @@ export function initializeMonitoring(): void {
   const dsn = process.env.SENTRY_DSN;
 
   if (!dsn) {
-    logger.info("Sentry DSN not configured — monitoring disabled. Set SENTRY_DSN to enable.");
+    if (process.env.NODE_ENV === "production") {
+      logger.error("CRITICAL: SENTRY_DSN not configured in production — error monitoring is disabled. Set SENTRY_DSN to enable.");
+    } else {
+      logger.info("Sentry DSN not configured — monitoring disabled. Set SENTRY_DSN to enable.");
+    }
     return;
   }
 

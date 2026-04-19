@@ -12,15 +12,13 @@ class AppConstants {
   static bool get isProduction => EnvironmentConfig.environment == Environment.production;
 
   // Firebase Configuration
+  // NOTE: These are Firebase client-side identifiers (public by design).
+  // Real security is enforced by Firestore/Storage rules and Firebase Auth.
+  // Use DefaultFirebaseOptions from firebase_options.dart for initialization.
   static const String firebaseProjectId = 'marketplace-50f56';
-  static const String firebaseApiKey = 'AIzaSyA1mJbJs3YPqJsKPzE5RtJ5OzH9pZ5vHJg';
-  static const String firebaseAppId = '1:598024098653:android:8dcd7e8f5a4c3b2e1f0g9h';
-  static const String firebaseMessagingSenderId = '598024098653';
   static const String firebaseAuthDomain = 'marketplace-50f56.firebaseapp.com';
   static const String firebaseStorageBucket =
       'marketplace-50f56.appspot.com';
-  static const String firebaseDatabaseUrl =
-      'https://marketplace-50f56-default-rtdb.firebaseio.com';
 
   // Timeouts
   static const Duration apiTimeout = Duration(seconds: 30);

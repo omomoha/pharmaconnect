@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { PaymentController } from "./payment.controller.js";
-import { authenticate, optionalAuthenticate } from "../../middleware/authenticate.js";
+import { authenticate } from "../../middleware/authenticate.js";
 import { asyncHandler } from "../../middleware/errorHandler.js";
 import { authRateLimiter, strictRateLimiter } from "../../middleware/rateLimiter.js";
 
@@ -20,10 +20,10 @@ router.post(
   asyncHandler((req, res) => PaymentController.initializePayment(req, res))
 );
 
-// GET /api/v1/payments/verify/:reference - Verify payment
+// GET /api/v1/payments/verify/:reference - Verify payment (auth required to prevent enumeration)
 router.get(
   "/verify/:reference",
-  optionalAuthenticate,
+  authenticate,
   asyncHandler((req, res) => PaymentController.verifyPayment(req, res))
 );
 

@@ -2,6 +2,11 @@ import { auth } from './firebase';
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 
+// Safety check: warn if using insecure HTTP in a non-localhost context
+if (typeof window !== 'undefined' && baseUrl.startsWith('http://') && !baseUrl.includes('localhost')) {
+  console.warn('WARNING: API is configured to use insecure HTTP. Set NEXT_PUBLIC_API_URL to an HTTPS endpoint.');
+}
+
 export interface FetchOptions extends RequestInit {
   params?: Record<string, string | number | boolean>;
 }

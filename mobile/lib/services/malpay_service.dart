@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pharmaconnect/config/constants.dart';
@@ -24,7 +23,6 @@ class MalPayService {
     try {
       final user = firebaseAuth.currentUser;
       if (user == null) {
-        debugPrint('MalPay registration skipped: no authenticated user');
         return false;
       }
 
@@ -40,15 +38,13 @@ class MalPayService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true) {
-          debugPrint('MalPay registration successful');
           return true;
         }
       }
 
-      debugPrint('MalPay registration returned: ${response.statusCode}');
       return false;
     } catch (e) {
-      debugPrint('MalPay registration error: $e');
+      // Silently fail — MalPay registration is best-effort
       return false;
     }
   }

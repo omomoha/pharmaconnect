@@ -40,14 +40,14 @@ export default function Error({ error, reset }: ErrorProps) {
               Something went wrong
             </h1>
 
-            {/* Error Message */}
+            {/* Error Message — generic for security; details logged to console */}
             <div className="mb-6">
               <p className="text-center text-gray-600 text-sm">
-                {error.message || 'An unexpected error occurred. Please try again.'}
+                An unexpected error occurred. Please try again or contact support if the problem persists.
               </p>
               {error.digest && (
                 <p className="text-center text-gray-500 text-xs mt-2 font-mono bg-gray-50 p-2 rounded">
-                  Error ID: {error.digest}
+                  Reference: {error.digest}
                 </p>
               )}
             </div>

@@ -2,6 +2,7 @@ import { onRequest } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
 import express, { Request, Response } from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import config, { getAllowedOrigins } from './config/index.js';
@@ -48,7 +49,13 @@ if (config.JWT_SECRET === 'dev-only-jwt-secret-not-for-production') {
 // Create Express app
 const app = express();
 
-// Middleware (skip helmet — Cloud Run handles security headers)
+// Security headers — don't rely solely on Cloud Run
+app.use(helmet({
+  contentSecurityPolicy: false, // CSP handled by frontend
+  crossOriginEmbedderPolicy: false, // Allow cross-origin API calls
+}));
+
+// CORS
 app.use(
   cors({
     origin: getAllowedOrigins(),
