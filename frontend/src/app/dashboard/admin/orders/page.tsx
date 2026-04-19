@@ -204,7 +204,7 @@ export default function OrdersManagementPage() {
       )}
 
       {/* Stats Row */}
-      <div className="grid md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
         <StatsCard
           label="Total Orders"
           value={totalOrders.toString()}

@@ -200,7 +200,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Stats Row */}
-      <div className="grid md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
         <StatsCard
           label="Total Revenue"
           value={`₦${analyticsData.revenue.toLocaleString()}`}
@@ -224,7 +224,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Charts */}
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
         {/* Revenue Chart */}
         <Card>
           <CardHeader>
@@ -285,7 +285,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Top Pharmacies and Delivery Providers */}
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
         {/* Top Pharmacies */}
         <Card>
           <CardHeader>

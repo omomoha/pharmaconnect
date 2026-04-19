@@ -151,7 +151,7 @@ export default function CustomerDashboard() {
       </Card>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {[
           { value: orders?.length || 12, label: 'Total Orders', icon: '📦', color: 'primary' },
           { value: '₦45,600', label: 'Total Spent', icon: '💰', color: 'green' },
@@ -272,7 +272,7 @@ export default function CustomerDashboard() {
               ))}
             </div>
           ) : (
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {displayPharmacies.slice(0, 4).map((pharmacy) => (
                 <div key={pharmacy.id} className="border border-gray-100 rounded-xl p-4 hover:border-primary-200 hover:shadow-sm transition-all duration-200 group">
                   <div className="flex justify-between items-start mb-2">
@@ -339,7 +339,7 @@ export default function CustomerDashboard() {
               </Button>
             </div>
           ) : recommendations && recommendations.length > 0 ? (
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {recommendations.map((rec: any, idx: number) => (
                 <div key={idx} className="border border-gray-100 rounded-xl p-4 hover:border-primary-200 hover:shadow-sm transition-all duration-200">
                   <div className="flex items-start justify-between mb-2">

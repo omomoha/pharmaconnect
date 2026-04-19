@@ -146,7 +146,7 @@ export default function AnalyticsPage() {
         </CardContent>
       </Card>
 
-      <div className="grid md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
         <StatsCard label="Total Revenue" value={`₦${totalRevenue.toLocaleString()}`} change={periodLabel} icon="₦" />
         <StatsCard label="Total Orders" value={String(orderCount)} change={periodLabel} trend="up" />
         <StatsCard label="Avg. Order Value" value={`₦${Math.round(avgOrderValue).toLocaleString()}`} change="Per order" icon="₦" />

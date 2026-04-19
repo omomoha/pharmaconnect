@@ -283,7 +283,7 @@ export default function ApprovalsPage() {
       {/* Approvals Grid */}
       {!loading && !error && (
         <>
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
             {filteredApprovals.map((approval) => (
               <Card
                 key={`${approval.type}-${approval.id}`}
@@ -307,7 +307,7 @@ export default function ApprovalsPage() {
 
                 <CardContent className="space-y-5">
                   {/* Submitted Date & Address */}
-                  <div className="pb-4 border-b border-gray-200 grid grid-cols-2 gap-4">
+                  <div className="pb-4 border-b border-gray-200 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <p className="text-xs text-gray-500 uppercase tracking-wide">Submitted</p>
                       <p className="text-sm font-medium text-gray-900 mt-1">

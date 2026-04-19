@@ -276,7 +276,7 @@ export default function FlagsModerationPage() {
       ) : (
         <>
           {/* Stats Row */}
-          <div className="grid md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
             <StatsCard label="Total Flags" value={totalFlags.toString()} icon="🚩" />
             <StatsCard label="Pending Review" value={pendingFlags.toString()} icon="⏳" />
             <StatsCard label="Resolved" value={resolvedFlags.toString()} icon="✅" />

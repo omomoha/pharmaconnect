@@ -70,7 +70,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Platform Stats */}
-      <div className="grid md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
         {dashboardLoading ? (
           <>
             {[1, 2, 3, 4].map((i) => (
