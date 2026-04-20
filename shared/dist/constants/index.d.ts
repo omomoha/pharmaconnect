@@ -136,6 +136,7 @@ export declare const FIRESTORE_COLLECTIONS: {
     readonly SUBSCRIPTION_INVOICES: "subscription_invoices";
     readonly PAYOUT_REQUESTS: "payout_requests";
     readonly DELIVERY_LOCATION_HISTORY: "delivery_location_history";
+    readonly SUPPORT_TICKETS: "support_tickets";
 };
 export declare const VALIDATION: {
     readonly EMAIL_REGEX: RegExp;

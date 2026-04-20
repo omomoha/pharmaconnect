@@ -473,3 +473,34 @@ export interface PayoutRequest {
     createdAt: Date;
     updatedAt: Date;
 }
+export declare enum TicketStatus {
+    OPEN = "open",
+    IN_PROGRESS = "in_progress",
+    RESOLVED = "resolved",
+    CLOSED = "closed"
+}
+export declare enum TicketCategory {
+    ORDER_ISSUE = "order_issue",
+    ACCOUNT = "account",
+    PAYMENT = "payment",
+    TECHNICAL = "technical",
+    OTHER = "other"
+}
+export interface SupportTicket {
+    id: string;
+    userId: string;
+    userEmail: string;
+    userName: string;
+    userRole: UserRole;
+    subject: string;
+    description: string;
+    category: TicketCategory;
+    status: TicketStatus;
+    adminResponse?: string;
+    respondedBy?: string;
+    respondedAt?: Date;
+    closedAt?: Date;
+    closedBy?: string;
+    createdAt: Date;
+    updatedAt: Date;
+}

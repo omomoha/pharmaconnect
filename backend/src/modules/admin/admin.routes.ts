@@ -131,4 +131,18 @@ router.post(
   asyncHandler((req, res) => AdminController.activateUser(req, res))
 );
 
+// POST /api/v1/admin/users/:userId/soft-delete - Soft delete user
+router.post(
+  "/users/:userId/soft-delete",
+  ...adminAuth,
+  asyncHandler((req, res) => AdminController.softDeleteUser(req, res))
+);
+
+// DELETE /api/v1/admin/users/:userId - Hard delete user
+router.delete(
+  "/users/:userId",
+  ...adminAuth,
+  asyncHandler((req, res) => AdminController.hardDeleteUser(req, res))
+);
+
 export default router;

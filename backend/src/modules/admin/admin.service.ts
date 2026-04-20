@@ -1,4 +1,5 @@
 import { getFirestore } from "../../config/firebase.js";
+import { getAuth } from "firebase-admin/auth";
 import logger from "../../utils/logger.js";
 import {
   Pharmacy,
@@ -592,6 +593,63 @@ export class AdminService {
       return { id: doc.id, ...doc.data() };
     } catch (error) {
       logger.error(`Failed to activate user ${userId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Soft delete a user account (mark as deleted, disable auth)
+   */
+  static async softDeleteUser(userId: string, adminId: string): Promise<any> {
+    try {
+      const db = getFirestore();
+      const auth = getAuth();
+
+      // Disable Firebase Auth user
+      await auth.updateUser(userId, { disabled: true });
+
+      // Soft delete in Firestore
+      await db.collection(FIRESTORE_COLLECTIONS.USERS).doc(userId).update({
+        isActive: false,
+        isDeleted: true,
+        deletedAt: new Date(),
+        deletedBy: adminId,
+        updatedAt: new Date(),
+      });
+
+      const doc = await db.collection(FIRESTORE_COLLECTIONS.USERS).doc(userId).get();
+      logger.info(`User soft deleted: ${userId} by admin ${adminId}`);
+      return { id: doc.id, ...doc.data() };
+    } catch (error) {
+      logger.error(`Failed to soft delete user ${userId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Hard delete a user account (permanently delete from both Auth and Firestore)
+   */
+  static async hardDeleteUser(userId: string, adminId: string): Promise<any> {
+    try {
+      const db = getFirestore();
+      const auth = getAuth();
+
+      // Verify user exists in Firestore
+      const userDoc = await db.collection(FIRESTORE_COLLECTIONS.USERS).doc(userId).get();
+      if (!userDoc.exists) {
+        throw new Error(`User ${userId} not found`);
+      }
+
+      // Delete Firebase Auth user
+      await auth.deleteUser(userId);
+
+      // Delete Firestore user document
+      await db.collection(FIRESTORE_COLLECTIONS.USERS).doc(userId).delete();
+
+      logger.info(`User hard deleted: ${userId} by admin ${adminId}`);
+      return { id: userId, deleted: true };
+    } catch (error) {
+      logger.error(`Failed to hard delete user ${userId}:`, error);
       throw error;
     }
   }

@@ -264,6 +264,7 @@ export const FIRESTORE_COLLECTIONS = {
   SUBSCRIPTION_INVOICES: "subscription_invoices",
   PAYOUT_REQUESTS: "payout_requests",
   DELIVERY_LOCATION_HISTORY: "delivery_location_history",
+  SUPPORT_TICKETS: "support_tickets",
 } as const;
 
 // ===== VALIDATION RULES =====

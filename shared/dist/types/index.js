@@ -3,7 +3,7 @@
  * Enums and Types for PharmaConnect Marketplace
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SubscriptionStatus = exports.SubscriptionTier = exports.NotificationType = exports.ReviewableType = exports.DrugCategory = exports.FlagAction = exports.MessageType = exports.ConversationStatus = exports.ConversationType = exports.VehicleType = exports.DeliveryAssignmentStatus = exports.PaymentStatus = exports.OrderStatus = exports.ApprovalStatus = exports.UserRole = void 0;
+exports.TicketCategory = exports.TicketStatus = exports.SubscriptionStatus = exports.SubscriptionTier = exports.NotificationType = exports.ReviewableType = exports.DrugCategory = exports.FlagAction = exports.MessageType = exports.ConversationStatus = exports.ConversationType = exports.VehicleType = exports.DeliveryAssignmentStatus = exports.PaymentStatus = exports.OrderStatus = exports.ApprovalStatus = exports.UserRole = void 0;
 // ===== USER ROLES =====
 var UserRole;
 (function (UserRole) {
@@ -126,3 +126,19 @@ var SubscriptionStatus;
     SubscriptionStatus["EXPIRED"] = "expired";
     SubscriptionStatus["TRIAL"] = "trial";
 })(SubscriptionStatus || (exports.SubscriptionStatus = SubscriptionStatus = {}));
+// ===== SUPPORT TICKETS =====
+var TicketStatus;
+(function (TicketStatus) {
+    TicketStatus["OPEN"] = "open";
+    TicketStatus["IN_PROGRESS"] = "in_progress";
+    TicketStatus["RESOLVED"] = "resolved";
+    TicketStatus["CLOSED"] = "closed";
+})(TicketStatus || (exports.TicketStatus = TicketStatus = {}));
+var TicketCategory;
+(function (TicketCategory) {
+    TicketCategory["ORDER_ISSUE"] = "order_issue";
+    TicketCategory["ACCOUNT"] = "account";
+    TicketCategory["PAYMENT"] = "payment";
+    TicketCategory["TECHNICAL"] = "technical";
+    TicketCategory["OTHER"] = "other";
+})(TicketCategory || (exports.TicketCategory = TicketCategory = {}));

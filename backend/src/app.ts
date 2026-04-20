@@ -33,6 +33,7 @@ import chatRoutes from "./modules/chat/chat.routes.js";
 import adminRoutes from "./modules/admin/admin.routes.js";
 import aiRoutes from "./modules/ai/ai.routes.js";
 import subscriptionRoutes from "./modules/subscription/subscription.routes.js";
+import supportRoutes from "./modules/support/support.routes.js";
 
 /**
  * Create and configure Express app
@@ -141,6 +142,7 @@ export const createApp = (): {
   apiV1.use("/admin", adminRoutes);
   apiV1.use("/ai", aiRoutes);
   apiV1.use("/subscriptions", subscriptionRoutes);
+  apiV1.use("/support", supportRoutes);
 
   app.use("/api/v1", apiV1);
 

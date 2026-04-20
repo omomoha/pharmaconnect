@@ -613,4 +613,74 @@ export class AdminController {
       );
     }
   }
+
+  /**
+   * POST /users/:userId/soft-delete
+   * Soft delete a user account
+   */
+  static async softDeleteUser(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
+    try {
+      const { userId } = req.params;
+      if (!userId) {
+        res.status(400).json(
+          apiResponse(false, undefined, {
+            code: "VALIDATION_ERROR",
+            message: "User ID is required",
+          })
+        );
+        return;
+      }
+
+      const adminId = req.user?.uid || "unknown";
+      const user = await AdminService.softDeleteUser(userId, adminId);
+
+      res.json(apiResponse(true, user));
+    } catch (error) {
+      logger.error("Soft delete user error:", error);
+      res.status(500).json(
+        apiResponse(false, undefined, {
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to soft delete user",
+        })
+      );
+    }
+  }
+
+  /**
+   * DELETE /users/:userId
+   * Hard delete a user account
+   */
+  static async hardDeleteUser(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
+    try {
+      const { userId } = req.params;
+      if (!userId) {
+        res.status(400).json(
+          apiResponse(false, undefined, {
+            code: "VALIDATION_ERROR",
+            message: "User ID is required",
+          })
+        );
+        return;
+      }
+
+      const adminId = req.user?.uid || "unknown";
+      const result = await AdminService.hardDeleteUser(userId, adminId);
+
+      res.json(apiResponse(true, result));
+    } catch (error) {
+      logger.error("Hard delete user error:", error);
+      res.status(500).json(
+        apiResponse(false, undefined, {
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to hard delete user",
+        })
+      );
+    }
+  }
 }

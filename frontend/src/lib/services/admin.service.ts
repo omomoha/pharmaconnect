@@ -349,3 +349,41 @@ export async function activateUser(userId: string): Promise<ApiResponse<any>> {
     };
   }
 }
+
+/**
+ * Soft-delete (deactivate) a user
+ */
+export async function softDeleteUser(userId: string): Promise<ApiResponse<any>> {
+  try {
+    const response = await apiClient.post(`/admin/users/${userId}/soft-delete`, {});
+    return response;
+  } catch (error) {
+    console.error('Failed to soft-delete user:', error);
+    return {
+      success: false,
+      error: {
+        code: 'SOFT_DELETE_USER_ERROR',
+        message: 'Failed to deactivate user',
+      },
+    };
+  }
+}
+
+/**
+ * Hard-delete (permanently remove) a user
+ */
+export async function hardDeleteUser(userId: string): Promise<ApiResponse<any>> {
+  try {
+    const response = await apiClient.delete(`/admin/users/${userId}`);
+    return response;
+  } catch (error) {
+    console.error('Failed to hard-delete user:', error);
+    return {
+      success: false,
+      error: {
+        code: 'HARD_DELETE_USER_ERROR',
+        message: 'Failed to permanently delete user',
+      },
+    };
+  }
+}

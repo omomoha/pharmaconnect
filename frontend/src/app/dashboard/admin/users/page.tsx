@@ -8,8 +8,24 @@ import Input from '@/components/ui/Input';
 import Tabs from '@/components/ui/Tabs';
 import Modal from '@/components/ui/Modal';
 import StatusBadge from '@/components/ui/StatusBadge';
-import { getUsers, suspendUser, activateUser } from '@/lib/services/admin.service';
+import { getUsers, suspendUser, activateUser, softDeleteUser, hardDeleteUser } from '@/lib/services/admin.service';
 import toast from 'react-hot-toast';
+
+/**
+ * Map API role to display name
+ */
+function mapRole(apiRole: string): 'Customer' | 'Pharmacy' | 'Delivery' | 'Admin' {
+  switch (apiRole) {
+    case 'customer': return 'Customer';
+    case 'pharmacy_admin': return 'Pharmacy';
+    case 'delivery_admin': return 'Delivery';
+    case 'platform_admin':
+    case 'support_admin':
+    case 'admin':
+      return 'Admin';
+    default: return 'Customer';
+  }
+}
 
 interface User {
   id: string;
@@ -36,6 +52,7 @@ export default function UserManagementPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isActionModalOpen, setIsActionModalOpen] = useState(false);
   const [actionType, setActionType] = useState<'suspend' | 'activate' | null>(null);
+  const [deleteType, setDeleteType] = useState<'soft' | 'hard' | null>(null);
   const [sortField, setSortField] = useState<keyof User>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
@@ -63,7 +80,7 @@ export default function UserManagementPage() {
           id: u.id,
           name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email,
           email: u.email,
-          role: u.role,
+          role: mapRole(u.role),
           status: u.isActive ? 'Active' : 'Suspended',
           joinedDate: u.createdAt?._seconds
             ? new Date(u.createdAt._seconds * 1000).toISOString().split('T')[0]
@@ -234,7 +251,7 @@ export default function UserManagementPage() {
           id: u.id,
           name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email,
           email: u.email,
-          role: u.role,
+          role: mapRole(u.role),
           status: u.isActive ? 'Active' : 'Suspended',
           joinedDate: u.createdAt?._seconds
             ? new Date(u.createdAt._seconds * 1000).toISOString().split('T')[0]
@@ -258,44 +275,65 @@ export default function UserManagementPage() {
     setIsActionModalOpen(true);
   };
 
+  const openDeleteModal = (user: User, type: 'soft' | 'hard') => {
+    setSelectedUser(user);
+    setDeleteType(type);
+    setIsActionModalOpen(true);
+    setActionType(null);
+  };
+
   const [actionLoading, setActionLoading] = useState(false);
 
   const handleConfirmAction = async () => {
-    if (!selectedUser || !actionType) return;
+    if (!selectedUser) return;
 
     setActionLoading(true);
     try {
       let response;
-      if (actionType === 'suspend') {
+      if (deleteType === 'soft') {
+        response = await softDeleteUser(selectedUser.id);
+      } else if (deleteType === 'hard') {
+        response = await hardDeleteUser(selectedUser.id);
+      } else if (actionType === 'suspend') {
         response = await suspendUser(selectedUser.id);
-      } else {
+      } else if (actionType === 'activate') {
         response = await activateUser(selectedUser.id);
+      } else {
+        return;
       }
 
       if (response.success) {
-        // Update local state
-        setUsers((prev) =>
-          prev.map((u) =>
-            u.id === selectedUser.id
-              ? { ...u, status: actionType === 'suspend' ? 'Suspended' as const : 'Active' as const }
-              : u
-          )
-        );
-        toast.success(
-          actionType === 'suspend'
-            ? `${selectedUser.name} has been suspended`
-            : `${selectedUser.name} has been activated`
-        );
+        if (deleteType === 'hard') {
+          setUsers((prev) => prev.filter((u) => u.id !== selectedUser.id));
+          toast.success(`${selectedUser.name} has been permanently deleted`);
+        } else if (deleteType === 'soft') {
+          setUsers((prev) => prev.filter((u) => u.id !== selectedUser.id));
+          toast.success(`${selectedUser.name} has been deactivated`);
+        } else {
+          setUsers((prev) =>
+            prev.map((u) =>
+              u.id === selectedUser.id
+                ? { ...u, status: actionType === 'suspend' ? 'Suspended' as const : 'Active' as const }
+                : u
+            )
+          );
+          toast.success(
+            actionType === 'suspend'
+              ? `${selectedUser.name} has been suspended`
+              : `${selectedUser.name} has been activated`
+          );
+        }
       } else {
-        toast.error(response.error?.message || `Failed to ${actionType} user`);
+        toast.error(response.error?.message || 'Action failed');
       }
     } catch (err) {
-      toast.error(`Failed to ${actionType} user`);
+      toast.error('Action failed');
     } finally {
       setActionLoading(false);
       setIsActionModalOpen(false);
       setSelectedUser(null);
       setActionType(null);
+      setDeleteType(null);
     }
   };
 
@@ -748,6 +786,28 @@ export default function UserManagementPage() {
                               </svg>
                             </button>
                           )}
+                          {/* Soft delete */}
+                          <button
+                            onClick={() => openDeleteModal(user, 'soft')}
+                            className="p-2 hover:bg-orange-100 rounded-lg transition-colors"
+                            title="Deactivate user"
+                            aria-label="Deactivate user"
+                          >
+                            <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                            </svg>
+                          </button>
+                          {/* Hard delete */}
+                          <button
+                            onClick={() => openDeleteModal(user, 'hard')}
+                            className="p-2 hover:bg-red-100 rounded-lg transition-colors"
+                            title="Permanently delete"
+                            aria-label="Permanently delete user"
+                          >
+                            <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -907,17 +967,22 @@ export default function UserManagementPage() {
           setIsActionModalOpen(false);
           setSelectedUser(null);
           setActionType(null);
+          setDeleteType(null);
         }}
         title={
-          actionType === 'suspend'
-            ? 'Suspend User'
-            : 'Activate User'
+          deleteType === 'hard' ? 'Permanently Delete User' :
+          deleteType === 'soft' ? 'Deactivate User' :
+          actionType === 'suspend' ? 'Suspend User' : 'Activate User'
         }
         size="sm"
       >
         <div className="space-y-4">
           <p className="text-gray-700">
-            {actionType === 'suspend'
+            {deleteType === 'hard'
+              ? `Are you sure you want to PERMANENTLY DELETE ${selectedUser?.name}? This action cannot be undone. All user data will be removed.`
+              : deleteType === 'soft'
+              ? `Are you sure you want to deactivate ${selectedUser?.name}? The account will be disabled but data will be preserved.`
+              : actionType === 'suspend'
               ? `Are you sure you want to suspend ${selectedUser?.name}? This user will no longer be able to access their account.`
               : `Are you sure you want to activate ${selectedUser?.name}? They will regain access to their account.`}
           </p>
@@ -929,6 +994,7 @@ export default function UserManagementPage() {
                 setIsActionModalOpen(false);
                 setSelectedUser(null);
                 setActionType(null);
+                setDeleteType(null);
               }}
               className="flex-1"
             >
@@ -940,7 +1006,10 @@ export default function UserManagementPage() {
               className="flex-1"
               disabled={actionLoading}
             >
-              {actionLoading ? 'Processing...' : actionType === 'suspend' ? 'Suspend' : 'Activate'}
+              {actionLoading ? 'Processing...' :
+                deleteType === 'hard' ? 'Delete Permanently' :
+                deleteType === 'soft' ? 'Deactivate' :
+                actionType === 'suspend' ? 'Suspend' : 'Activate'}
             </Button>
           </div>
         </div>

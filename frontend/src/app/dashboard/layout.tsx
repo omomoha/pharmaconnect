@@ -9,6 +9,7 @@ import { useNotifications } from '@/hooks';
 
 // Lazy-load the AI chat widget since it's not needed on initial render
 const AIChatWidget = lazy(() => import('@/components/ai/AIChatWidget'));
+const FloatingHelpButton = lazy(() => import('@/components/support/FloatingHelpButton'));
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -83,6 +84,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       <Sidebar />
       <Suspense fallback={null}>
         <AIChatWidget />
+        <FloatingHelpButton />
       </Suspense>
 
       <main id="main-content" className="flex-1 overflow-y-auto">
