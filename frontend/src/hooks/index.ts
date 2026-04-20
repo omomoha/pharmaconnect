@@ -15,3 +15,4 @@ export { useGeolocation } from './useGeolocation';
 export { useSmartSearch } from './useSmartSearch';
 export { useDropdownKeyboard } from './useDropdownKeyboard';
 export { useAsyncData } from './useAsyncData';
+export { useApprovalStatus } from './useApprovalStatus';

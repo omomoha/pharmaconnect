@@ -5,14 +5,18 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
-import { useOrders } from '@/hooks';
-import { useNotifications } from '@/hooks';
+import { useOrders, useNotifications, useApprovalStatus } from '@/hooks';
+import VerificationBanner from '@/components/verification/VerificationBanner';
 import toast from 'react-hot-toast';
 
 export default function PharmacyDashboard() {
   const { profile } = useAuth();
   const { orders, loading: ordersLoading, error: ordersError } = useOrders();
+  const { approvalStatus, loading: approvalLoading } = useApprovalStatus();
   useNotifications();
+
+  const isVerified = approvalStatus === 'approved';
+  const isLocked = !approvalLoading && !isVerified;
 
   // Show error toast if orders fail to load
   useEffect(() => {
@@ -68,6 +72,9 @@ export default function PharmacyDashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Verification Banner */}
+      <VerificationBanner role="pharmacy" approvalStatus={approvalStatus} />
+
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Pharmacy Dashboard</h1>
@@ -79,10 +86,10 @@ export default function PharmacyDashboard() {
       {/* Quick Actions */}
       <div className="flex flex-wrap gap-3">
         <Link href="/dashboard/pharmacy/products/new">
-          <Button variant="primary">Add Product</Button>
+          <Button variant="primary" disabled={isLocked}>Add Product</Button>
         </Link>
         <Link href="/dashboard/pharmacy/orders">
-          <Button variant="secondary">View All Orders</Button>
+          <Button variant="secondary" disabled={isLocked}>View All Orders</Button>
         </Link>
       </div>
 

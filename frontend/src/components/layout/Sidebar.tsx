@@ -24,6 +24,7 @@ const navItems: Record<string, NavItem[]> = {
   ],
   pharmacy: [
     { label: 'Dashboard', href: '/dashboard/pharmacy', icon: '📊' },
+    { label: 'Verification', href: '/dashboard/pharmacy/verification', icon: '🛡️' },
     { label: 'Orders', href: '/dashboard/pharmacy/orders', icon: '📦' },
     { label: 'Products', href: '/dashboard/pharmacy/products', icon: '💊' },
     { label: 'Inventory', href: '/dashboard/pharmacy/inventory', icon: '📦' },
@@ -36,6 +37,7 @@ const navItems: Record<string, NavItem[]> = {
   ],
   delivery_provider: [
     { label: 'Dashboard', href: '/dashboard/delivery', icon: '📊' },
+    { label: 'Verification', href: '/dashboard/delivery/verification', icon: '🛡️' },
     { label: 'Active Deliveries', href: '/dashboard/delivery/active', icon: '🚚' },
     { label: 'Available Orders', href: '/dashboard/delivery/available', icon: '📋' },
     { label: 'Earnings', href: '/dashboard/delivery/earnings', icon: '💰' },

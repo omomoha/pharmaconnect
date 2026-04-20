@@ -5,12 +5,17 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
-import { useDelivery } from '@/hooks';
+import { useDelivery, useApprovalStatus } from '@/hooks';
+import VerificationBanner from '@/components/verification/VerificationBanner';
 import toast from 'react-hot-toast';
 
 export default function DeliveryDashboard() {
   const { profile } = useAuth();
   const { assignments, loading: deliveryLoading, error: deliveryError } = useDelivery();
+  const { approvalStatus, loading: approvalLoading } = useApprovalStatus();
+
+  const isVerified = approvalStatus === 'approved';
+  const isLocked = !approvalLoading && !isVerified;
 
   // Show error toast if deliveries fail to load
   useEffect(() => {
@@ -73,6 +78,9 @@ export default function DeliveryDashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Verification Banner */}
+      <VerificationBanner role="delivery_provider" approvalStatus={approvalStatus} />
+
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Delivery Dashboard</h1>
@@ -157,7 +165,7 @@ export default function DeliveryDashboard() {
                       <span className="text-gray-400 mx-2">•</span>
                       <span className="text-primary-600 font-medium">ETA: {delivery.eta}</span>
                     </div>
-                    <Button variant="secondary" size="sm">
+                    <Button variant="secondary" size="sm" disabled={isLocked}>
                       Details
                     </Button>
                   </div>
@@ -242,7 +250,7 @@ export default function DeliveryDashboard() {
                     <span className="font-bold text-primary-600 text-lg">
                       {order.reward}
                     </span>
-                    <Button variant="primary" size="sm">
+                    <Button variant="primary" size="sm" disabled={isLocked}>
                       Accept
                     </Button>
                   </div>
