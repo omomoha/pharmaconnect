@@ -84,6 +84,68 @@ app.get(
   })
 );
 
+/**
+ * ONE-TIME admin setup endpoint.
+ * Creates the initial admin account if no admin exists in Firestore.
+ * REMOVE THIS AFTER FIRST USE.
+ */
+app.post('/setup-admin', asyncHandler(async (_req: Request, res: Response) => {
+  const db = admin.firestore();
+  const auth = admin.auth();
+
+  // Check if any admin already exists
+  const existingAdmins = await db.collection('users')
+    .where('role', '==', 'admin')
+    .limit(1)
+    .get();
+
+  if (!existingAdmins.empty) {
+    res.status(409).json({ error: 'Admin account already exists. This endpoint is disabled.' });
+    return;
+  }
+
+  const ADMIN_EMAIL = 'admin@pharmaconnect.ng';
+  const ADMIN_PASSWORD = 'REDACTED_SECRET';
+
+  let uid: string;
+  try {
+    const existing = await auth.getUserByEmail(ADMIN_EMAIL);
+    uid = existing.uid;
+  } catch {
+    const newUser = await auth.createUser({
+      email: ADMIN_EMAIL,
+      password: ADMIN_PASSWORD,
+      displayName: 'Platform Admin',
+      phoneNumber: '+2348000000000',
+    });
+    uid = newUser.uid;
+  }
+
+  await auth.setCustomUserClaims(uid, { role: 'admin' });
+
+  const now = new Date();
+  await db.collection('users').doc(uid).set({
+    id: uid,
+    email: ADMIN_EMAIL,
+    phoneNumber: '+2348000000000',
+    firstName: 'Platform',
+    lastName: 'Admin',
+    role: 'admin',
+    isActive: true,
+    isVerified: true,
+    createdAt: now,
+    updatedAt: now,
+  }, { merge: true });
+
+  res.json({
+    success: true,
+    message: 'Admin account created',
+    uid,
+    email: ADMIN_EMAIL,
+    note: 'REMOVE the /setup-admin endpoint from functions.ts now',
+  });
+}));
+
 // API routes
 const apiV1 = express.Router();
 apiV1.use('/auth', authRoutes);
