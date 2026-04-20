@@ -11,7 +11,7 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return hasRole('platform_admin');
+      return hasRole('platform_admin') || hasRole('admin');
     }
 
     function isSupportAdmin() {
@@ -34,8 +34,18 @@ service cloud.firestore {
       return hasRole('delivery_provider');
     }
 
+    // ========== PROFILES ==========
+    // Frontend reads/writes user profiles from 'profiles' collection
+    // Users can read and write their own profile; admins can read all
+    match /profiles/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+    }
+
     // ========== USERS ==========
-    // Users can read and write their own profiles
+    // Backend uses 'users' collection for server-side operations
+    // Users can read and write their own profiles; admins can read all
     match /users/{userId} {
       allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       allow write: if isAuthenticated() && request.auth.uid == userId;

@@ -2,10 +2,15 @@
  * Create Admin User Script
  *
  * Usage:
+ *   ADMIN_EMAIL=admin@pharmaconnect.ng ADMIN_PASSWORD=<secure-password> \
  *   GOOGLE_APPLICATION_CREDENTIALS=path/to/service-account.json npx ts-node src/scripts/create-admin.ts
  *
  * Or if running from a machine with Firebase CLI logged in:
- *   npx ts-node src/scripts/create-admin.ts
+ *   ADMIN_EMAIL=admin@pharmaconnect.ng ADMIN_PASSWORD=<secure-password> npx ts-node src/scripts/create-admin.ts
+ *
+ * Environment variables:
+ *   ADMIN_EMAIL    - Admin email address (required)
+ *   ADMIN_PASSWORD - Admin password, min 12 chars (required)
  *
  * This script:
  * 1. Creates a Firebase Auth user (or uses existing one)
@@ -19,8 +24,21 @@ if (!admin.apps.length) {
   admin.initializeApp();
 }
 
-const ADMIN_EMAIL = 'admin@pharmaconnect.ng';
-const ADMIN_PASSWORD = 'REDACTED_SECRET';
+// Read credentials from environment variables — never hardcode secrets
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+
+if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
+  console.error('ERROR: ADMIN_EMAIL and ADMIN_PASSWORD environment variables are required.');
+  console.error('Usage: ADMIN_EMAIL=admin@example.com ADMIN_PASSWORD=<secure-password> npx ts-node src/scripts/create-admin.ts');
+  process.exit(1);
+}
+
+if (ADMIN_PASSWORD.length < 12) {
+  console.error('ERROR: ADMIN_PASSWORD must be at least 12 characters.');
+  process.exit(1);
+}
+
 const ADMIN_FIRST_NAME = 'Platform';
 const ADMIN_LAST_NAME = 'Admin';
 const ADMIN_PHONE = '+2348000000000';
