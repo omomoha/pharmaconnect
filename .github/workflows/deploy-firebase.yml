@@ -8,6 +8,8 @@ on:
       - 'shared/**'
       - 'firebase.json'
       - '.firebaserc'
+      - 'firestore.rules'
+      - 'firestore.indexes.json'
       - '.github/workflows/deploy-firebase.yml'
 
 jobs:
@@ -43,5 +45,12 @@ jobs:
         uses: w9jds/firebase-action@master
         with:
           args: deploy --only functions --debug
+        env:
+          GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+
+      - name: Deploy Firestore rules and indexes
+        uses: w9jds/firebase-action@master
+        with:
+          args: deploy --only firestore --debug
         env:
           GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
