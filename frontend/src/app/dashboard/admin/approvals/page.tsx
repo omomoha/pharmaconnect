@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import PageHeader from '@/components/ui/PageHeader';
 import Button from '@/components/ui/Button';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
@@ -31,11 +31,19 @@ interface ApprovalItem {
   address: string;
 }
 
+type DocumentStatusFilter = 'All' | 'Complete Documents' | 'Missing Documents';
+
 export default function ApprovalsPage() {
   const [activeTab, setActiveTab] = useState('All');
   const [approvals, setApprovals] = useState<ApprovalItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Search and filters
+  const [searchTerm, setSearchTerm] = useState('');
+  const [submitDateFrom, setSubmitDateFrom] = useState('');
+  const [submitDateTo, setSubmitDateTo] = useState('');
+  const [docStatusFilter, setDocStatusFilter] = useState<DocumentStatusFilter>('All');
 
   // Modal state
   const [selectedApproval, setSelectedApproval] = useState<ApprovalItem | null>(null);
@@ -160,12 +168,59 @@ export default function ApprovalsPage() {
     fetchApprovals();
   }, [fetchApprovals]);
 
-  /** Filter by active tab */
-  const filteredApprovals = approvals.filter((a) => {
-    if (activeTab === 'Pharmacies') return a.type === 'Pharmacy';
-    if (activeTab === 'Delivery Providers') return a.type === 'Delivery';
-    return true;
-  });
+  /** Parse date for comparison */
+  const parseDate = (dateStr: string): Date => {
+    return new Date(dateStr);
+  };
+
+  /** Check if approval has all documents uploaded */
+  const hasCompleteDocuments = (approval: ApprovalItem): boolean => {
+    return approval.documents.every((doc) => doc.status === 'Uploaded');
+  };
+
+  /** Filter and search approvals */
+  const filteredApprovals = useMemo(() => {
+    let results = approvals;
+
+    // Tab filter
+    if (activeTab === 'Pharmacies') {
+      results = results.filter((a) => a.type === 'Pharmacy');
+    } else if (activeTab === 'Delivery Providers') {
+      results = results.filter((a) => a.type === 'Delivery');
+    }
+
+    // Search filter (case-insensitive business name)
+    if (searchTerm.trim()) {
+      const lowerSearch = searchTerm.toLowerCase();
+      results = results.filter((a) =>
+        a.businessName.toLowerCase().includes(lowerSearch)
+      );
+    }
+
+    // Date range filter
+    if (submitDateFrom) {
+      const fromDate = parseDate(submitDateFrom);
+      results = results.filter(
+        (a) => parseDate(a.submittedDate) >= fromDate
+      );
+    }
+    if (submitDateTo) {
+      const toDate = parseDate(submitDateTo);
+      toDate.setHours(23, 59, 59, 999); // Include entire day
+      results = results.filter(
+        (a) => parseDate(a.submittedDate) <= toDate
+      );
+    }
+
+    // Document status filter
+    if (docStatusFilter === 'Complete Documents') {
+      results = results.filter((a) => hasCompleteDocuments(a));
+    } else if (docStatusFilter === 'Missing Documents') {
+      results = results.filter((a) => !hasCompleteDocuments(a));
+    }
+
+    return results;
+  }, [approvals, activeTab, searchTerm, submitDateFrom, submitDateTo, docStatusFilter]);
 
   /** Open review modal */
   const openReviewModal = (approval: ApprovalItem, action: 'approve' | 'reject') => {
@@ -223,12 +278,78 @@ export default function ApprovalsPage() {
     setPreviewDocUrl(docUrl);
   };
 
+  /** Export filtered approvals to CSV */
+  const handleExportCSV = () => {
+    if (filteredApprovals.length === 0) {
+      toast.error('No approvals to export');
+      return;
+    }
+
+    const csvHeaders = [
+      'Business Name',
+      'Type',
+      'Submitted Date',
+      'Owner Name',
+      'Owner Email',
+      'Document Status',
+    ];
+
+    const csvRows = filteredApprovals.map((approval) => [
+      approval.businessName,
+      approval.type,
+      approval.submittedDate,
+      approval.ownerName,
+      approval.ownerEmail,
+      hasCompleteDocuments(approval) ? 'Complete' : 'Missing Documents',
+    ]);
+
+    // Create CSV content
+    const csvContent = [
+      csvHeaders.join(','),
+      ...csvRows.map((row) =>
+        row
+          .map((cell) => {
+            // Escape quotes and wrap in quotes if contains comma or newline
+            const escaped = String(cell).replace(/"/g, '""');
+            return escaped.includes(',') || escaped.includes('\n')
+              ? `"${escaped}"`
+              : escaped;
+          })
+          .join(',')
+      ),
+    ].join('\n');
+
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `pharmaconnect-approvals-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast.success(`Exported ${filteredApprovals.length} approval(s) to CSV`);
+  };
+
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Pending Approvals"
-        description="Review and approve new pharmacy and delivery provider registrations"
-      />
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <PageHeader
+          title="Pending Approvals"
+          description="Review and approve new pharmacy and delivery provider registrations"
+        />
+        <Button
+          variant="primary"
+          onClick={handleExportCSV}
+          disabled={filteredApprovals.length === 0 || loading}
+          className="sm:self-end"
+        >
+          Export CSV
+        </Button>
+      </div>
 
       {/* Stats Bar */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -260,6 +381,99 @@ export default function ApprovalsPage() {
         onChange={setActiveTab}
       />
 
+      {/* Search and Filters */}
+      {!loading && !error && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              {/* Search Box */}
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-2">
+                  Search by Business Name
+                </label>
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="e.g. Pharmacy Name, Delivery Co..."
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 placeholder-gray-400"
+                />
+              </div>
+
+              {/* Filters Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Date From */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-900 mb-2">
+                    Submitted After
+                  </label>
+                  <input
+                    type="date"
+                    value={submitDateFrom}
+                    onChange={(e) => setSubmitDateFrom(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+
+                {/* Date To */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-900 mb-2">
+                    Submitted Before
+                  </label>
+                  <input
+                    type="date"
+                    value={submitDateTo}
+                    onChange={(e) => setSubmitDateTo(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+
+                {/* Document Status */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-900 mb-2">
+                    Document Status
+                  </label>
+                  <select
+                    value={docStatusFilter}
+                    onChange={(e) => setDocStatusFilter(e.target.value as DocumentStatusFilter)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+                  >
+                    <option value="All">All</option>
+                    <option value="Complete Documents">Complete Documents</option>
+                    <option value="Missing Documents">Missing Documents</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Clear Filters */}
+              {(searchTerm || submitDateFrom || submitDateTo || docStatusFilter !== 'All') && (
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => {
+                      setSearchTerm('');
+                      setSubmitDateFrom('');
+                      setSubmitDateTo('');
+                      setDocStatusFilter('All');
+                    }}
+                    className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+                  >
+                    Clear Filters
+                  </button>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Results Count */}
+      {!loading && !error && (
+        <div className="text-sm text-gray-600">
+          Showing <span className="font-semibold text-gray-900">{filteredApprovals.length}</span> of{' '}
+          <span className="font-semibold text-gray-900">{approvals.length}</span> pending approvals
+        </div>
+      )}
+
       {/* Loading State */}
       {loading && (
         <div className="text-center py-12">
@@ -283,31 +497,32 @@ export default function ApprovalsPage() {
       {/* Approvals Grid */}
       {!loading && !error && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-            {filteredApprovals.map((approval) => (
-              <Card
-                key={`${approval.type}-${approval.id}`}
-                className="hover:shadow-lg transition-shadow duration-200"
-              >
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="text-lg font-bold text-gray-900">
-                        {approval.businessName}
-                      </h3>
-                      <p className="text-xs text-gray-600 uppercase tracking-wide mt-1">
-                        {approval.type}
-                      </p>
+          {filteredApprovals.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+              {filteredApprovals.map((approval) => (
+                <Card
+                  key={`${approval.type}-${approval.id}`}
+                  className="hover:shadow-lg transition-shadow duration-200 flex flex-col"
+                >
+                  <CardHeader>
+                    <div className="flex justify-between items-start gap-3">
+                      <div className="min-w-0">
+                        <h3 className="text-lg font-bold text-gray-900 truncate">
+                          {approval.businessName}
+                        </h3>
+                        <p className="text-xs text-gray-600 uppercase tracking-wide mt-1">
+                          {approval.type}
+                        </p>
+                      </div>
+                      <span className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0">
+                        Pending
+                      </span>
                     </div>
-                    <span className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">
-                      Pending
-                    </span>
-                  </div>
-                </CardHeader>
+                  </CardHeader>
 
-                <CardContent className="space-y-5">
-                  {/* Submitted Date & Address */}
-                  <div className="pb-4 border-b border-gray-200 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <CardContent className="space-y-4 flex-1 flex flex-col">
+                  {/* Submitted Date & Document Status */}
+                  <div className="pb-3 border-b border-gray-200 grid grid-cols-2 gap-3">
                     <div>
                       <p className="text-xs text-gray-500 uppercase tracking-wide">Submitted</p>
                       <p className="text-sm font-medium text-gray-900 mt-1">
@@ -315,26 +530,35 @@ export default function ApprovalsPage() {
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500 uppercase tracking-wide">Address</p>
-                      <p className="text-sm text-gray-700 mt-1 truncate" title={approval.address}>
-                        {approval.address}
-                      </p>
+                      <p className="text-xs text-gray-500 uppercase tracking-wide">Document Status</p>
+                      <div className="flex items-center gap-1 mt-1">
+                        <span className="text-lg">
+                          {hasCompleteDocuments(approval) ? '✅' : '⚠️'}
+                        </span>
+                        <p className="text-sm font-medium text-gray-900">
+                          {hasCompleteDocuments(approval) ? 'Complete' : 'Missing'}
+                        </p>
+                      </div>
                     </div>
                   </div>
 
                   {/* Registration Numbers */}
                   {(approval.licenseNumber || approval.cacNumber) && (
-                    <div className="pb-4 border-b border-gray-200 grid grid-cols-2 gap-4">
+                    <div className="pb-3 border-b border-gray-200 grid grid-cols-2 gap-3">
                       {approval.licenseNumber && (
                         <div>
                           <p className="text-xs text-gray-500 uppercase tracking-wide">License #</p>
-                          <p className="text-sm font-mono text-gray-900 mt-1">{approval.licenseNumber}</p>
+                          <p className="text-sm font-mono text-gray-900 mt-1 truncate">
+                            {approval.licenseNumber}
+                          </p>
                         </div>
                       )}
                       {approval.cacNumber && (
                         <div>
                           <p className="text-xs text-gray-500 uppercase tracking-wide">CAC #</p>
-                          <p className="text-sm font-mono text-gray-900 mt-1">{approval.cacNumber}</p>
+                          <p className="text-sm font-mono text-gray-900 mt-1 truncate">
+                            {approval.cacNumber}
+                          </p>
                         </div>
                       )}
                     </div>
@@ -342,12 +566,12 @@ export default function ApprovalsPage() {
 
                   {/* Documents */}
                   <div>
-                    <p className="text-xs text-gray-600 uppercase tracking-wide mb-3">Documents</p>
-                    <div className="space-y-2">
+                    <p className="text-xs text-gray-600 uppercase tracking-wide mb-2">Documents</p>
+                    <div className="space-y-1">
                       {approval.documents.map((doc, index) => (
                         <div
                           key={index}
-                          className={`flex items-center justify-between p-3 rounded-lg ${
+                          className={`flex items-center justify-between p-2 rounded text-sm ${
                             doc.status === 'Uploaded'
                               ? 'bg-green-50 hover:bg-green-100 cursor-pointer'
                               : 'bg-red-50'
@@ -356,18 +580,18 @@ export default function ApprovalsPage() {
                             doc.status === 'Uploaded' && openDocPreview(doc.name, doc.url)
                           }
                         >
-                          <div className="flex items-center gap-3">
-                            <span className="text-lg">
-                              {doc.status === 'Uploaded' ? '✅' : '❌'}
-                            </span>
-                            <span className="text-sm text-gray-700">{doc.name}</span>
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span>{doc.status === 'Uploaded' ? '✅' : '❌'}</span>
+                            <span className="text-gray-700 truncate">{doc.name}</span>
                           </div>
                           {doc.status === 'Uploaded' ? (
-                            <span className="text-xs text-primary-600 font-medium">
+                            <span className="text-xs text-primary-600 font-medium flex-shrink-0 ml-2">
                               View
                             </span>
                           ) : (
-                            <span className="text-xs text-red-500 font-medium">Missing</span>
+                            <span className="text-xs text-red-500 font-medium flex-shrink-0 ml-2">
+                              Missing
+                            </span>
                           )}
                         </div>
                       ))}
@@ -375,37 +599,28 @@ export default function ApprovalsPage() {
                   </div>
 
                   {/* Owner Info */}
-                  <div className="space-y-2">
-                    <p className="text-xs text-gray-600 uppercase tracking-wide">Owner Information</p>
+                  <div className="space-y-2 pb-3 border-b border-gray-200">
+                    <p className="text-xs text-gray-600 uppercase tracking-wide">Owner</p>
                     <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-sm">
-                        <span className="text-gray-500 w-14">Name:</span>
-                        <span className="text-gray-900 font-medium">{approval.ownerName}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <span className="text-gray-500 w-14">Email:</span>
-                        <span className="text-gray-900 break-all">{approval.ownerEmail}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <span className="text-gray-500 w-14">Phone:</span>
-                        <span className="text-gray-900">{approval.ownerPhone}</span>
-                      </div>
+                      <p className="text-sm font-medium text-gray-900 truncate">{approval.ownerName}</p>
+                      <p className="text-xs text-gray-600 truncate">{approval.ownerEmail}</p>
+                      <p className="text-xs text-gray-600">{approval.ownerPhone}</p>
                     </div>
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="flex gap-3 pt-4 border-t border-gray-200">
+                  <div className="flex gap-3 pt-3 border-t border-gray-200 mt-auto">
                     <Button
                       variant="outline"
                       onClick={() => openReviewModal(approval, 'reject')}
-                      className="flex-1 !text-red-600 !border-red-200 hover:!bg-red-50"
+                      className="flex-1 text-sm !text-red-600 !border-red-200 hover:!bg-red-50"
                     >
                       Reject
                     </Button>
                     <Button
                       variant="primary"
                       onClick={() => openReviewModal(approval, 'approve')}
-                      className="flex-1"
+                      className="flex-1 text-sm"
                     >
                       Approve
                     </Button>
@@ -413,17 +628,31 @@ export default function ApprovalsPage() {
                 </CardContent>
               </Card>
             ))}
-          </div>
-
-          {/* Empty State */}
-          {filteredApprovals.length === 0 && (
+            </div>
+          ) : (
+            /* Empty State */
             <Card>
-              <CardContent className="py-12 text-center">
-                <div className="text-4xl mb-3">🎉</div>
-                <p className="text-gray-600 font-medium">No pending approvals</p>
-                <p className="text-sm text-gray-500 mt-1">
-                  All registrations have been reviewed. Check back later.
+              <CardContent className="py-16 text-center">
+                <div className="text-5xl mb-4">📋</div>
+                <p className="text-gray-600 font-medium text-lg">No matching approvals found</p>
+                <p className="text-sm text-gray-500 mt-2">
+                  {searchTerm || submitDateFrom || submitDateTo || docStatusFilter !== 'All'
+                    ? 'Try adjusting your filters or search terms'
+                    : 'All registrations have been reviewed. Check back later.'}
                 </p>
+                {(searchTerm || submitDateFrom || submitDateTo || docStatusFilter !== 'All') && (
+                  <button
+                    onClick={() => {
+                      setSearchTerm('');
+                      setSubmitDateFrom('');
+                      setSubmitDateTo('');
+                      setDocStatusFilter('All');
+                    }}
+                    className="mt-4 text-sm text-primary-600 hover:text-primary-700 font-medium"
+                  >
+                    Clear Filters
+                  </button>
+                )}
               </CardContent>
             </Card>
           )}

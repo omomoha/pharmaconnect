@@ -19,7 +19,9 @@ export function useAdminDashboard() {
       const response = await adminService.getDashboard();
 
       if (response.success && response.data) {
-        setStats(response.data);
+        // Backend returns { stats: { ... } } — unwrap if nested
+        const data = response.data as any;
+        setStats(data.stats || data);
       } else {
         setError(response.error?.message || 'Failed to fetch dashboard');
       }

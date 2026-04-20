@@ -51,7 +51,7 @@ async function createAdmin() {
 
   // Step 1: Create or find user in Firebase Auth
   try {
-    const existingUser = await auth.getUserByEmail(ADMIN_EMAIL);
+    const existingUser = await auth.getUserByEmail(ADMIN_EMAIL!);
     uid = existingUser.uid;
     console.log(`Found existing user: ${uid}`);
   } catch {

@@ -21,6 +21,12 @@ interface User {
   phone?: string;
 }
 
+interface FilterState {
+  status: 'All' | 'Active' | 'Suspended' | 'Pending';
+  joinedAfter: string;
+  joinedBefore: string;
+}
+
 export default function UserManagementPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,6 +39,12 @@ export default function UserManagementPage() {
   const [sortField, setSortField] = useState<keyof User>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState<FilterState>({
+    status: 'All',
+    joinedAfter: '',
+    joinedBefore: '',
+  });
   const itemsPerPage = 10;
 
   // Fetch users on component mount
@@ -106,6 +118,19 @@ export default function UserManagementPage() {
       );
     }
 
+    // Filter by status
+    if (filters.status !== 'All') {
+      processed = processed.filter((u) => u.status === filters.status);
+    }
+
+    // Filter by joined date range
+    if (filters.joinedAfter) {
+      processed = processed.filter((u) => u.joinedDate >= filters.joinedAfter);
+    }
+    if (filters.joinedBefore) {
+      processed = processed.filter((u) => u.joinedDate <= filters.joinedBefore);
+    }
+
     // Sort
     processed = [...processed].sort((a, b) => {
       const aValue = a[sortField];
@@ -123,6 +148,69 @@ export default function UserManagementPage() {
     return processed;
   };
 
+  const hasActiveFilters = () => {
+    return (
+      filters.status !== 'All' ||
+      filters.joinedAfter !== '' ||
+      filters.joinedBefore !== ''
+    );
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      status: 'All',
+      joinedAfter: '',
+      joinedBefore: '',
+    });
+    setCurrentPage(1);
+  };
+
+  const exportToCSV = () => {
+    try {
+      const dataToExport = allProcessedUsers;
+      if (dataToExport.length === 0) {
+        toast.error('No users to export');
+        return;
+      }
+
+      const headers = ['Name', 'Email', 'Role', 'Status', 'Joined Date'];
+      const rows = dataToExport.map((user) => [
+        user.name,
+        user.email,
+        user.role,
+        user.status,
+        user.joinedDate,
+      ]);
+
+      const csvContent = [
+        headers.join(','),
+        ...rows.map((row) =>
+          row
+            .map((cell) => {
+              const cellStr = String(cell);
+              return cellStr.includes(',') ? `"${cellStr}"` : cellStr;
+            })
+            .join(',')
+        ),
+      ].join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `users_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast.success(`Exported ${dataToExport.length} users to CSV`);
+    } catch (err) {
+      console.error('Failed to export CSV:', err);
+      toast.error('Failed to export users');
+    }
+  };
+
   const allProcessedUsers = processUsers(users);
   const totalPages = Math.ceil(allProcessedUsers.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -132,6 +220,7 @@ export default function UserManagementPage() {
     setCurrentPage(1);
     setSearchTerm('');
     setActiveTab('All');
+    clearFilters();
     // Trigger refetch by clearing and re-fetching
     setLoading(true);
     setError(null);
@@ -227,22 +316,156 @@ export default function UserManagementPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="User Management"
-        description="View and manage all platform users"
-      />
+      <div className="flex items-center justify-between">
+        <PageHeader
+          title="User Management"
+          description="View and manage all platform users"
+        />
+        <Button
+          variant="primary"
+          onClick={exportToCSV}
+          className="flex items-center gap-2"
+        >
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8m0 8l-4-2m4 2l4-2"
+            />
+          </svg>
+          Export CSV
+        </Button>
+      </div>
 
       {/* Search Bar */}
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="pt-6 space-y-4">
           <div className="relative">
             <Input
               placeholder="Search by name or email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <span className="absolute right-3 top-3.5 text-gray-400">🔍</span>
+            <svg
+              className="absolute right-3 top-3 w-5 h-5 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
           </div>
+
+          {/* Filter Toggle */}
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+          >
+            <svg
+              className={`w-4 h-4 transition-transform ${
+                showFilters ? 'rotate-180' : ''
+              }`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 14l-7 7m0 0l-7-7m7 7V3"
+              />
+            </svg>
+            Advanced Filters {hasActiveFilters() && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Active</span>}
+          </button>
+
+          {/* Advanced Filters Panel */}
+          {showFilters && (
+            <div className="border-t pt-4 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* Status Filter */}
+                <div>
+                  <label className="text-sm font-medium text-gray-700 block mb-2">
+                    Status
+                  </label>
+                  <select
+                    value={filters.status}
+                    onChange={(e) => {
+                      setFilters({
+                        ...filters,
+                        status: e.target.value as FilterState['status'],
+                      });
+                      setCurrentPage(1);
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm font-medium text-gray-900 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="All">All Status</option>
+                    <option value="Active">Active</option>
+                    <option value="Suspended">Suspended</option>
+                    <option value="Pending">Pending</option>
+                  </select>
+                </div>
+
+                {/* Joined After Filter */}
+                <div>
+                  <label className="text-sm font-medium text-gray-700 block mb-2">
+                    Joined After
+                  </label>
+                  <input
+                    type="date"
+                    value={filters.joinedAfter}
+                    onChange={(e) => {
+                      setFilters({
+                        ...filters,
+                        joinedAfter: e.target.value,
+                      });
+                      setCurrentPage(1);
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm font-medium text-gray-900 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                {/* Joined Before Filter */}
+                <div>
+                  <label className="text-sm font-medium text-gray-700 block mb-2">
+                    Joined Before
+                  </label>
+                  <input
+                    type="date"
+                    value={filters.joinedBefore}
+                    onChange={(e) => {
+                      setFilters({
+                        ...filters,
+                        joinedBefore: e.target.value,
+                      });
+                      setCurrentPage(1);
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm font-medium text-gray-900 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              {hasActiveFilters() && (
+                <button
+                  onClick={clearFilters}
+                  className="text-sm text-red-600 hover:text-red-700 font-medium"
+                >
+                  Clear Filters
+                </button>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -291,155 +514,298 @@ export default function UserManagementPage() {
 
       {/* Users Table */}
       {!loading && !error && (
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th
-                    className="text-left py-4 px-6 font-semibold text-gray-700 text-sm cursor-pointer hover:bg-gray-100 select-none"
-                    onClick={() => handleSort('name')}
-                  >
-                    Name {sortField === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  </th>
-                  <th
-                    className="text-left py-4 px-6 font-semibold text-gray-700 text-sm cursor-pointer hover:bg-gray-100 select-none"
-                    onClick={() => handleSort('email')}
-                  >
-                    Email {sortField === 'email' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  </th>
-                  <th
-                    className="text-left py-4 px-6 font-semibold text-gray-700 text-sm cursor-pointer hover:bg-gray-100 select-none"
-                    onClick={() => handleSort('role')}
-                  >
-                    Role {sortField === 'role' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  </th>
-                  <th
-                    className="text-left py-4 px-6 font-semibold text-gray-700 text-sm cursor-pointer hover:bg-gray-100 select-none"
-                    onClick={() => handleSort('status')}
-                  >
-                    Status {sortField === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  </th>
-                  <th
-                    className="text-left py-4 px-6 font-semibold text-gray-700 text-sm cursor-pointer hover:bg-gray-100 select-none"
-                    onClick={() => handleSort('joinedDate')}
-                  >
-                    Joined {sortField === 'joinedDate' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  </th>
-                  <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredUsers.map((user) => (
-                  <tr
-                    key={user.id}
-                    className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
-                  >
-                    <td className="py-4 px-6 font-medium text-gray-900 text-sm">
-                      {user.name}
-                    </td>
-                    <td className="py-4 px-6 text-gray-600 text-sm">
-                      {user.email}
-                    </td>
-                    <td className="py-4 px-6">
-                      <span
-                        className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor(
-                          user.role
-                        )}`}
-                      >
-                        {user.role}
-                      </span>
-                    </td>
-                    <td className="py-4 px-6">
-                      <StatusBadge status={user.status} />
-                    </td>
-                    <td className="py-4 px-6 text-gray-600 text-sm">
-                      {user.joinedDate}
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setSelectedUser(user)}
-                          className="p-2 hover:bg-gray-200 rounded-lg transition-colors text-lg"
-                          title="View details"
-                        >
-                          👁️
-                        </button>
-                        {user.status === 'Active' ? (
-                          <button
-                            onClick={() => openActionModal(user, 'suspend')}
-                            className="p-2 hover:bg-red-100 rounded-lg transition-colors text-lg"
-                            title="Suspend user"
+        <Card>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th
+                      className="text-left py-4 px-6 font-semibold text-gray-700 text-sm cursor-pointer hover:bg-gray-100 select-none transition-colors"
+                      onClick={() => handleSort('name')}
+                    >
+                      <div className="flex items-center gap-2">
+                        Name
+                        {sortField === 'name' && (
+                          <svg
+                            className={`w-4 h-4 ${
+                              sortDirection === 'asc' ? '' : 'rotate-180'
+                            }`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
                           >
-                            🚫
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => openActionModal(user, 'activate')}
-                            className="p-2 hover:bg-green-100 rounded-lg transition-colors text-lg"
-                            title="Activate user"
-                          >
-                            ✅
-                          </button>
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M7 16V4m0 0L3 8m0 0l4 4m10-4v12m0 0l4-4m0 0l-4-4"
+                            />
+                          </svg>
                         )}
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {filteredUsers.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-gray-600">No users found</p>
-            </div>
-          )}
-
-          {allProcessedUsers.length > 0 && (
-            <div className="flex items-center justify-between border-t border-gray-200 px-4 py-3 mt-4">
-              <div className="text-sm text-gray-500">
-                Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, allProcessedUsers.length)} of{' '}
-                {allProcessedUsers.length} results
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setCurrentPage(currentPage - 1)}
-                  disabled={currentPage === 1}
-                  className="px-3 py-1 rounded border border-gray-300 text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  Previous
-                </button>
-                <div className="flex gap-1">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                    <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-                        currentPage === page
-                          ? 'bg-blue-500 text-white'
-                          : 'border border-gray-300 hover:bg-gray-50'
-                      }`}
+                    </th>
+                    <th
+                      className="text-left py-4 px-6 font-semibold text-gray-700 text-sm cursor-pointer hover:bg-gray-100 select-none transition-colors"
+                      onClick={() => handleSort('email')}
                     >
-                      {page}
-                    </button>
+                      <div className="flex items-center gap-2">
+                        Email
+                        {sortField === 'email' && (
+                          <svg
+                            className={`w-4 h-4 ${
+                              sortDirection === 'asc' ? '' : 'rotate-180'
+                            }`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M7 16V4m0 0L3 8m0 0l4 4m10-4v12m0 0l4-4m0 0l-4-4"
+                            />
+                          </svg>
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      className="text-left py-4 px-6 font-semibold text-gray-700 text-sm cursor-pointer hover:bg-gray-100 select-none transition-colors"
+                      onClick={() => handleSort('role')}
+                    >
+                      <div className="flex items-center gap-2">
+                        Role
+                        {sortField === 'role' && (
+                          <svg
+                            className={`w-4 h-4 ${
+                              sortDirection === 'asc' ? '' : 'rotate-180'
+                            }`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M7 16V4m0 0L3 8m0 0l4 4m10-4v12m0 0l4-4m0 0l-4-4"
+                            />
+                          </svg>
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      className="text-left py-4 px-6 font-semibold text-gray-700 text-sm cursor-pointer hover:bg-gray-100 select-none transition-colors"
+                      onClick={() => handleSort('status')}
+                    >
+                      <div className="flex items-center gap-2">
+                        Status
+                        {sortField === 'status' && (
+                          <svg
+                            className={`w-4 h-4 ${
+                              sortDirection === 'asc' ? '' : 'rotate-180'
+                            }`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M7 16V4m0 0L3 8m0 0l4 4m10-4v12m0 0l4-4m0 0l-4-4"
+                            />
+                          </svg>
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      className="text-left py-4 px-6 font-semibold text-gray-700 text-sm cursor-pointer hover:bg-gray-100 select-none transition-colors"
+                      onClick={() => handleSort('joinedDate')}
+                    >
+                      <div className="flex items-center gap-2">
+                        Joined
+                        {sortField === 'joinedDate' && (
+                          <svg
+                            className={`w-4 h-4 ${
+                              sortDirection === 'asc' ? '' : 'rotate-180'
+                            }`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M7 16V4m0 0L3 8m0 0l4 4m10-4v12m0 0l4-4m0 0l-4-4"
+                            />
+                          </svg>
+                        )}
+                      </div>
+                    </th>
+                    <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUsers.map((user) => (
+                    <tr
+                      key={user.id}
+                      className="border-b border-gray-100 hover:bg-blue-50 transition-colors"
+                    >
+                      <td className="py-4 px-6 font-medium text-gray-900 text-sm">
+                        {user.name}
+                      </td>
+                      <td className="py-4 px-6 text-gray-600 text-sm">
+                        {user.email}
+                      </td>
+                      <td className="py-4 px-6">
+                        <span
+                          className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor(
+                            user.role
+                          )}`}
+                        >
+                          {user.role}
+                        </span>
+                      </td>
+                      <td className="py-4 px-6">
+                        <StatusBadge status={user.status} />
+                      </td>
+                      <td className="py-4 px-6 text-gray-600 text-sm">
+                        {user.joinedDate}
+                      </td>
+                      <td className="py-4 px-6">
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setSelectedUser(user)}
+                            className="p-2 hover:bg-blue-100 rounded-lg transition-colors"
+                            title="View details"
+                            aria-label="View user details"
+                          >
+                            <svg
+                              className="w-5 h-5 text-blue-600"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                              />
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                              />
+                            </svg>
+                          </button>
+                          {user.status === 'Active' ? (
+                            <button
+                              onClick={() => openActionModal(user, 'suspend')}
+                              className="p-2 hover:bg-red-100 rounded-lg transition-colors"
+                              title="Suspend user"
+                              aria-label="Suspend user"
+                            >
+                              <svg
+                                className="w-5 h-5 text-red-600"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                />
+                              </svg>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => openActionModal(user, 'activate')}
+                              className="p-2 hover:bg-green-100 rounded-lg transition-colors"
+                              title="Activate user"
+                              aria-label="Activate user"
+                            >
+                              <svg
+                                className="w-5 h-5 text-green-600"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
                   ))}
-                </div>
-                <button
-                  onClick={() => setCurrentPage(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                  className="px-3 py-1 rounded border border-gray-300 text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  Next
-                </button>
-              </div>
+                </tbody>
+              </table>
             </div>
-          )}
-        </CardContent>
-      </Card>
+
+            {filteredUsers.length === 0 && (
+              <div className="text-center py-12">
+                <p className="text-gray-600">No users found</p>
+              </div>
+            )}
+
+            {allProcessedUsers.length > 0 && (
+              <div className="border-t border-gray-200 px-6 py-4 space-y-4">
+                <div className="text-sm text-gray-600">
+                  Showing <span className="font-medium text-gray-900">{startIndex + 1}</span> to{' '}
+                  <span className="font-medium text-gray-900">
+                    {Math.min(startIndex + itemsPerPage, allProcessedUsers.length)}
+                  </span>{' '}
+                  of <span className="font-medium text-gray-900">{allProcessedUsers.length}</span> users
+                </div>
+                <div className="flex items-center justify-between gap-4">
+                  <button
+                    onClick={() => setCurrentPage(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="px-4 py-2 rounded border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-50 transition-colors"
+                  >
+                    Previous
+                  </button>
+                  <div className="flex gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
+                          currentPage === page
+                            ? 'bg-blue-500 text-white'
+                            : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => setCurrentPage(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="px-4 py-2 rounded border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-50 transition-colors"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* User Details Modal */}

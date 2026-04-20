@@ -43,10 +43,16 @@ export const authenticate = async (
     const userRecord = await auth.getUser(decodedToken.uid);
     const customClaims = userRecord.customClaims || {};
 
+    // Normalize role: map 'admin' shorthand to canonical PLATFORM_ADMIN
+    let role = customClaims.role as UserRole;
+    if ((role as string) === 'admin') {
+      role = UserRole.PLATFORM_ADMIN;
+    }
+
     req.user = {
       uid: decodedToken.uid,
       email: decodedToken.email || "",
-      role: customClaims.role as UserRole,
+      role,
     };
     req.token = token;
 
@@ -97,10 +103,16 @@ export const optionalAuthenticate = async (
     const userRecord = await auth.getUser(decodedToken.uid);
     const customClaims = userRecord.customClaims || {};
 
+    // Normalize role: map 'admin' shorthand to canonical PLATFORM_ADMIN
+    let role = customClaims.role as UserRole;
+    if ((role as string) === 'admin') {
+      role = UserRole.PLATFORM_ADMIN;
+    }
+
     req.user = {
       uid: decodedToken.uid,
       email: decodedToken.email || "",
-      role: customClaims.role as UserRole,
+      role,
     };
     req.token = token;
 
