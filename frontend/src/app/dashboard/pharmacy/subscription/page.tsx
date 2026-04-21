@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { useApprovalStatus } from '@/hooks';
 import { apiClient } from '@/lib/api';
 
 interface SubscriptionPlan {
@@ -43,6 +45,7 @@ const FEATURE_LABELS: Record<string, string> = {
 
 export default function SubscriptionPage() {
   useAuth(); // Ensures user is authenticated
+  const { approvalStatus, loading: approvalLoading } = useApprovalStatus();
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [currentSubscription, setCurrentSubscription] = useState<Subscription | null>(null);
   const [currentPlan, setCurrentPlan] = useState<SubscriptionPlan | null>(null);
@@ -50,6 +53,8 @@ export default function SubscriptionPage() {
   const [changingTier, setChangingTier] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const isVerified = approvalStatus === 'approved';
 
   useEffect(() => {
     fetchData();
@@ -60,22 +65,24 @@ export default function SubscriptionPage() {
       setLoading(true);
       setError(null);
 
-      // Fetch plans and current subscription in parallel
-      const [plansRes, subRes] = await Promise.allSettled([
-        apiClient.get('/subscriptions/plans'),
-        apiClient.get('/subscriptions/current'),
-      ]);
-
-      if (plansRes.status === 'fulfilled' && plansRes.value?.data) {
-        setPlans(plansRes.value.data);
+      // Always fetch plans (public endpoint)
+      const plansRes = await apiClient.get('/subscriptions/plans');
+      if (plansRes?.data) {
+        setPlans(plansRes.data);
       }
 
-      if (subRes.status === 'fulfilled' && subRes.value?.data) {
-        setCurrentSubscription(subRes.value.data.subscription);
-        setCurrentPlan(subRes.value.data.plan);
+      // Only fetch current subscription if pharmacy might exist
+      try {
+        const subRes = await apiClient.get('/subscriptions/current');
+        if (subRes?.data) {
+          setCurrentSubscription(subRes.data.subscription);
+          setCurrentPlan(subRes.data.plan);
+        }
+      } catch {
+        // Expected to fail if pharmacy isn't registered yet — ignore
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to load subscription data');
+      setError(err.message || 'Failed to load subscription plans');
     } finally {
       setLoading(false);
     }
@@ -193,6 +200,32 @@ export default function SubscriptionPage() {
               Cancel Plan
             </button>
           )}
+        </div>
+      )}
+
+      {/* Verification Notice for unverified pharmacies */}
+      {!approvalLoading && !isVerified && (
+        <div className="mb-8 p-5 bg-amber-50 border border-amber-200 rounded-xl">
+          <div className="flex items-start gap-3">
+            <svg className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" />
+            </svg>
+            <div>
+              <h3 className="font-semibold text-amber-900 text-sm">Verification required</h3>
+              <p className="text-sm text-amber-800 mt-1">
+                Complete your pharmacy verification before subscribing. Once verified, you&apos;ll be automatically placed on the <strong>PharmaLite (Free)</strong> plan and can upgrade anytime.
+              </p>
+              <Link
+                href="/dashboard/pharmacy/verification"
+                className="inline-flex items-center gap-1.5 mt-3 px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition-colors"
+              >
+                Verify Account
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 5l-1.41 1.41L15.17 11H5v2h10.17l-4.58 4.59L12 19l7-7-7-7z" />
+                </svg>
+              </Link>
+            </div>
+          </div>
         </div>
       )}
 
@@ -321,8 +354,11 @@ export default function SubscriptionPage() {
                 ) : (
                   <button
                     onClick={() => handleChangeTier(plan.id)}
-                    disabled={changingTier !== null}
+                    disabled={changingTier !== null || !isVerified}
                     className={`w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                      !isVerified
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        :
                       isPopular
                         ? 'bg-primary-600 text-white hover:bg-primary-700 shadow-sm hover:shadow-md'
                         : plan.priceNGN === 0
@@ -330,7 +366,9 @@ export default function SubscriptionPage() {
                         : 'bg-gray-900 text-white hover:bg-gray-800'
                     } ${changingTier === plan.id ? 'opacity-70' : ''}`}
                   >
-                    {changingTier === plan.id ? (
+                    {!isVerified ? (
+                      'Verify to Subscribe'
+                    ) : changingTier === plan.id ? (
                       <span className="flex items-center justify-center gap-2">
                         <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
